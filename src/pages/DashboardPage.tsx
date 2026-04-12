@@ -4,7 +4,11 @@ import { streams, products } from "@/data/mockData";
 
 const TABS = ["Мои эфиры", "Товары", "Статистика"];
 
-export default function DashboardPage() {
+interface DashboardPageProps {
+  setPage: (p: import("@/App").Page) => void;
+}
+
+export default function DashboardPage({ setPage: _setPage }: DashboardPageProps) {
   const [tab, setTab] = useState("Мои эфиры");
   const myStreams = streams.slice(0, 4);
   const myProducts = products.slice(0, 6);
