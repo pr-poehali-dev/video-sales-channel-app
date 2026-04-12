@@ -78,6 +78,27 @@ def handler(event: dict, context) -> dict:
             url = f"{CDN_BASE}/{key}"
             return ok({"url": url})
 
+        # ─────────── UPLOAD VIDEO ───────────
+        # Принимаем base64 data_url — браузер кодирует видео и отправляет
+        # Таймаут функции должен быть 120+ секунд для больших файлов
+        if action == "upload_video":
+            data_url = body.get("data_url", "")
+            if not data_url.startswith("data:video/"):
+                return err("invalid video data")
+            header, encoded = data_url.split(",", 1)
+            mime = header.split(";")[0].replace("data:", "")
+            ext = mime.split("/")[1].split("+")[0]
+            video_bytes = base64.b64decode(encoded)
+            key = f"streams/{uuid.uuid4().hex}.{ext}"
+            s3 = get_s3()
+            s3.put_object(Bucket="files", Key=key, Body=video_bytes, ContentType=mime)
+            cdn_url = f"{CDN_BASE}/{key}"
+            stream_id = body.get("stream_id")
+            if stream_id:
+                cur.execute("UPDATE streams SET video_url=%s WHERE id=%s", (cdn_url, stream_id))
+                conn.commit()
+            return ok({"url": cdn_url})
+
         # ─────────── PRESIGNED URL для загрузки видео ───────────
         if action == "get_video_upload_url":
             stream_id = body.get("stream_id") or qs.get("stream_id")

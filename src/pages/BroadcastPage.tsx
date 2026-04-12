@@ -147,9 +147,10 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
         ? "video/webm"
         : "video/mp4";
     try {
-      const rec = new MediaRecorder(cameraRef.current, { mimeType, videoBitsPerSecond: 1_500_000 });
+      // 300kbps — компактно для мобильного, ~2.2 МБ/мин, до 10 мин = ~22 МБ
+      const rec = new MediaRecorder(cameraRef.current, { mimeType, videoBitsPerSecond: 300_000 });
       rec.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data); };
-      rec.start(3000); // чанки каждые 3 сек
+      rec.start(5000); // чанки каждые 5 сек
       recorderRef.current = rec;
     } catch { /* запись недоступна, эфир всё равно идёт */ }
     setIsLive(true);
@@ -162,55 +163,47 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
     const dur = duration;
     setSavedDuration(dur);
     setIsLive(false);
+    const sid = streamIdRef.current;
 
-    // Останавливаем запись
-    recorderRef.current?.stop();
-
-    // Обновляем запись в БД как завершённую
-    if (streamIdRef.current) {
-      await updateStream(streamIdRef.current, { isLive: false, duration_sec: dur } as never);
+    // Помечаем в БД как завершённый
+    if (sid) {
+      await updateStream(sid, { isLive: false, duration_sec: dur } as never);
     }
 
-    // Загружаем видео через presigned URL напрямую в S3
-    if (chunksRef.current.length > 0 && streamIdRef.current) {
+    // Дожидаемся финального onstop от MediaRecorder — он сбрасывает последний чанк
+    if (recorderRef.current && recorderRef.current.state !== "inactive") {
+      await new Promise<void>(resolve => {
+        recorderRef.current!.onstop = () => resolve();
+        recorderRef.current!.stop();
+      });
+    }
+
+    // chunksRef теперь точно полный — конвертируем в base64 и загружаем через бэкенд
+    if (chunksRef.current.length > 0 && sid) {
       setUploading(true);
-      setUploadProgress(5);
-      const sid = streamIdRef.current;
+      setUploadProgress(10);
       try {
         const blob = new Blob(chunksRef.current, { type: chunksRef.current[0]?.type || "video/webm" });
         const mime = blob.type || "video/webm";
-        setUploadProgress(15);
+        setUploadProgress(20);
 
-        // 1. Получаем presigned URL от бэкенда
-        const presignResp = await fetch(`${STORE_API}?action=get_video_upload_url`, {
+        // Конвертируем в base64
+        const dataUrl: string = await new Promise((res, rej) => {
+          const reader = new FileReader();
+          reader.onload = () => res(reader.result as string);
+          reader.onerror = rej;
+          reader.readAsDataURL(blob);
+        });
+        setUploadProgress(50);
+
+        // Загружаем через бэкенд — он отправит в S3 и сохранит URL
+        const resp = await fetch(`${STORE_API}?action=upload_video`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ stream_id: sid, mime }),
+          body: JSON.stringify({ data_url: dataUrl, stream_id: sid }),
         });
-        if (!presignResp.ok) throw new Error("presign failed");
-        const { upload_url, cdn_url } = await presignResp.json();
-        setUploadProgress(30);
-
-        // 2. Загружаем blob напрямую в S3 через PUT (с прогрессом)
-        await new Promise<void>((resolve, reject) => {
-          const xhr = new XMLHttpRequest();
-          xhr.upload.onprogress = e => {
-            if (e.lengthComputable) setUploadProgress(30 + Math.round(e.loaded / e.total * 60));
-          };
-          xhr.onload = () => (xhr.status < 300 ? resolve() : reject(new Error(`S3 ${xhr.status}`)));
-          xhr.onerror = () => reject(new Error("network"));
-          xhr.open("PUT", upload_url);
-          xhr.setRequestHeader("Content-Type", mime);
-          xhr.send(blob);
-        });
-        setUploadProgress(95);
-
-        // 3. Сохраняем CDN-ссылку в БД
-        await fetch(`${STORE_API}?action=set_video_url`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ stream_id: sid, video_url: cdn_url }),
-        });
+        setUploadProgress(90);
+        if (!resp.ok) throw new Error(`upload failed: ${resp.status}`);
         setUploadProgress(100);
       } catch (e) {
         console.error("Video upload failed:", e);
@@ -242,17 +235,26 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
   if (finished) return (
     <div className="max-w-md mx-auto px-4 py-24 text-center animate-fade-in">
       <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-5">
-        <Icon name="CheckCircle" size={40} className="text-primary" />
+        {uploading
+          ? <Icon name="Loader" size={40} className="text-primary animate-spin" />
+          : <Icon name="CheckCircle" size={40} className="text-primary" />
+        }
       </div>
-      <h2 className="font-oswald text-2xl font-semibold text-foreground mb-2">Эфир завершён!</h2>
+      <h2 className="font-oswald text-2xl font-semibold text-foreground mb-2">
+        {uploading ? "Сохраняем запись..." : "Эфир завершён!"}
+      </h2>
       <p className="text-sm text-muted-foreground mb-1">«{title}»</p>
       <p className="text-sm text-muted-foreground mb-6">Длительность: {fmt(savedDuration)}</p>
       {uploading && (
-        <div className="mb-6">
-          <p className="text-sm text-muted-foreground mb-2">Загружаем запись... {uploadProgress}%</p>
-          <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+        <div className="mb-6 px-4">
+          <div className="flex justify-between text-xs text-muted-foreground mb-1.5">
+            <span>Загрузка видео</span>
+            <span>{uploadProgress}%</span>
+          </div>
+          <div className="h-2 bg-secondary rounded-full overflow-hidden">
             <div className="h-full bg-primary transition-all duration-500 rounded-full" style={{ width: `${uploadProgress}%` }} />
           </div>
+          <p className="text-xs text-muted-foreground mt-2">Не закрывайте страницу</p>
         </div>
       )}
       <div className="flex flex-col gap-3 max-w-xs mx-auto">

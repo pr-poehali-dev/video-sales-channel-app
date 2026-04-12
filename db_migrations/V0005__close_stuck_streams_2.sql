@@ -1,0 +1,1 @@
+UPDATE streams SET is_live = FALSE, ended_at = NOW() WHERE is_live = TRUE;
