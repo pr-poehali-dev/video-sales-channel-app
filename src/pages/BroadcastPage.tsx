@@ -4,6 +4,59 @@ import { useAuth } from "@/context/AuthContext";
 import { useStore } from "@/context/StoreContext";
 import type { Page } from "@/App";
 
+function LiveChat({ streamId, setPage }: { streamId: string; setPage: (p: Page) => void }) {
+  const { user } = useAuth();
+  const { addChatMessage, getStreamMessages } = useStore();
+  const [input, setInput] = useState("");
+  const chatEndRef = useRef<HTMLDivElement>(null);
+  const messages = getStreamMessages(streamId);
+
+  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages.length]);
+
+  const send = () => {
+    if (!input.trim() || !user) return;
+    addChatMessage({ streamId, userId: user.id, userName: user.name.split(" ")[0], userAvatar: user.avatar, text: input.trim() });
+    setInput("");
+  };
+
+  return (
+    <div className="bg-card border border-border rounded-2xl overflow-hidden flex flex-col" style={{ height: "320px" }}>
+      <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border flex-shrink-0">
+        <Icon name="MessageSquare" size={14} className="text-primary" />
+        <span className="text-sm font-semibold text-foreground">Чат зрителей</span>
+        <span className="ml-auto text-xs text-muted-foreground">{messages.length}</span>
+      </div>
+      <div className="flex-1 overflow-y-auto px-3 py-2 space-y-2 min-h-0">
+        {messages.length === 0
+          ? <p className="text-xs text-muted-foreground text-center pt-6">Сообщений пока нет</p>
+          : messages.map(m => (
+            <div key={m.id} className="flex items-start gap-1.5">
+              <div className="w-5 h-5 rounded-full bg-primary/20 text-primary text-[9px] font-bold flex items-center justify-center font-oswald flex-shrink-0">{m.userAvatar}</div>
+              <div>
+                <span className="text-[10px] text-muted-foreground">{m.userName} </span>
+                <span className="text-xs text-foreground">{m.text}</span>
+              </div>
+            </div>
+          ))
+        }
+        <div ref={chatEndRef} />
+      </div>
+      <div className="px-3 py-2 border-t border-border flex gap-2 flex-shrink-0">
+        <input
+          value={input} onChange={e => setInput(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && send()}
+          placeholder="Ответить зрителям..."
+          className="flex-1 bg-secondary border border-border rounded-lg px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50"
+        />
+        <button onClick={send} disabled={!input.trim()}
+          className="w-7 h-7 rounded-lg bg-primary text-primary-foreground flex items-center justify-center hover:opacity-90 disabled:opacity-40 flex-shrink-0">
+          <Icon name="Send" size={13} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 interface BroadcastPageProps {
   setPage: (p: Page) => void;
 }
