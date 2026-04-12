@@ -1,0 +1,28 @@
+{
+  "tests": [
+    {
+      "name": "get products (empty ok)",
+      "method": "GET",
+      "path": "/?action=get_products",
+      "expectedStatus": 200,
+      "expectedBody": [],
+      "bodyMatcher": "exact"
+    },
+    {
+      "name": "get streams (empty ok)",
+      "method": "GET",
+      "path": "/?action=get_streams",
+      "expectedStatus": 200,
+      "expectedBody": [],
+      "bodyMatcher": "exact"
+    },
+    {
+      "name": "unknown action returns 404",
+      "method": "GET",
+      "path": "/?action=unknown",
+      "expectedStatus": 404,
+      "expectedBody": {"error": "unknown action"},
+      "bodyMatcher": "partial"
+    }
+  ]
+}

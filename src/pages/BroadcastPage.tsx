@@ -1,21 +1,33 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useCallback as _uc } from "react";
 import Icon from "@/components/ui/icon";
 import { useAuth } from "@/context/AuthContext";
 import { useStore } from "@/context/StoreContext";
 import type { Page } from "@/App";
 
-function LiveChat({ streamId, setPage }: { streamId: string; setPage: (p: Page) => void }) {
+function LiveChat({ streamId, setPage: _setPage }: { streamId: string; setPage: (p: Page) => void }) {
   const { user } = useAuth();
   const { addChatMessage, getStreamMessages } = useStore();
   const [input, setInput] = useState("");
+  const [messages, setMessages] = useState<import("@/context/StoreContext").ChatMessage[]>([]);
   const chatEndRef = useRef<HTMLDivElement>(null);
-  const messages = getStreamMessages(streamId);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const fetch = useCallback(async () => {
+    try { setMessages(await getStreamMessages(streamId)); } catch { /* ignore */ }
+  }, [streamId, getStreamMessages]);
+
+  useEffect(() => {
+    fetch();
+    pollRef.current = setInterval(fetch, 3000);
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, [fetch]);
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages.length]);
 
-  const send = () => {
+  const send = async () => {
     if (!input.trim() || !user) return;
-    addChatMessage({ streamId, userId: user.id, userName: user.name.split(" ")[0], userAvatar: user.avatar, text: input.trim() });
+    const msg = await addChatMessage({ streamId, userId: user.id, userName: user.name.split(" ")[0], userAvatar: user.avatar, text: input.trim() });
+    setMessages(prev => [...prev, msg]);
     setInput("");
   };
 

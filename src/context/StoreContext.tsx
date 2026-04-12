@@ -1,4 +1,23 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
+import {
+  createContext, useContext, useState,
+  useCallback, useEffect, type ReactNode,
+} from "react";
+
+const API = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c";
+
+async function api(action: string, method: "GET" | "POST" | "PATCH" = "GET", body?: object) {
+  const url = `${API}?action=${action}`;
+  const res = await fetch(url, {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    throw new Error(e.error || res.statusText);
+  }
+  return res.json();
+}
 
 export interface StoreProduct {
   id: string;
@@ -51,113 +70,88 @@ export interface Review {
 interface StoreContextType {
   products: StoreProduct[];
   streams: StoreStream[];
-  reviews: Review[];
-  chatMessages: ChatMessage[];
-  addProduct: (product: Omit<StoreProduct, "id" | "createdAt">) => StoreProduct;
-  updateProduct: (id: string, data: Partial<StoreProduct>) => void;
-  deleteProduct: (id: string) => void;
-  addStream: (stream: Omit<StoreStream, "id">) => StoreStream;
-  updateStream: (id: string, data: Partial<StoreStream>) => void;
+  loading: boolean;
+  reload: () => void;
+  addProduct: (data: Omit<StoreProduct, "id" | "createdAt">) => Promise<StoreProduct>;
+  updateProduct: (id: string, data: Partial<StoreProduct>) => Promise<void>;
+  deleteProduct: (id: string) => Promise<void>;
+  addStream: (data: Omit<StoreStream, "id" | "startedAt">) => Promise<StoreStream>;
+  updateStream: (id: string, data: Partial<StoreStream> & { duration_sec?: number }) => Promise<void>;
   getSellerProducts: (sellerId: string) => StoreProduct[];
   getSellerStreams: (sellerId: string) => StoreStream[];
-  addChatMessage: (msg: Omit<ChatMessage, "id" | "sentAt">) => void;
-  getStreamMessages: (streamId: string) => ChatMessage[];
-  addReview: (review: Omit<Review, "id" | "createdAt">) => void;
-  getProductReviews: (productId: string) => Review[];
-  getProductRating: (productId: string) => { avg: number; count: number };
+  getStreamMessages: (streamId: string) => Promise<ChatMessage[]>;
+  addChatMessage: (msg: Omit<ChatMessage, "id" | "sentAt">) => Promise<ChatMessage>;
+  getProductReviews: (productId: string) => Promise<{ reviews: Review[]; avg: number; count: number }>;
+  addReview: (data: Omit<Review, "id" | "createdAt">) => Promise<Review>;
   hasUserReviewed: (productId: string, userId: string) => boolean;
 }
 
 const StoreContext = createContext<StoreContextType | null>(null);
 
-const PRODUCTS_KEY = "yugastore_products_v2";
-const STREAMS_KEY  = "yugastore_streams_v2";
-const CHAT_KEY     = "yugastore_chat_v1";
-const REVIEWS_KEY  = "yugastore_reviews_v1";
-
-function load<T>(key: string): T[] {
-  try { return JSON.parse(localStorage.getItem(key) || "[]"); }
-  catch { return []; }
-}
-function save<T>(key: string, data: T[]) {
-  localStorage.setItem(key, JSON.stringify(data));
-}
-
 export function StoreProvider({ children }: { children: ReactNode }) {
-  const [products, setProducts]     = useState<StoreProduct[]>(() => load(PRODUCTS_KEY));
-  const [streams,  setStreams]       = useState<StoreStream[]>(() => load(STREAMS_KEY));
-  const [chatMessages, setChat]     = useState<ChatMessage[]>(() => load(CHAT_KEY));
-  const [reviews, setReviews]       = useState<Review[]>(() => load(REVIEWS_KEY));
+  const [products, setProducts] = useState<StoreProduct[]>([]);
+  const [streams, setStreams]   = useState<StoreStream[]>([]);
+  const [loading, setLoading]   = useState(true);
+  // кэш: productId → userId[] (для hasUserReviewed до первого запроса)
+  const [reviewedCache, setReviewedCache] = useState<Record<string, string[]>>({});
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [prods, strs] = await Promise.all([
+        api("get_products"),
+        api("get_streams"),
+      ]);
+      setProducts(prods);
+      setStreams(strs);
+    } catch (e) {
+      console.error("StoreContext load error:", e);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
 
   /* ── PRODUCTS ── */
-  const addProduct = useCallback((data: Omit<StoreProduct, "id" | "createdAt">): StoreProduct => {
-    const p: StoreProduct = {
-      ...data,
-      id: `prod_${Date.now()}_${Math.random().toString(36).slice(2)}`,
-      createdAt: new Date().toLocaleDateString("ru", { day: "numeric", month: "long", year: "numeric" }),
-    };
-    setProducts(prev => { const u = [p, ...prev]; save(PRODUCTS_KEY, u); return u; });
+  const addProduct = useCallback(async (data: Omit<StoreProduct, "id" | "createdAt">) => {
+    const p = await api("add_product", "POST", {
+      name: data.name, price: data.price, category: data.category,
+      description: data.description, images: data.images,
+      seller_id: data.sellerId, seller_name: data.sellerName,
+      seller_avatar: data.sellerAvatar, in_stock: data.inStock,
+    });
+    setProducts(prev => [p, ...prev]);
     return p;
   }, []);
 
-  const updateProduct = useCallback((id: string, data: Partial<StoreProduct>) => {
-    setProducts(prev => { const u = prev.map(p => p.id === id ? { ...p, ...data } : p); save(PRODUCTS_KEY, u); return u; });
+  const updateProduct = useCallback(async (id: string, data: Partial<StoreProduct>) => {
+    const updated = await api("update_product", "PATCH", { id, ...data });
+    setProducts(prev => prev.map(p => p.id === id ? updated : p));
   }, []);
 
-  const deleteProduct = useCallback((id: string) => {
-    setProducts(prev => { const u = prev.filter(p => p.id !== id); save(PRODUCTS_KEY, u); return u; });
+  const deleteProduct = useCallback(async (id: string) => {
+    await api("delete_product", "POST", { id });
+    setProducts(prev => prev.filter(p => p.id !== id));
   }, []);
 
   /* ── STREAMS ── */
-  const addStream = useCallback((data: Omit<StoreStream, "id">): StoreStream => {
-    const s: StoreStream = { ...data, id: `stream_${Date.now()}_${Math.random().toString(36).slice(2)}` };
-    setStreams(prev => { const u = [s, ...prev]; save(STREAMS_KEY, u); return u; });
+  const addStream = useCallback(async (data: Omit<StoreStream, "id" | "startedAt">) => {
+    const s = await api("add_stream", "POST", {
+      title: data.title, seller_id: data.sellerId,
+      seller_name: data.sellerName, seller_avatar: data.sellerAvatar,
+    });
+    setStreams(prev => [s, ...prev]);
     return s;
   }, []);
 
-  const updateStream = useCallback((id: string, data: Partial<StoreStream>) => {
-    setStreams(prev => { const u = prev.map(s => s.id === id ? { ...s, ...data } : s); save(STREAMS_KEY, u); return u; });
-  }, []);
-
-  /* ── CHAT ── */
-  const addChatMessage = useCallback((msg: Omit<ChatMessage, "id" | "sentAt">) => {
-    const m: ChatMessage = {
-      ...msg,
-      id: `msg_${Date.now()}_${Math.random().toString(36).slice(2)}`,
-      sentAt: new Date().toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" }),
-    };
-    setChat(prev => {
-      // храним последние 500 сообщений на стрим
-      const u = [...prev, m].slice(-500);
-      save(CHAT_KEY, u);
-      return u;
+  const updateStream = useCallback(async (id: string, data: Partial<StoreStream> & { duration_sec?: number }) => {
+    const updated = await api("update_stream", "PATCH", { id, ...data,
+      is_live: data.isLive,
+      duration_sec: data.duration_sec ?? data.duration,
     });
+    setStreams(prev => prev.map(s => s.id === id ? updated : s));
   }, []);
-
-  const getStreamMessages = useCallback((streamId: string) =>
-    chatMessages.filter(m => m.streamId === streamId), [chatMessages]);
-
-  /* ── REVIEWS ── */
-  const addReview = useCallback((data: Omit<Review, "id" | "createdAt">) => {
-    const r: Review = {
-      ...data,
-      id: `rev_${Date.now()}_${Math.random().toString(36).slice(2)}`,
-      createdAt: new Date().toLocaleDateString("ru", { day: "numeric", month: "long", year: "numeric" }),
-    };
-    setReviews(prev => { const u = [r, ...prev]; save(REVIEWS_KEY, u); return u; });
-  }, []);
-
-  const getProductReviews = useCallback((productId: string) =>
-    reviews.filter(r => r.productId === productId), [reviews]);
-
-  const getProductRating = useCallback((productId: string) => {
-    const pr = reviews.filter(r => r.productId === productId);
-    if (pr.length === 0) return { avg: 0, count: 0 };
-    return { avg: +(pr.reduce((s, r) => s + r.rating, 0) / pr.length).toFixed(1), count: pr.length };
-  }, [reviews]);
-
-  const hasUserReviewed = useCallback((productId: string, userId: string) =>
-    reviews.some(r => r.productId === productId && r.userId === userId), [reviews]);
 
   /* ── SELECTORS ── */
   const getSellerProducts = useCallback((sellerId: string) =>
@@ -166,14 +160,53 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const getSellerStreams = useCallback((sellerId: string) =>
     streams.filter(s => s.sellerId === sellerId), [streams]);
 
+  /* ── CHAT ── */
+  const getStreamMessages = useCallback(async (streamId: string): Promise<ChatMessage[]> => {
+    return api(`get_chat&stream_id=${streamId}`);
+  }, []);
+
+  const addChatMessage = useCallback(async (msg: Omit<ChatMessage, "id" | "sentAt">) => {
+    return api("add_chat", "POST", {
+      stream_id: msg.streamId, user_id: msg.userId,
+      user_name: msg.userName, user_avatar: msg.userAvatar, text: msg.text,
+    });
+  }, []);
+
+  /* ── REVIEWS ── */
+  const getProductReviews = useCallback(async (productId: string) => {
+    const data = await api(`get_reviews&product_id=${productId}`);
+    // обновляем кэш
+    setReviewedCache(prev => ({
+      ...prev,
+      [productId]: data.reviews.map((r: Review) => r.userId),
+    }));
+    return data;
+  }, []);
+
+  const addReview = useCallback(async (data: Omit<Review, "id" | "createdAt">) => {
+    const r = await api("add_review", "POST", {
+      product_id: data.productId, user_id: data.userId,
+      user_name: data.userName, user_avatar: data.userAvatar,
+      rating: data.rating, text: data.text,
+    });
+    setReviewedCache(prev => ({
+      ...prev,
+      [data.productId]: [...(prev[data.productId] ?? []), data.userId],
+    }));
+    return r;
+  }, []);
+
+  const hasUserReviewed = useCallback((productId: string, userId: string) =>
+    (reviewedCache[productId] ?? []).includes(userId), [reviewedCache]);
+
   return (
     <StoreContext.Provider value={{
-      products, streams, reviews, chatMessages,
+      products, streams, loading, reload: load,
       addProduct, updateProduct, deleteProduct,
       addStream, updateStream,
       getSellerProducts, getSellerStreams,
-      addChatMessage, getStreamMessages,
-      addReview, getProductReviews, getProductRating, hasUserReviewed,
+      getStreamMessages, addChatMessage,
+      getProductReviews, addReview, hasUserReviewed,
     }}>
       {children}
     </StoreContext.Provider>

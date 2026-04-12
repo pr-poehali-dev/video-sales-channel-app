@@ -1,4 +1,5 @@
 {
+  "store-api": "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c",
   "payment-status": "https://functions.poehali.dev/3a9c558b-1be6-4879-8ab4-4ecffee2ce4a",
   "payment-create": "https://functions.poehali.dev/1c026af5-a39b-454b-96bb-cc77b21ee685",
   "cdek-delivery": "https://functions.poehali.dev/937e27f3-191a-445d-b034-61bd84ed5381"
