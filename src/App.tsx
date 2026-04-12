@@ -1,28 +1,59 @@
-
+import { useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
-import NotFound from "./pages/NotFound";
+import HomePage from "@/pages/HomePage";
+import StreamsPage from "@/pages/StreamsPage";
+import CatalogPage from "@/pages/CatalogPage";
+import ProfilePage from "@/pages/ProfilePage";
+import CartPage from "@/pages/CartPage";
+import DashboardPage from "@/pages/DashboardPage";
+import NavBar from "@/components/NavBar";
 
-const queryClient = new QueryClient();
+export type Page = "home" | "streams" | "catalog" | "profile" | "cart" | "dashboard";
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
+export interface CartItem {
+  id: number;
+  name: string;
+  price: number;
+  image: string;
+  qty: number;
+}
+
+export default function App() {
+  const [page, setPage] = useState<Page>("home");
+  const [cart, setCart] = useState<CartItem[]>([]);
+
+  const addToCart = (item: Omit<CartItem, "qty">) => {
+    setCart(prev => {
+      const existing = prev.find(c => c.id === item.id);
+      if (existing) return prev.map(c => c.id === item.id ? { ...c, qty: c.qty + 1 } : c);
+      return [...prev, { ...item, qty: 1 }];
+    });
+  };
+
+  const removeFromCart = (id: number) => {
+    setCart(prev => prev.filter(c => c.id !== id));
+  };
+
+  const updateQty = (id: number, qty: number) => {
+    if (qty <= 0) return removeFromCart(id);
+    setCart(prev => prev.map(c => c.id === id ? { ...c, qty } : c));
+  };
+
+  return (
     <TooltipProvider>
       <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
+      <div className="min-h-screen bg-background font-golos">
+        <NavBar page={page} setPage={setPage} cartCount={cart.reduce((s, c) => s + c.qty, 0)} />
+        <main>
+          {page === "home" && <HomePage setPage={setPage} addToCart={addToCart} />}
+          {page === "streams" && <StreamsPage />}
+          {page === "catalog" && <CatalogPage addToCart={addToCart} />}
+          {page === "profile" && <ProfilePage setPage={setPage} />}
+          {page === "cart" && <CartPage cart={cart} removeFromCart={removeFromCart} updateQty={updateQty} />}
+          {page === "dashboard" && <DashboardPage />}
+        </main>
+      </div>
     </TooltipProvider>
-  </QueryClientProvider>
-);
-
-export default App;
+  );
+}
