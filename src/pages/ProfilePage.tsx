@@ -1,174 +1,198 @@
 import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import type { Page } from "@/App";
-import { streams, products } from "@/data/mockData";
+import { useAuth } from "@/context/AuthContext";
 
 interface ProfilePageProps {
   setPage: (p: Page) => void;
 }
 
-const TABS = ["Профиль", "Покупки", "Избранное", "История эфиров"];
-
 export default function ProfilePage({ setPage }: ProfilePageProps) {
-  const [tab, setTab] = useState("Профиль");
-  const [name, setName] = useState("Екатерина Смирнова");
-  const [email, setEmail] = useState("kate@example.com");
-  const [phone, setPhone] = useState("+7 912 345-67-89");
+  const { user, logout, updateUser } = useAuth();
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(user?.name ?? "");
+  const [phone, setPhone] = useState(user?.phone ?? "");
+  const [city, setCity] = useState(user?.city ?? "");
+  const [saved, setSaved] = useState(false);
 
-  const favProducts = products.filter(p => p.isFav);
-  const watchedStreams = streams.filter(s => !s.isLive);
+  if (!user) {
+    return (
+      <div className="max-w-md mx-auto px-4 py-24 text-center animate-fade-in">
+        <div className="w-16 h-16 rounded-2xl bg-secondary flex items-center justify-center mx-auto mb-5">
+          <Icon name="User" size={28} className="text-muted-foreground opacity-40" />
+        </div>
+        <h2 className="font-oswald text-xl font-semibold text-foreground tracking-wide mb-2">Вы не вошли</h2>
+        <p className="text-muted-foreground text-sm mb-6">Войдите или зарегистрируйтесь, чтобы видеть профиль</p>
+        <button
+          onClick={() => setPage("auth")}
+          className="bg-primary text-primary-foreground font-semibold px-6 py-3 rounded-xl hover:opacity-90 transition-opacity"
+        >
+          Войти / Зарегистрироваться
+        </button>
+      </div>
+    );
+  }
+
+  const handleSave = () => {
+    updateUser({ name: name.trim(), phone: phone.trim(), city: city.trim() });
+    setEditing(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2500);
+  };
+
+  const handleLogout = () => {
+    logout();
+    setPage("home");
+  };
+
+  const roleLabel = user.role === "seller" ? "Продавец" : user.role === "admin" ? "Администратор" : "Покупатель";
+  const roleColor = user.role === "admin" ? "text-destructive" : user.role === "seller" ? "text-primary" : "text-muted-foreground";
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="flex items-center gap-4 mb-8 animate-fade-in">
-        <div className="w-16 h-16 rounded-full bg-primary/20 text-primary text-2xl font-bold flex items-center justify-center font-oswald">
-          ЕС
+    <div className="max-w-2xl mx-auto px-4 py-8 animate-fade-in">
+      {/* Шапка */}
+      <div className="flex items-center gap-4 mb-8">
+        <div className="w-16 h-16 rounded-full bg-primary/20 text-primary text-2xl font-bold flex items-center justify-center font-oswald flex-shrink-0">
+          {user.avatar}
         </div>
-        <div>
-          <h1 className="font-oswald text-2xl font-semibold text-foreground tracking-wide">{name}</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Покупатель · с апреля 2024</p>
-          <div className="flex items-center gap-3 mt-1">
-            <span className="text-xs bg-secondary text-secondary-foreground px-2 py-0.5 rounded">
-              12 заказов
-            </span>
-            <span className="text-xs text-yellow-400 flex items-center gap-1">
-              <Icon name="Star" size={11} />
-              4.8 рейтинг
-            </span>
+        <div className="flex-1 min-w-0">
+          <h1 className="font-oswald text-2xl font-semibold text-foreground tracking-wide truncate">{user.name}</h1>
+          <div className="flex items-center gap-2 mt-1 flex-wrap">
+            <span className={`text-sm font-medium ${roleColor}`}>{roleLabel}</span>
+            {user.city && <span className="text-sm text-muted-foreground">· {user.city}</span>}
+            <span className="text-xs text-muted-foreground">· с {user.joinedAt}</span>
           </div>
         </div>
+        <button
+          onClick={() => { setEditing(!editing); setName(user.name); setPhone(user.phone); setCity(user.city); }}
+          className="p-2 rounded-xl border border-border hover:bg-secondary transition-colors"
+        >
+          <Icon name={editing ? "X" : "Pencil"} size={16} className="text-muted-foreground" />
+        </button>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 mb-6 bg-secondary rounded-xl p-1">
-        {TABS.map(t => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`flex-1 text-xs py-2 rounded-lg font-medium transition-all ${
-              tab === t ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {t}
-          </button>
-        ))}
-      </div>
+      {/* Уведомление о сохранении */}
+      {saved && (
+        <div className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 text-sm font-medium px-4 py-3 rounded-xl mb-5 animate-fade-in">
+          <Icon name="CircleCheck" size={15} />
+          Данные сохранены
+        </div>
+      )}
 
-      {/* Profile edit */}
-      {tab === "Профиль" && (
-        <div className="space-y-4 animate-fade-in">
-          <div className="bg-card border border-border rounded-xl p-5 space-y-4">
-            <h3 className="font-medium text-foreground">Личные данные</h3>
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Имя</label>
-              <input
-                value={name}
-                onChange={e => setName(e.target.value)}
-                className="w-full bg-secondary border border-border rounded-lg px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary/50 transition-colors"
-              />
-            </div>
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Email</label>
-              <input
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                className="w-full bg-secondary border border-border rounded-lg px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary/50 transition-colors"
-              />
-            </div>
+      {/* Форма редактирования */}
+      {editing ? (
+        <div className="bg-card border border-border rounded-2xl p-5 mb-5 space-y-4 animate-fade-in">
+          <h3 className="font-semibold text-foreground">Редактировать профиль</h3>
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Имя и фамилия</label>
+            <input
+              value={name}
+              onChange={e => setName(e.target.value)}
+              className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground outline-none focus:border-primary/50 transition-colors"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Телефон</label>
               <input
                 value={phone}
                 onChange={e => setPhone(e.target.value)}
-                className="w-full bg-secondary border border-border rounded-lg px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary/50 transition-colors"
+                placeholder="+7 900 000-00-00"
+                className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground outline-none focus:border-primary/50 transition-colors"
               />
             </div>
-            <button className="bg-primary text-primary-foreground font-semibold px-5 py-2.5 rounded-xl hover:opacity-90 transition-opacity text-sm">
-              Сохранить изменения
-            </button>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Город</label>
+              <input
+                value={city}
+                onChange={e => setCity(e.target.value)}
+                placeholder="Москва"
+                className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground outline-none focus:border-primary/50 transition-colors"
+              />
+            </div>
           </div>
-
-          <div className="bg-card border border-border rounded-xl p-5">
-            <h3 className="font-medium text-foreground mb-3">Адрес доставки</h3>
-            <p className="text-sm text-muted-foreground">Москва, ул. Арбат, д. 12, кв. 45</p>
-            <button className="text-sm text-primary hover:opacity-80 transition-opacity mt-2 flex items-center gap-1">
-              <Icon name="Plus" size={13} />
-              Добавить адрес
+          <div className="flex gap-3 pt-1">
+            <button
+              onClick={handleSave}
+              className="bg-primary text-primary-foreground font-semibold px-5 py-2.5 rounded-xl hover:opacity-90 transition-opacity text-sm"
+            >
+              Сохранить
+            </button>
+            <button
+              onClick={() => setEditing(false)}
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors px-3"
+            >
+              Отмена
             </button>
           </div>
         </div>
-      )}
-
-      {/* Orders */}
-      {tab === "Покупки" && (
-        <div className="space-y-3 animate-fade-in">
+      ) : (
+        <div className="bg-card border border-border rounded-2xl p-5 mb-5 space-y-3">
+          <h3 className="font-semibold text-foreground mb-4">Данные аккаунта</h3>
           {[
-            { id: "#LS-2401", date: "10 апр 2026", items: 3, total: 8650, status: "Доставлен" },
-            { id: "#LS-2389", date: "2 апр 2026", items: 1, total: 3200, status: "В пути" },
-            { id: "#LS-2312", date: "18 мар 2026", items: 2, total: 5400, status: "Доставлен" },
-          ].map(order => (
-            <div key={order.id} className="bg-card border border-border rounded-xl p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-medium text-foreground text-sm">{order.id}</span>
-                <span className={`text-xs px-2 py-0.5 rounded-full ${
-                  order.status === "Доставлен" ? "bg-green-500/15 text-green-400" : "bg-yellow-500/15 text-yellow-400"
-                }`}>
-                  {order.status}
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-sm text-muted-foreground">
-                <span>{order.date} · {order.items} товара</span>
-                <span className="font-oswald text-foreground">{order.total.toLocaleString("ru")} ₽</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Favorites */}
-      {tab === "Избранное" && (
-        <div className="grid grid-cols-2 gap-3 animate-fade-in">
-          {favProducts.length === 0 ? (
-            <div className="col-span-2 text-center py-12 text-muted-foreground">
-              <Icon name="Heart" size={36} className="mx-auto mb-3 opacity-30" />
-              <p>Нет избранных товаров</p>
-            </div>
-          ) : (
-            favProducts.map(p => (
-              <div key={p.id} className="bg-card border border-border rounded-xl p-3">
-                <div className="aspect-square rounded-lg overflow-hidden mb-2">
-                  <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
-                </div>
-                <p className="text-xs font-medium text-foreground line-clamp-2">{p.name}</p>
-                <p className="font-oswald text-sm font-semibold text-foreground mt-1">{p.price.toLocaleString("ru")} ₽</p>
-              </div>
-            ))
-          )}
-        </div>
-      )}
-
-      {/* Watch history */}
-      {tab === "История эфиров" && (
-        <div className="space-y-3 animate-fade-in">
-          {watchedStreams.map(s => (
-            <div key={s.id} className="bg-card border border-border rounded-xl p-3 flex gap-3">
-              <div className="w-20 h-12 rounded overflow-hidden flex-shrink-0">
-                <img src={s.thumb} alt={s.title} className="w-full h-full object-cover" />
+            { label: "Email", value: user.email, icon: "Mail" },
+            { label: "Телефон", value: user.phone || "Не указан", icon: "Phone" },
+            { label: "Город", value: user.city || "Не указан", icon: "MapPin" },
+          ].map(row => (
+            <div key={row.label} className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
+                <Icon name={row.icon} size={14} className="text-muted-foreground" />
               </div>
               <div>
-                <p className="text-sm font-medium text-foreground line-clamp-1">{s.title}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">{s.host} · {s.startedAt}</p>
-                <div className="flex items-center gap-1 mt-1">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Icon key={i} name="Star" size={10} className={i < Math.floor(s.rating) ? "text-yellow-400 fill-yellow-400" : "text-muted-foreground"} />
-                  ))}
-                </div>
+                <p className="text-xs text-muted-foreground">{row.label}</p>
+                <p className="text-sm text-foreground">{row.value}</p>
               </div>
             </div>
           ))}
         </div>
       )}
+
+      {/* Для продавца — быстрый доступ в кабинет */}
+      {user.role === "seller" && (
+        <button
+          onClick={() => setPage("dashboard")}
+          className="w-full flex items-center justify-between bg-card border border-border rounded-2xl p-4 mb-3 hover:border-primary/30 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
+              <Icon name="LayoutDashboard" size={16} className="text-primary" />
+            </div>
+            <div className="text-left">
+              <p className="text-sm font-medium text-foreground">Кабинет продавца</p>
+              <p className="text-xs text-muted-foreground">Товары, эфиры, статистика</p>
+            </div>
+          </div>
+          <Icon name="ChevronRight" size={16} className="text-muted-foreground" />
+        </button>
+      )}
+
+      {/* Для admin — быстрый доступ */}
+      {user.role === "admin" && (
+        <button
+          onClick={() => setPage("admin")}
+          className="w-full flex items-center justify-between bg-card border border-destructive/30 rounded-2xl p-4 mb-3 hover:border-destructive/50 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-destructive/10 flex items-center justify-center">
+              <Icon name="ShieldCheck" size={16} className="text-destructive" />
+            </div>
+            <div className="text-left">
+              <p className="text-sm font-medium text-foreground">Панель администратора</p>
+              <p className="text-xs text-muted-foreground">Пользователи, модерация</p>
+            </div>
+          </div>
+          <Icon name="ChevronRight" size={16} className="text-muted-foreground" />
+        </button>
+      )}
+
+      {/* Выход */}
+      <button
+        onClick={handleLogout}
+        className="w-full flex items-center gap-3 text-destructive border border-destructive/20 rounded-2xl p-4 hover:bg-destructive/5 transition-colors mt-2"
+      >
+        <Icon name="LogOut" size={16} />
+        <span className="text-sm font-medium">Выйти из аккаунта</span>
+      </button>
     </div>
   );
 }

@@ -11,9 +11,13 @@ import DashboardPage from "@/pages/DashboardPage";
 import ProductPage from "@/pages/ProductPage";
 import SellerPage from "@/pages/SellerPage";
 import AuthPage from "@/pages/AuthPage";
+import BroadcastPage from "@/pages/BroadcastPage";
+import AdminPage from "@/pages/AdminPage";
 import NavBar from "@/components/NavBar";
 
-export type Page = "home" | "streams" | "catalog" | "profile" | "cart" | "dashboard" | "product" | "seller" | "auth" | "broadcast";
+export type Page =
+  | "home" | "streams" | "catalog" | "profile" | "cart"
+  | "dashboard" | "product" | "seller" | "auth" | "broadcast" | "admin";
 
 export interface CartItem {
   id: number;
@@ -75,6 +79,8 @@ function AppInner() {
         {page === "cart" && <CartPage cart={cart} removeFromCart={removeFromCart} updateQty={updateQty} />}
         {page === "dashboard" && <DashboardPage setPage={navSetPage} />}
         {page === "auth" && <AuthPage onSuccess={() => navSetPage("home")} />}
+        {page === "broadcast" && <BroadcastPage setPage={navSetPage} />}
+        {page === "admin" && <AdminPage setPage={navSetPage} />}
         {page === "product" && selectedProductId !== null && (
           <ProductPage
             productId={selectedProductId}

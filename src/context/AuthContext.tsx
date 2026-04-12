@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
 
-export type UserRole = "buyer" | "seller";
+export type UserRole = "buyer" | "seller" | "admin";
 
 export interface User {
   id: string;
@@ -11,6 +11,7 @@ export interface User {
   avatar: string;
   city: string;
   joinedAt: string;
+  isBlocked?: boolean;
 }
 
 interface AuthContextType {
@@ -19,6 +20,10 @@ interface AuthContextType {
   register: (data: RegisterData) => Promise<string | null>;
   logout: () => void;
   updateUser: (data: Partial<User>) => void;
+  getAllUsers: () => (User & { password: string })[];
+  blockUser: (id: string) => void;
+  unblockUser: (id: string) => void;
+  deleteUser: (id: string) => void;
 }
 
 export interface RegisterData {
@@ -34,6 +39,20 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 const USERS_KEY = "yugastore_users";
 const SESSION_KEY = "yugastore_session";
+
+// Аккаунт администратора — только через жёстко заданные данные, не хранится в списке пользователей
+const ADMIN_EMAIL = "admin@yugastore.ru";
+const ADMIN_PASSWORD = "admin2024";
+const ADMIN_USER: User = {
+  id: "admin_root",
+  name: "Администратор",
+  email: ADMIN_EMAIL,
+  role: "admin",
+  avatar: "АД",
+  phone: "",
+  city: "",
+  joinedAt: "январь 2024",
+};
 
 function getUsers(): (User & { password: string })[] {
   try {
@@ -62,9 +81,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const login = async (email: string, password: string): Promise<string | null> => {
+    // Проверяем admin
+    if (email.toLowerCase() === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
+      setUser(ADMIN_USER);
+      localStorage.setItem(SESSION_KEY, JSON.stringify(ADMIN_USER));
+      return null;
+    }
     const users = getUsers();
     const found = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === password);
     if (!found) return "Неверный email или пароль";
+    if (found.isBlocked) return "Ваш аккаунт заблокирован. Обратитесь к администратору.";
     const { password: _, ...userData } = found;
     setUser(userData);
     localStorage.setItem(SESSION_KEY, JSON.stringify(userData));
@@ -72,6 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const register = async (data: RegisterData): Promise<string | null> => {
+    if (data.email.toLowerCase() === ADMIN_EMAIL) return "Этот email недоступен для регистрации";
     const users = getUsers();
     if (users.find(u => u.email.toLowerCase() === data.email.toLowerCase())) {
       return "Пользователь с таким email уже существует";
@@ -86,6 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       city: data.city,
       joinedAt: new Date().toLocaleDateString("ru", { month: "long", year: "numeric" }),
       password: data.password,
+      isBlocked: false,
     };
     saveUsers([...users, newUser]);
     const { password: _, ...userData } = newUser;
@@ -108,8 +136,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     saveUsers(users);
   };
 
+  const getAllUsers = () => getUsers();
+
+  const blockUser = (id: string) => {
+    const users = getUsers().map(u => u.id === id ? { ...u, isBlocked: true } : u);
+    saveUsers(users);
+  };
+
+  const unblockUser = (id: string) => {
+    const users = getUsers().map(u => u.id === id ? { ...u, isBlocked: false } : u);
+    saveUsers(users);
+  };
+
+  const deleteUser = (id: string) => {
+    const users = getUsers().filter(u => u.id !== id);
+    saveUsers(users);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, updateUser }}>
+    <AuthContext.Provider value={{ user, login, register, logout, updateUser, getAllUsers, blockUser, unblockUser, deleteUser }}>
       {children}
     </AuthContext.Provider>
   );
