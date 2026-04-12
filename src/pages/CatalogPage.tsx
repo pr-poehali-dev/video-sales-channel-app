@@ -1,17 +1,20 @@
 import { useState } from "react";
 import Icon from "@/components/ui/icon";
-import { products, CATEGORIES } from "@/data/mockData";
+import { useStore } from "@/context/StoreContext";
 import ProductCard from "@/components/ProductCard";
 import type { CartItem } from "@/App";
 
+const CATEGORIES = ["Все", "Украшения", "Одежда", "Красота", "Аксессуары", "Электроника", "Дом и сад", "Детские товары", "Другое"];
+
 interface CatalogPageProps {
   addToCart: (item: Omit<CartItem, "qty">) => void;
-  onProductClick: (productId: number) => void;
+  onProductClick: (productId: string) => void;
 }
 
 export default function CatalogPage({ addToCart, onProductClick }: CatalogPageProps) {
+  const { products } = useStore();
   const [category, setCategory] = useState("Все");
-  const [sort, setSort] = useState("popular");
+  const [sort, setSort] = useState("new");
   const [search, setSearch] = useState("");
 
   const filtered = products
@@ -23,8 +26,7 @@ export default function CatalogPage({ addToCart, onProductClick }: CatalogPagePr
     .sort((a, b) => {
       if (sort === "price_asc") return a.price - b.price;
       if (sort === "price_desc") return b.price - a.price;
-      if (sort === "rating") return b.rating - a.rating;
-      return b.reviews - a.reviews;
+      return 0;
     });
 
   return (
@@ -32,7 +34,7 @@ export default function CatalogPage({ addToCart, onProductClick }: CatalogPagePr
       <div className="flex items-center justify-between mb-6">
         <h1 className="font-oswald text-2xl font-semibold text-foreground tracking-wide">Каталог товаров</h1>
         {filtered.length > 0 && (
-          <span className="text-sm text-muted-foreground">{filtered.length} товаров</span>
+          <span className="text-sm text-muted-foreground">{filtered.length} товар{filtered.length === 1 ? "" : filtered.length < 5 ? "а" : "ов"}</span>
         )}
       </div>
 
@@ -43,12 +45,11 @@ export default function CatalogPage({ addToCart, onProductClick }: CatalogPagePr
           </div>
           <h2 className="font-oswald text-xl font-semibold text-foreground tracking-wide mb-2">Товаров пока нет</h2>
           <p className="text-muted-foreground text-sm max-w-xs mx-auto">
-            Продавцы ещё не добавили товары. Загляни позже или следи за эфирами — там появятся первые предложения.
+            Пользователи ещё не добавили товары. Зайди в кабинет и добавь первый!
           </p>
         </div>
       ) : (
         <>
-          {/* Search + Sort */}
           <div className="flex flex-col sm:flex-row gap-3 mb-6">
             <div className="relative flex-1">
               <Icon name="Search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -64,14 +65,12 @@ export default function CatalogPage({ addToCart, onProductClick }: CatalogPagePr
               onChange={e => setSort(e.target.value)}
               className="bg-card border border-border rounded-xl px-4 py-2.5 text-sm text-foreground outline-none focus:border-primary/50 transition-colors cursor-pointer"
             >
-              <option value="popular">По популярности</option>
-              <option value="rating">По рейтингу</option>
+              <option value="new">Сначала новые</option>
               <option value="price_asc">Сначала дешевле</option>
               <option value="price_desc">Сначала дороже</option>
             </select>
           </div>
 
-          {/* Categories */}
           <div className="flex gap-2 flex-wrap mb-8">
             {CATEGORIES.map(cat => (
               <button
@@ -91,13 +90,13 @@ export default function CatalogPage({ addToCart, onProductClick }: CatalogPagePr
           {filtered.length === 0 ? (
             <div className="text-center py-16 text-muted-foreground">
               <Icon name="PackageSearch" size={40} className="mx-auto mb-4 opacity-40" />
-              <p className="text-lg font-medium">Товары не найдены</p>
+              <p className="text-lg font-medium">Ничего не найдено</p>
               <p className="text-sm mt-1">Попробуй изменить фильтры или поисковый запрос</p>
             </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {filtered.map((product, i) => (
-                <div key={product.id} className="animate-fade-in" style={{ animationDelay: `${i * 50}ms` }}>
+                <div key={product.id} className="animate-fade-in" style={{ animationDelay: `${i * 40}ms` }}>
                   <ProductCard
                     product={product}
                     addToCart={addToCart}

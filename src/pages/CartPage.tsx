@@ -6,8 +6,8 @@ import SbpPayment from "@/components/SbpPayment";
 
 interface CartPageProps {
   cart: CartItem[];
-  removeFromCart: (id: number) => void;
-  updateQty: (id: number, qty: number) => void;
+  removeFromCart: (id: string) => void;
+  updateQty: (id: string, qty: number) => void;
 }
 
 interface SelectedDelivery {
