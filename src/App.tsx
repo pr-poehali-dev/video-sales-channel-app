@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/context/AuthContext";
+import { StoreProvider } from "@/context/StoreContext";
 import HomePage from "@/pages/HomePage";
 import StreamsPage from "@/pages/StreamsPage";
 import CatalogPage from "@/pages/CatalogPage";
@@ -20,7 +21,7 @@ export type Page =
   | "dashboard" | "product" | "seller" | "auth" | "broadcast" | "admin";
 
 export interface CartItem {
-  id: number;
+  id: string;
   name: string;
   price: number;
   image: string;
@@ -30,8 +31,8 @@ export interface CartItem {
 function AppInner() {
   const [page, setPage] = useState<Page>("home");
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
-  const [selectedSellerId, setSelectedSellerId] = useState<number | null>(null);
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+  const [selectedSellerId, setSelectedSellerId] = useState<string | null>(null);
   const [prevPage, setPrevPage] = useState<Page>("catalog");
 
   const addToCart = (item: Omit<CartItem, "qty">) => {
@@ -42,20 +43,20 @@ function AppInner() {
     });
   };
 
-  const removeFromCart = (id: number) => setCart(prev => prev.filter(c => c.id !== id));
+  const removeFromCart = (id: string) => setCart(prev => prev.filter(c => c.id !== id));
 
-  const updateQty = (id: number, qty: number) => {
+  const updateQty = (id: string, qty: number) => {
     if (qty <= 0) return removeFromCart(id);
     setCart(prev => prev.map(c => c.id === id ? { ...c, qty } : c));
   };
 
-  const openProduct = (productId: number) => {
+  const openProduct = (productId: string) => {
     setPrevPage(page);
     setSelectedProductId(productId);
     setPage("product");
   };
 
-  const openSeller = (sellerId: number) => {
+  const openSeller = (sellerId: string) => {
     setPrevPage(page);
     setSelectedSellerId(sellerId);
     setPage("seller");
@@ -105,10 +106,12 @@ function AppInner() {
 export default function App() {
   return (
     <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <AppInner />
-      </TooltipProvider>
+      <StoreProvider>
+        <TooltipProvider>
+          <Toaster />
+          <AppInner />
+        </TooltipProvider>
+      </StoreProvider>
     </AuthProvider>
   );
 }
