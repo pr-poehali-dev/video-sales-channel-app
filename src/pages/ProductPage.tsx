@@ -2,6 +2,8 @@ import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import { products, sellers } from "@/data/mockData";
 import type { CartItem } from "@/App";
+import ReviewsSection from "@/components/ReviewsSection";
+import ShortClipPlayer from "@/components/ShortClipPlayer";
 
 interface ProductPageProps {
   productId: number;
@@ -161,6 +163,14 @@ export default function ProductPage({ productId, addToCart, onBack, onSellerClic
           </div>
         </div>
       )}
+
+      {/* Короткие эфиры */}
+      {seller && (
+        <ShortClipPlayer productId={product.id} sellerName={seller.name} />
+      )}
+
+      {/* Отзывы */}
+      <ReviewsSection productId={product.id} totalRating={product.rating} totalCount={product.reviews} />
 
       {/* Другие товары продавца */}
       {sellerProducts.length > 0 && (
