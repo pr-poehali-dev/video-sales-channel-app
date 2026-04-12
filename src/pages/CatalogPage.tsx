@@ -31,68 +31,83 @@ export default function CatalogPage({ addToCart, onProductClick }: CatalogPagePr
     <div className="max-w-7xl mx-auto px-4 py-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="font-oswald text-2xl font-semibold text-foreground tracking-wide">Каталог товаров</h1>
-        <span className="text-sm text-muted-foreground">{filtered.length} товаров</span>
+        {filtered.length > 0 && (
+          <span className="text-sm text-muted-foreground">{filtered.length} товаров</span>
+        )}
       </div>
 
-      {/* Search + Sort */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-6">
-        <div className="relative flex-1">
-          <Icon name="Search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="w-full bg-card border border-border rounded-xl pl-9 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors"
-            placeholder="Поиск товаров..."
-          />
-        </div>
-        <select
-          value={sort}
-          onChange={e => setSort(e.target.value)}
-          className="bg-card border border-border rounded-xl px-4 py-2.5 text-sm text-foreground outline-none focus:border-primary/50 transition-colors cursor-pointer"
-        >
-          <option value="popular">По популярности</option>
-          <option value="rating">По рейтингу</option>
-          <option value="price_asc">Сначала дешевле</option>
-          <option value="price_desc">Сначала дороже</option>
-        </select>
-      </div>
-
-      {/* Categories */}
-      <div className="flex gap-2 flex-wrap mb-8">
-        {CATEGORIES.map(cat => (
-          <button
-            key={cat}
-            onClick={() => setCategory(cat)}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-              category === cat
-                ? "bg-primary text-primary-foreground"
-                : "bg-secondary text-secondary-foreground hover:bg-secondary/70"
-            }`}
-          >
-            {cat}
-          </button>
-        ))}
-      </div>
-
-      {/* Grid */}
-      {filtered.length === 0 ? (
-        <div className="text-center py-16 text-muted-foreground">
-          <Icon name="PackageSearch" size={40} className="mx-auto mb-4 opacity-40" />
-          <p className="text-lg font-medium">Товары не найдены</p>
-          <p className="text-sm mt-1">Попробуй изменить фильтры или поисковый запрос</p>
+      {products.length === 0 ? (
+        <div className="text-center py-24 animate-fade-in">
+          <div className="w-20 h-20 rounded-2xl bg-secondary flex items-center justify-center mx-auto mb-5">
+            <Icon name="ShoppingBag" size={36} className="text-muted-foreground opacity-40" />
+          </div>
+          <h2 className="font-oswald text-xl font-semibold text-foreground tracking-wide mb-2">Товаров пока нет</h2>
+          <p className="text-muted-foreground text-sm max-w-xs mx-auto">
+            Продавцы ещё не добавили товары. Загляни позже или следи за эфирами — там появятся первые предложения.
+          </p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {filtered.map((product, i) => (
-            <div key={product.id} className="animate-fade-in" style={{ opacity: 0, animationDelay: `${i * 50}ms` }}>
-              <ProductCard
-                product={product}
-                addToCart={addToCart}
-                onClick={() => onProductClick(product.id)}
+        <>
+          {/* Search + Sort */}
+          <div className="flex flex-col sm:flex-row gap-3 mb-6">
+            <div className="relative flex-1">
+              <Icon name="Search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <input
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="w-full bg-card border border-border rounded-xl pl-9 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors"
+                placeholder="Поиск товаров..."
               />
             </div>
-          ))}
-        </div>
+            <select
+              value={sort}
+              onChange={e => setSort(e.target.value)}
+              className="bg-card border border-border rounded-xl px-4 py-2.5 text-sm text-foreground outline-none focus:border-primary/50 transition-colors cursor-pointer"
+            >
+              <option value="popular">По популярности</option>
+              <option value="rating">По рейтингу</option>
+              <option value="price_asc">Сначала дешевле</option>
+              <option value="price_desc">Сначала дороже</option>
+            </select>
+          </div>
+
+          {/* Categories */}
+          <div className="flex gap-2 flex-wrap mb-8">
+            {CATEGORIES.map(cat => (
+              <button
+                key={cat}
+                onClick={() => setCategory(cat)}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                  category === cat
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-secondary text-secondary-foreground hover:bg-secondary/70"
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+
+          {filtered.length === 0 ? (
+            <div className="text-center py-16 text-muted-foreground">
+              <Icon name="PackageSearch" size={40} className="mx-auto mb-4 opacity-40" />
+              <p className="text-lg font-medium">Товары не найдены</p>
+              <p className="text-sm mt-1">Попробуй изменить фильтры или поисковый запрос</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {filtered.map((product, i) => (
+                <div key={product.id} className="animate-fade-in" style={{ animationDelay: `${i * 50}ms` }}>
+                  <ProductCard
+                    product={product}
+                    addToCart={addToCart}
+                    onClick={() => onProductClick(product.id)}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
