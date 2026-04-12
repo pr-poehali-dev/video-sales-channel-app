@@ -74,7 +74,7 @@ function AppInner() {
       <NavBar page={page} setPage={navSetPage} cartCount={cart.reduce((s, c) => s + c.qty, 0)} />
       <main>
         {page === "home" && <HomePage setPage={navSetPage} addToCart={addToCart} onProductClick={openProduct} />}
-        {page === "streams" && <StreamsPage setPage={navSetPage} />}
+        {page === "streams" && <StreamsPage setPage={navSetPage} addToCart={addToCart} onProductClick={openProduct} />}
         {page === "catalog" && <CatalogPage addToCart={addToCart} onProductClick={openProduct} />}
         {page === "profile" && <ProfilePage setPage={navSetPage} />}
         {page === "cart" && <CartPage cart={cart} removeFromCart={removeFromCart} updateQty={updateQty} />}

@@ -3,10 +3,12 @@ import Icon from "@/components/ui/icon";
 import { useAuth } from "@/context/AuthContext";
 import { useStore, type StoreStream } from "@/context/StoreContext";
 import StreamWatchPage from "@/pages/StreamWatchPage";
-import type { Page } from "@/App";
+import type { Page, CartItem } from "@/App";
 
 interface StreamsPageProps {
   setPage: (p: Page) => void;
+  addToCart: (item: Omit<CartItem, "qty">) => void;
+  onProductClick: (id: string) => void;
 }
 
 function fmtDuration(sec?: number) {
@@ -15,13 +17,20 @@ function fmtDuration(sec?: number) {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-export default function StreamsPage({ setPage }: StreamsPageProps) {
+export default function StreamsPage({ setPage, addToCart, onProductClick }: StreamsPageProps) {
   const { user } = useAuth();
   const { streams, loading } = useStore();
   const [watching, setWatching] = useState<StoreStream | null>(null);
 
   if (watching) {
-    return <StreamWatchPage stream={watching} setPage={(p) => { setWatching(null); setPage(p); }} />;
+    return (
+      <StreamWatchPage
+        stream={watching}
+        setPage={(p) => { setWatching(null); setPage(p); }}
+        addToCart={addToCart}
+        onProductClick={onProductClick}
+      />
+    );
   }
 
   if (loading) {
