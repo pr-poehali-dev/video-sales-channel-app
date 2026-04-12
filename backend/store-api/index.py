@@ -1,13 +1,27 @@
 """
-Store API — товары, эфиры, чат, отзывы.
+Store API — товары, эфиры, чат, отзывы, загрузка изображений в S3.
 Все данные общие для всех пользователей через PostgreSQL.
 """
 import json
 import os
 import uuid
+import base64
 from datetime import datetime, timezone
 import psycopg2
 from psycopg2.extras import RealDictCursor
+import boto3
+from botocore.client import Config
+
+def get_s3():
+    return boto3.client(
+        "s3",
+        endpoint_url="https://bucket.poehali.dev",
+        aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
+        aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"],
+        config=Config(signature_version="s3v4"),
+    )
+
+CDN_BASE = f"https://cdn.poehali.dev/projects/{os.environ.get('AWS_ACCESS_KEY_ID','')}/bucket"
 
 CORS = {
     "Access-Control-Allow-Origin": "*",
@@ -44,6 +58,26 @@ def handler(event: dict, context) -> dict:
     cur  = conn.cursor(cursor_factory=RealDictCursor)
 
     try:
+        # ─────────── UPLOAD IMAGE ───────────
+        if action == "upload_image":
+            data_url = body.get("data_url", "")
+            if not data_url.startswith("data:image/"):
+                return err("invalid image data")
+            # Парсим data URL
+            header, encoded = data_url.split(",", 1)
+            ext = header.split("/")[1].split(";")[0]  # jpeg, png, webp
+            img_bytes = base64.b64decode(encoded)
+            key = f"products/{uuid.uuid4().hex}.{ext}"
+            s3 = get_s3()
+            s3.put_object(
+                Bucket="files",
+                Key=key,
+                Body=img_bytes,
+                ContentType=f"image/{ext}",
+            )
+            url = f"{CDN_BASE}/{key}"
+            return ok({"url": url})
+
         # ─────────── PRODUCTS ───────────
         if action == "get_products":
             seller_id = qs.get("seller_id")

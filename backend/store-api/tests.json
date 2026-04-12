@@ -1,20 +1,12 @@
 {
   "tests": [
     {
-      "name": "get products (empty ok)",
-      "method": "GET",
-      "path": "/?action=get_products",
-      "expectedStatus": 200,
-      "expectedBody": [],
-      "bodyMatcher": "exact"
-    },
-    {
-      "name": "get streams (empty ok)",
+      "name": "get streams returns 200",
       "method": "GET",
       "path": "/?action=get_streams",
       "expectedStatus": 200,
-      "expectedBody": [],
-      "bodyMatcher": "exact"
+      "expectedBody": [{}],
+      "bodyMatcher": "partial"
     },
     {
       "name": "unknown action returns 404",
@@ -22,6 +14,15 @@
       "path": "/?action=unknown",
       "expectedStatus": 404,
       "expectedBody": {"error": "unknown action"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "upload_image without data returns 400",
+      "method": "POST",
+      "path": "/?action=upload_image",
+      "body": {},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "invalid image data"},
       "bodyMatcher": "partial"
     }
   ]

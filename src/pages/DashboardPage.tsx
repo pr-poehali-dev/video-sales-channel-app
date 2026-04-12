@@ -18,23 +18,35 @@ const TABS = ["Товары", "Мои эфиры", "Статистика"];
 const MAX_IMAGES = 5;
 const MAX_SIZE_MB = 2;
 
-function resizeImage(file: File, maxPx = 800): Promise<string> {
-  return new Promise((resolve, reject) => {
+const STORE_API = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c";
+
+// Сжимает до base64, потом загружает в S3, возвращает CDN URL
+async function uploadImage(file: File): Promise<string> {
+  const dataUrl = await new Promise<string>((resolve, reject) => {
     const img = new Image();
-    const url = URL.createObjectURL(file);
+    const blobUrl = URL.createObjectURL(file);
     img.onload = () => {
+      const maxPx = 800;
       const ratio = Math.min(maxPx / img.width, maxPx / img.height, 1);
       const w = Math.round(img.width * ratio);
       const h = Math.round(img.height * ratio);
       const canvas = document.createElement("canvas");
       canvas.width = w; canvas.height = h;
       canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
-      URL.revokeObjectURL(url);
+      URL.revokeObjectURL(blobUrl);
       resolve(canvas.toDataURL("image/jpeg", 0.8));
     };
     img.onerror = reject;
-    img.src = url;
+    img.src = blobUrl;
   });
+  const res = await fetch(`${STORE_API}?action=upload_image`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ data_url: dataUrl }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "upload failed");
+  return data.url;
 }
 
 export default function DashboardPage({ setPage }: DashboardPageProps) {
@@ -96,12 +108,13 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
     if (!files) return;
     if (fImages.length >= MAX_IMAGES) { setFError(`Максимум ${MAX_IMAGES} фото`); return; }
     setFImgLoading(true);
+    setFError(null);
     const results: string[] = [];
     for (const file of Array.from(files)) {
       if (file.size > MAX_SIZE_MB * 1024 * 1024) { setFError(`Файл ${file.name} больше ${MAX_SIZE_MB} МБ`); continue; }
       if (!file.type.startsWith("image/")) continue;
       if (fImages.length + results.length >= MAX_IMAGES) break;
-      try { results.push(await resizeImage(file)); } catch { /* skip */ }
+      try { results.push(await uploadImage(file)); } catch { setFError("Ошибка загрузки фото, попробуй ещё раз"); }
     }
     setFImages(prev => [...prev, ...results].slice(0, MAX_IMAGES));
     setFImgLoading(false);
