@@ -78,32 +78,30 @@ def handler(event: dict, context) -> dict:
             url = f"{CDN_BASE}/{key}"
             return ok({"url": url})
 
-        # ─────────── UPLOAD VIDEO ───────────
-        if action == "upload_video":
-            data_url = body.get("data_url", "")
-            if not data_url.startswith("data:video/"):
-                return err("invalid video data")
-            header, encoded = data_url.split(",", 1)
-            mime = header.split(";")[0].replace("data:", "")  # video/webm etc
-            ext = mime.split("/")[1]
-            video_bytes = base64.b64decode(encoded)
+        # ─────────── PRESIGNED URL для загрузки видео ───────────
+        if action == "get_video_upload_url":
+            stream_id = body.get("stream_id") or qs.get("stream_id")
+            mime = body.get("mime", "video/webm")
+            ext = mime.split("/")[1].split(";")[0]
             key = f"streams/{uuid.uuid4().hex}.{ext}"
             s3 = get_s3()
-            s3.put_object(
-                Bucket="files",
-                Key=key,
-                Body=video_bytes,
-                ContentType=mime,
+            presigned = s3.generate_presigned_url(
+                "put_object",
+                Params={"Bucket": "files", "Key": key, "ContentType": mime},
+                ExpiresIn=3600,
             )
-            url = f"{CDN_BASE}/{key}"
-            # Сразу обновляем video_url у стрима если передан stream_id
+            cdn_url = f"{CDN_BASE}/{key}"
+            return ok({"upload_url": presigned, "cdn_url": cdn_url, "key": key, "stream_id": stream_id})
+
+        # ─────────── Сохранить video_url у стрима ───────────
+        if action == "set_video_url":
             stream_id = body.get("stream_id")
-            if stream_id:
-                c2 = conn.cursor()
-                c2.execute("UPDATE streams SET video_url=%s WHERE id=%s", (url, stream_id))
-                conn.commit()
-                c2.close()
-            return ok({"url": url})
+            video_url = body.get("video_url")
+            if not stream_id or not video_url:
+                return err("stream_id and video_url required")
+            cur.execute("UPDATE streams SET video_url=%s WHERE id=%s", (video_url, stream_id))
+            conn.commit()
+            return ok({"ok": True})
 
         # ─────────── PRODUCTS ───────────
         if action == "get_products":

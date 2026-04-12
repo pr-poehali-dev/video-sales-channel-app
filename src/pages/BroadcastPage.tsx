@@ -171,25 +171,52 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
       await updateStream(streamIdRef.current, { isLive: false, duration_sec: dur } as never);
     }
 
-    // Загружаем видео если есть чанки
+    // Загружаем видео через presigned URL напрямую в S3
     if (chunksRef.current.length > 0 && streamIdRef.current) {
       setUploading(true);
-      setUploadProgress(10);
+      setUploadProgress(5);
+      const sid = streamIdRef.current;
       try {
-        const blob = new Blob(chunksRef.current, { type: chunksRef.current[0].type });
-        setUploadProgress(30);
-        const reader = new FileReader();
-        const dataUrl: string = await new Promise(res => { reader.onload = () => res(reader.result as string); reader.readAsDataURL(blob); });
-        setUploadProgress(60);
-        const resp = await fetch(`${STORE_API}?action=upload_video`, {
+        const blob = new Blob(chunksRef.current, { type: chunksRef.current[0]?.type || "video/webm" });
+        const mime = blob.type || "video/webm";
+        setUploadProgress(15);
+
+        // 1. Получаем presigned URL от бэкенда
+        const presignResp = await fetch(`${STORE_API}?action=get_video_upload_url`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ data_url: dataUrl, stream_id: streamIdRef.current }),
+          body: JSON.stringify({ stream_id: sid, mime }),
         });
-        setUploadProgress(90);
-        if (resp.ok) setUploadProgress(100);
-      } catch { /* видео не загрузилось, эфир всё равно сохранён */ }
-      finally { setUploading(false); }
+        if (!presignResp.ok) throw new Error("presign failed");
+        const { upload_url, cdn_url } = await presignResp.json();
+        setUploadProgress(30);
+
+        // 2. Загружаем blob напрямую в S3 через PUT (с прогрессом)
+        await new Promise<void>((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.upload.onprogress = e => {
+            if (e.lengthComputable) setUploadProgress(30 + Math.round(e.loaded / e.total * 60));
+          };
+          xhr.onload = () => (xhr.status < 300 ? resolve() : reject(new Error(`S3 ${xhr.status}`)));
+          xhr.onerror = () => reject(new Error("network"));
+          xhr.open("PUT", upload_url);
+          xhr.setRequestHeader("Content-Type", mime);
+          xhr.send(blob);
+        });
+        setUploadProgress(95);
+
+        // 3. Сохраняем CDN-ссылку в БД
+        await fetch(`${STORE_API}?action=set_video_url`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ stream_id: sid, video_url: cdn_url }),
+        });
+        setUploadProgress(100);
+      } catch (e) {
+        console.error("Video upload failed:", e);
+      } finally {
+        setUploading(false);
+      }
     }
     setFinished(true);
   };
