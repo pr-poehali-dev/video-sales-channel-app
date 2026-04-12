@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
 
-export type UserRole = "buyer" | "seller" | "admin";
+export type UserRole = "user" | "admin";
 
 export interface User {
   id: string;
@@ -108,7 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       name: data.name,
       email: data.email,
       phone: data.phone,
-      role: data.role,
+      role: "user",
       avatar: initials(data.name),
       city: data.city,
       joinedAt: new Date().toLocaleDateString("ru", { month: "long", year: "numeric" }),

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import Icon from "@/components/ui/icon";
-import { useAuth, type UserRole } from "@/context/AuthContext";
+import { useAuth } from "@/context/AuthContext";
 
 type AuthMode = "login" | "register";
 
@@ -11,7 +11,6 @@ interface AuthPageProps {
 export default function AuthPage({ onSuccess }: AuthPageProps) {
   const { login, register } = useAuth();
   const [mode, setMode] = useState<AuthMode>("login");
-  const [role, setRole] = useState<UserRole>("buyer");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -38,7 +37,7 @@ export default function AuthPage({ onSuccess }: AuthPageProps) {
     if (mode === "login") {
       err = await login(email, password);
     } else {
-      err = await register({ name, email, phone, password, role, city });
+      err = await register({ name, email, phone, password, role: "user", city });
     }
     setLoading(false);
     if (err) { setError(err); return; }
@@ -56,7 +55,7 @@ export default function AuthPage({ onSuccess }: AuthPageProps) {
             {mode === "login" ? "Войти в аккаунт" : "Создать аккаунт"}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {mode === "login" ? "Рады видеть вас снова" : "Присоединяйтесь к живым покупкам"}
+            {mode === "login" ? "Рады видеть вас снова" : "Покупайте и продавайте в прямом эфире"}
           </p>
         </div>
 
@@ -75,31 +74,6 @@ export default function AuthPage({ onSuccess }: AuthPageProps) {
               </button>
             ))}
           </div>
-
-          {/* Роль (только при регистрации) */}
-          {mode === "register" && (
-            <div className="mb-5">
-              <p className="text-sm font-medium text-foreground mb-2">Кто вы?</p>
-              <div className="grid grid-cols-2 gap-3">
-                {([
-                  { id: "buyer", label: "Покупатель", icon: "ShoppingBag", desc: "Смотрю эфиры и покупаю" },
-                  { id: "seller", label: "Продавец", icon: "Video", desc: "Веду эфиры и продаю" },
-                ] as { id: UserRole; label: string; icon: string; desc: string }[]).map(r => (
-                  <button
-                    key={r.id}
-                    onClick={() => setRole(r.id)}
-                    className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 text-center transition-all ${
-                      role === r.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/30"
-                    }`}
-                  >
-                    <Icon name={r.icon} size={22} className={role === r.id ? "text-primary" : "text-muted-foreground"} />
-                    <span className={`text-sm font-semibold ${role === r.id ? "text-primary" : "text-foreground"}`}>{r.label}</span>
-                    <span className="text-[11px] text-muted-foreground">{r.desc}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
 
           <div className="space-y-3">
             {/* Имя */}
@@ -187,35 +161,22 @@ export default function AuthPage({ onSuccess }: AuthPageProps) {
                 />
               </div>
             )}
-          </div>
 
-          {/* Ошибка */}
-          {error && (
-            <div className="flex items-center gap-2 mt-4 text-sm text-destructive bg-destructive/5 border border-destructive/20 rounded-xl px-4 py-2.5 animate-fade-in">
-              <Icon name="CircleAlert" size={15} />
-              {error}
-            </div>
-          )}
-
-          {/* Кнопка */}
-          <button
-            onClick={handleSubmit}
-            disabled={loading}
-            className="w-full mt-5 bg-primary text-primary-foreground font-semibold py-3 rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
-          >
-            {loading ? (
-              <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <Icon name={mode === "login" ? "LogIn" : "UserPlus"} size={16} />
+            {/* Ошибка */}
+            {error && (
+              <div className="bg-destructive/10 border border-destructive/30 rounded-xl px-3 py-2.5 text-sm text-destructive">
+                {error}
+              </div>
             )}
-            {mode === "login" ? "Войти" : "Зарегистрироваться"}
-          </button>
 
-          {mode === "register" && (
-            <p className="text-xs text-muted-foreground text-center mt-4">
-              Регистрируясь, вы соглашаетесь с условиями использования платформы
-            </p>
-          )}
+            <button
+              onClick={handleSubmit}
+              disabled={loading}
+              className="w-full bg-primary text-primary-foreground font-semibold py-3 rounded-xl hover:opacity-90 disabled:opacity-50 transition-opacity"
+            >
+              {loading ? "Загрузка..." : mode === "login" ? "Войти" : "Создать аккаунт"}
+            </button>
+          </div>
         </div>
       </div>
     </div>

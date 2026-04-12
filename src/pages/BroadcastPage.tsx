@@ -96,14 +96,14 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
     return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
   };
 
-  if (!user || user.role !== "seller") {
+  if (!user) {
     return (
       <div className="max-w-md mx-auto px-4 py-24 text-center animate-fade-in">
         <Icon name="Video" size={36} className="mx-auto mb-4 text-muted-foreground opacity-40" />
-        <h2 className="font-oswald text-xl font-semibold text-foreground mb-2">Только для продавцов</h2>
-        <p className="text-sm text-muted-foreground mb-5">Чтобы вести эфиры, нужен аккаунт продавца</p>
+        <h2 className="font-oswald text-xl font-semibold text-foreground mb-2">Войдите в аккаунт</h2>
+        <p className="text-sm text-muted-foreground mb-5">Чтобы вести эфиры, необходимо войти</p>
         <button onClick={() => setPage("auth")} className="bg-primary text-primary-foreground font-semibold px-6 py-3 rounded-xl hover:opacity-90 transition-opacity">
-          Зарегистрироваться как продавец
+          Войти / Зарегистрироваться
         </button>
       </div>
     );

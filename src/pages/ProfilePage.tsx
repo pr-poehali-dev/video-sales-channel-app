@@ -45,8 +45,8 @@ export default function ProfilePage({ setPage }: ProfilePageProps) {
     setPage("home");
   };
 
-  const roleLabel = user.role === "seller" ? "Продавец" : user.role === "admin" ? "Администратор" : "Покупатель";
-  const roleColor = user.role === "admin" ? "text-destructive" : user.role === "seller" ? "text-primary" : "text-muted-foreground";
+  const roleLabel = user.role === "admin" ? "Администратор" : "Пользователь";
+  const roleColor = user.role === "admin" ? "text-destructive" : "text-muted-foreground";
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 animate-fade-in">
@@ -147,8 +147,8 @@ export default function ProfilePage({ setPage }: ProfilePageProps) {
         </div>
       )}
 
-      {/* Для продавца — быстрый доступ в кабинет */}
-      {user.role === "seller" && (
+      {/* Быстрый доступ в кабинет — для всех пользователей */}
+      {user.role !== "admin" && (
         <button
           onClick={() => setPage("dashboard")}
           className="w-full flex items-center justify-between bg-card border border-border rounded-2xl p-4 mb-3 hover:border-primary/30 transition-colors"
@@ -158,7 +158,7 @@ export default function ProfilePage({ setPage }: ProfilePageProps) {
               <Icon name="LayoutDashboard" size={16} className="text-primary" />
             </div>
             <div className="text-left">
-              <p className="text-sm font-medium text-foreground">Кабинет продавца</p>
+              <p className="text-sm font-medium text-foreground">Мой кабинет</p>
               <p className="text-xs text-muted-foreground">Товары, эфиры, статистика</p>
             </div>
           </div>

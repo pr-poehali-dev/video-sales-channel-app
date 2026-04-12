@@ -15,7 +15,7 @@ export default function NavBar({ page, setPage, cartCount }: NavBarProps) {
     { id: "home", label: "Главная", icon: "Home" },
     { id: "streams", label: "Эфиры", icon: "Radio" },
     { id: "catalog", label: "Каталог", icon: "ShoppingBag" },
-    ...(user?.role === "seller" ? [{ id: "dashboard" as Page, label: "Кабинет", icon: "LayoutDashboard" }] : []),
+    ...(user && user.role !== "admin" ? [{ id: "dashboard" as Page, label: "Кабинет", icon: "LayoutDashboard" }] : []),
     ...(user?.role === "admin" ? [{ id: "admin" as Page, label: "Админ", icon: "ShieldCheck" }] : []),
   ];
 
@@ -48,8 +48,8 @@ export default function NavBar({ page, setPage, cartCount }: NavBarProps) {
         </nav>
 
         <div className="flex items-center gap-1">
-          {/* Кнопка эфира для продавца */}
-          {user?.role === "seller" && (
+          {/* Кнопка эфира — для всех залогиненных */}
+          {user && user.role !== "admin" && (
             <button
               onClick={() => setPage("broadcast")}
               className={`hidden md:flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
