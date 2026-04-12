@@ -45,6 +45,7 @@ export interface StoreStream {
   startedAt: string;
   endedAt?: string;
   duration?: number;
+  videoUrl?: string | null;
 }
 
 export interface ChatMessage {
