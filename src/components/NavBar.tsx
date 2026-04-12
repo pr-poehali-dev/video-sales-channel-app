@@ -21,9 +21,10 @@ export default function NavBar({ page, setPage, cartCount }: NavBarProps) {
       <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
         <button
           onClick={() => setPage("home")}
-          className="font-oswald text-xl font-semibold tracking-wider text-foreground hover:text-primary transition-colors"
+          className="font-oswald text-xl font-semibold tracking-wider text-foreground hover:text-primary transition-colors flex items-center gap-1"
         >
-          LIVE<span className="text-primary">SHOP</span>
+          <span className="text-primary">ЮГА</span><span>ЗИН</span>
+          <span className="text-[10px] font-normal text-muted-foreground">.рф</span>
         </button>
 
         <nav className="hidden md:flex items-center gap-1">
