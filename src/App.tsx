@@ -7,9 +7,11 @@ import CatalogPage from "@/pages/CatalogPage";
 import ProfilePage from "@/pages/ProfilePage";
 import CartPage from "@/pages/CartPage";
 import DashboardPage from "@/pages/DashboardPage";
+import ProductPage from "@/pages/ProductPage";
+import SellerPage from "@/pages/SellerPage";
 import NavBar from "@/components/NavBar";
 
-export type Page = "home" | "streams" | "catalog" | "profile" | "cart" | "dashboard";
+export type Page = "home" | "streams" | "catalog" | "profile" | "cart" | "dashboard" | "product" | "seller";
 
 export interface CartItem {
   id: number;
@@ -22,6 +24,9 @@ export interface CartItem {
 export default function App() {
   const [page, setPage] = useState<Page>("home");
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
+  const [selectedSellerId, setSelectedSellerId] = useState<number | null>(null);
+  const [prevPage, setPrevPage] = useState<Page>("catalog");
 
   const addToCart = (item: Omit<CartItem, "qty">) => {
     setCart(prev => {
@@ -40,18 +45,57 @@ export default function App() {
     setCart(prev => prev.map(c => c.id === id ? { ...c, qty } : c));
   };
 
+  const openProduct = (productId: number) => {
+    setPrevPage(page);
+    setSelectedProductId(productId);
+    setPage("product");
+  };
+
+  const openSeller = (sellerId: number) => {
+    setPrevPage(page);
+    setSelectedSellerId(sellerId);
+    setPage("seller");
+  };
+
+  const goBack = () => {
+    setPage(prevPage);
+  };
+
+  const navSetPage = (p: Page) => {
+    if (p !== "product" && p !== "seller") {
+      setPrevPage(p);
+    }
+    setPage(p);
+  };
+
   return (
     <TooltipProvider>
       <Toaster />
       <div className="min-h-screen bg-background font-golos">
-        <NavBar page={page} setPage={setPage} cartCount={cart.reduce((s, c) => s + c.qty, 0)} />
+        <NavBar page={page} setPage={navSetPage} cartCount={cart.reduce((s, c) => s + c.qty, 0)} />
         <main>
-          {page === "home" && <HomePage setPage={setPage} addToCart={addToCart} />}
+          {page === "home" && <HomePage setPage={navSetPage} addToCart={addToCart} onProductClick={openProduct} />}
           {page === "streams" && <StreamsPage />}
-          {page === "catalog" && <CatalogPage addToCart={addToCart} />}
-          {page === "profile" && <ProfilePage setPage={setPage} />}
+          {page === "catalog" && <CatalogPage addToCart={addToCart} onProductClick={openProduct} />}
+          {page === "profile" && <ProfilePage setPage={navSetPage} />}
           {page === "cart" && <CartPage cart={cart} removeFromCart={removeFromCart} updateQty={updateQty} />}
           {page === "dashboard" && <DashboardPage />}
+          {page === "product" && selectedProductId !== null && (
+            <ProductPage
+              productId={selectedProductId}
+              addToCart={addToCart}
+              onBack={goBack}
+              onSellerClick={openSeller}
+            />
+          )}
+          {page === "seller" && selectedSellerId !== null && (
+            <SellerPage
+              sellerId={selectedSellerId}
+              addToCart={addToCart}
+              onBack={goBack}
+              onProductClick={openProduct}
+            />
+          )}
         </main>
       </div>
     </TooltipProvider>

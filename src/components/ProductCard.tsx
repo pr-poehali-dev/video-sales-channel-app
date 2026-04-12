@@ -1,37 +1,35 @@
 import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import type { CartItem } from "@/App";
-
-interface Product {
-  id: number;
-  name: string;
-  price: number;
-  oldPrice: number | null;
-  category: string;
-  rating: number;
-  reviews: number;
-  image: string;
-  isFav: boolean;
-  isNew: boolean;
-}
+import type { Product } from "@/data/mockData";
 
 interface ProductCardProps {
   product: Product;
   addToCart: (item: Omit<CartItem, "qty">) => void;
+  onClick?: () => void;
 }
 
-export default function ProductCard({ product, addToCart }: ProductCardProps) {
+export default function ProductCard({ product, addToCart, onClick }: ProductCardProps) {
   const [fav, setFav] = useState(product.isFav);
   const [added, setAdded] = useState(false);
 
-  const handleAdd = () => {
+  const handleAdd = (e: React.MouseEvent) => {
+    e.stopPropagation();
     addToCart({ id: product.id, name: product.name, price: product.price, image: product.image });
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
   };
 
+  const handleFav = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setFav(!fav);
+  };
+
   return (
-    <div className="bg-card border border-border rounded-xl overflow-hidden hover:border-primary/40 transition-all group">
+    <div
+      onClick={onClick}
+      className={`bg-card border border-border rounded-xl overflow-hidden hover:border-primary/40 transition-all group ${onClick ? "cursor-pointer" : ""}`}
+    >
       <div className="relative aspect-square overflow-hidden">
         <img
           src={product.image}
@@ -49,10 +47,10 @@ export default function ProductCard({ product, addToCart }: ProductCardProps) {
           </div>
         )}
         <button
-          onClick={() => setFav(!fav)}
-          className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 flex items-center justify-center hover:bg-black/70 transition-colors"
+          onClick={handleFav}
+          className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/80 flex items-center justify-center hover:bg-white transition-colors shadow-sm"
         >
-          <Icon name={fav ? "Heart" : "Heart"} size={14} className={fav ? "text-red-400 fill-red-400" : "text-white"} />
+          <Icon name="Heart" size={14} className={fav ? "text-red-500 fill-red-500" : "text-muted-foreground"} />
         </button>
       </div>
 
@@ -79,7 +77,7 @@ export default function ProductCard({ product, addToCart }: ProductCardProps) {
             onClick={handleAdd}
             className={`flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg transition-all ${
               added
-                ? "bg-green-500/20 text-green-400"
+                ? "bg-green-500/20 text-green-600"
                 : "bg-primary/15 text-primary hover:bg-primary hover:text-primary-foreground"
             }`}
           >

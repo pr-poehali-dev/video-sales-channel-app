@@ -1,4 +1,3 @@
-import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import type { Page, CartItem } from "@/App";
 import { streams, products } from "@/data/mockData";
@@ -8,9 +7,10 @@ import ProductCard from "@/components/ProductCard";
 interface HomePageProps {
   setPage: (p: Page) => void;
   addToCart: (item: Omit<CartItem, "qty">) => void;
+  onProductClick: (productId: number) => void;
 }
 
-export default function HomePage({ setPage, addToCart }: HomePageProps) {
+export default function HomePage({ setPage, addToCart, onProductClick }: HomePageProps) {
   const liveStreams = streams.filter(s => s.isLive);
   const featuredProducts = products.slice(0, 4);
 
@@ -81,7 +81,7 @@ export default function HomePage({ setPage, addToCart }: HomePageProps) {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {featuredProducts.map((product, i) => (
             <div key={product.id} className={`animate-fade-in delay-${(i + 1) * 100}`} style={{ opacity: 0 }}>
-              <ProductCard product={product} addToCart={addToCart} />
+              <ProductCard product={product} addToCart={addToCart} onClick={() => onProductClick(product.id)} />
             </div>
           ))}
         </div>

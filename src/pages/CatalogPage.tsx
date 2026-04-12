@@ -6,9 +6,10 @@ import type { CartItem } from "@/App";
 
 interface CatalogPageProps {
   addToCart: (item: Omit<CartItem, "qty">) => void;
+  onProductClick: (productId: number) => void;
 }
 
-export default function CatalogPage({ addToCart }: CatalogPageProps) {
+export default function CatalogPage({ addToCart, onProductClick }: CatalogPageProps) {
   const [category, setCategory] = useState("Все");
   const [sort, setSort] = useState("popular");
   const [search, setSearch] = useState("");
@@ -84,7 +85,11 @@ export default function CatalogPage({ addToCart }: CatalogPageProps) {
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {filtered.map((product, i) => (
             <div key={product.id} className="animate-fade-in" style={{ opacity: 0, animationDelay: `${i * 50}ms` }}>
-              <ProductCard product={product} addToCart={addToCart} />
+              <ProductCard
+                product={product}
+                addToCart={addToCart}
+                onClick={() => onProductClick(product.id)}
+              />
             </div>
           ))}
         </div>
