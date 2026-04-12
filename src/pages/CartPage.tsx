@@ -2,6 +2,7 @@ import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import type { CartItem } from "@/App";
 import CdekDelivery from "@/components/CdekDelivery";
+import SbpPayment from "@/components/SbpPayment";
 
 interface CartPageProps {
   cart: CartItem[];
@@ -14,13 +15,31 @@ interface SelectedDelivery {
   city: { code: number; city: string; region: string } | null;
 }
 
+type PaymentMethod = "sbp" | "card" | null;
+
 export default function CartPage({ cart, removeFromCart, updateQty }: CartPageProps) {
   const [delivery, setDelivery] = useState<SelectedDelivery>({ tariff: null, city: null });
+  const [payMethod, setPayMethod] = useState<PaymentMethod>(null);
+  const [showSbp, setShowSbp] = useState(false);
+  const [orderDone, setOrderDone] = useState(false);
 
   const goodsTotal = cart.reduce((s, c) => s + c.price * c.qty, 0);
   const deliveryCost = delivery.tariff?.price ?? null;
   const orderTotal = goodsTotal + (deliveryCost ?? 0);
   const totalWeight = cart.reduce((s, c) => s + c.qty * 300, 0);
+  const canCheckout = deliveryCost !== null && payMethod !== null;
+
+  if (orderDone) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-24 text-center animate-scale-in">
+        <div className="w-20 h-20 rounded-full bg-green-500/15 flex items-center justify-center mx-auto mb-5">
+          <Icon name="PackageCheck" size={42} className="text-green-400" />
+        </div>
+        <h2 className="font-oswald text-2xl font-semibold text-foreground mb-2">Заказ оформлен!</h2>
+        <p className="text-muted-foreground text-sm">Мы уже передали его в обработку. Ожидайте уведомления о доставке.</p>
+      </div>
+    );
+  }
 
   if (cart.length === 0) {
     return (
@@ -87,6 +106,36 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
             />
           </div>
 
+          {/* Payment method */}
+          <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+            <p className="text-sm font-medium text-foreground">Способ оплаты</p>
+            {[
+              { id: "sbp" as PaymentMethod, icon: "⚡", label: "СБП", sub: "Оплата через приложение банка" },
+              { id: "card" as PaymentMethod, icon: "💳", label: "Карта", sub: "Visa, MasterCard, Мир" },
+            ].map(m => (
+              <button
+                key={m.id}
+                onClick={() => setPayMethod(m.id)}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition-all text-left ${
+                  payMethod === m.id
+                    ? "border-primary bg-primary/8"
+                    : "border-border bg-secondary hover:border-border/60"
+                }`}
+              >
+                <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
+                  payMethod === m.id ? "border-primary" : "border-muted-foreground"
+                }`}>
+                  {payMethod === m.id && <div className="w-2 h-2 rounded-full bg-primary" />}
+                </div>
+                <span className="text-lg leading-none">{m.icon}</span>
+                <div>
+                  <p className="text-sm font-medium text-foreground">{m.label}</p>
+                  <p className="text-xs text-muted-foreground">{m.sub}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+
           {/* Order total */}
           <div className="bg-card border border-border rounded-xl p-5">
             <div className="space-y-2 mb-4">
@@ -125,23 +174,39 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
               </div>
             </div>
 
-            <button
-              disabled={deliveryCost === null}
-              className="w-full bg-primary text-primary-foreground font-semibold py-3 rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <Icon name="CreditCard" size={18} />
-              Оформить заказ
-            </button>
+            {/* SBP inline flow */}
+            {showSbp ? (
+              <SbpPayment
+                amount={orderTotal}
+                description={`Заказ LiveShop — ${cart.length} товара`}
+                onSuccess={() => setOrderDone(true)}
+                onCancel={() => setShowSbp(false)}
+              />
+            ) : (
+              <>
+                <button
+                  disabled={!canCheckout}
+                  onClick={() => payMethod === "sbp" ? setShowSbp(true) : undefined}
+                  className="w-full bg-primary text-primary-foreground font-semibold py-3 rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {payMethod === "sbp" ? (
+                    <><span>⚡</span> Оплатить через СБП</>
+                  ) : payMethod === "card" ? (
+                    <><Icon name="CreditCard" size={18} /> Оплатить картой</>
+                  ) : (
+                    <><Icon name="CreditCard" size={18} /> Оформить заказ</>
+                  )}
+                </button>
 
-            {deliveryCost === null && (
-              <p className="text-xs text-muted-foreground text-center mt-2">
-                Выберите способ доставки, чтобы продолжить
-              </p>
+                {!canCheckout && (
+                  <p className="text-xs text-muted-foreground text-center mt-2">
+                    {deliveryCost === null
+                      ? "Выберите способ доставки"
+                      : "Выберите способ оплаты"}
+                  </p>
+                )}
+              </>
             )}
-
-            <p className="text-xs text-muted-foreground text-center mt-3">
-              Оплата картой, СБП, наличными при получении
-            </p>
           </div>
         </div>
       </div>

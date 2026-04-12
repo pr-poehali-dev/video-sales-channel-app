@@ -1,0 +1,12 @@
+{
+  "tests": [
+    {
+      "name": "No credentials returns 503",
+      "method": "POST",
+      "path": "/",
+      "body": {"amount": 1000, "description": "Тест"},
+      "expectedStatus": 503,
+      "bodyMatcher": "partial"
+    }
+  ]
+}

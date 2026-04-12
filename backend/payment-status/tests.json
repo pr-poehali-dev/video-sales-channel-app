@@ -1,0 +1,11 @@
+{
+  "tests": [
+    {
+      "name": "Missing payment_id returns 400",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 503,
+      "bodyMatcher": "partial"
+    }
+  ]
+}
