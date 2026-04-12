@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import Icon from "@/components/ui/icon";
 import { useAuth } from "@/context/AuthContext";
+import { useStore } from "@/context/StoreContext";
 import type { Page } from "@/App";
 
 interface BroadcastPageProps {
@@ -11,8 +12,10 @@ type FacingMode = "user" | "environment";
 
 export default function BroadcastPage({ setPage }: BroadcastPageProps) {
   const { user } = useAuth();
+  const { addStream, updateStream } = useStore();
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const currentStreamId = useRef<string | null>(null);
 
   const [isLive, setIsLive] = useState(false);
   const [facingMode, setFacingMode] = useState<FacingMode>("environment");
@@ -24,6 +27,8 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
   const [viewers] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [cameraStarted, setCameraStarted] = useState(false);
+  const [finished, setFinished] = useState(false);
+  const [savedDuration, setSavedDuration] = useState(0);
 
   const startCamera = useCallback(async (facing: FacingMode) => {
     setCameraError(null);
@@ -37,22 +42,16 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
         audio: true,
       });
       streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
+      if (videoRef.current) videoRef.current.srcObject = stream;
       setCameraStarted(true);
       setHasCamera(true);
     } catch (e: unknown) {
       const err = e as Error;
       setHasCamera(false);
       setCameraStarted(false);
-      if (err.name === "NotAllowedError") {
-        setCameraError("Нет доступа к камере. Разрешите доступ в настройках браузера.");
-      } else if (err.name === "NotFoundError") {
-        setCameraError("Камера не найдена на этом устройстве.");
-      } else {
-        setCameraError("Не удалось запустить камеру: " + err.message);
-      }
+      if (err.name === "NotAllowedError") setCameraError("Нет доступа к камере. Разрешите доступ в настройках браузера.");
+      else if (err.name === "NotFoundError") setCameraError("Камера не найдена на этом устройстве.");
+      else setCameraError("Не удалось запустить камеру: " + err.message);
     }
   }, []);
 
@@ -77,15 +76,36 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
   };
 
   const startBroadcast = () => {
-    if (!title.trim()) return;
+    if (!title.trim() || !user) return;
+    const now = new Date();
+    const s = addStream({
+      title: title.trim(),
+      sellerId: user.id,
+      sellerName: user.name,
+      sellerAvatar: user.avatar,
+      isLive: true,
+      viewers: 0,
+      startedAt: now.toLocaleDateString("ru", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }),
+    });
+    currentStreamId.current = s.id;
     setIsLive(true);
     setDuration(0);
     timerRef.current = setInterval(() => setDuration(d => d + 1), 1000);
   };
 
   const stopBroadcast = () => {
-    setIsLive(false);
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+    if (currentStreamId.current) {
+      updateStream(currentStreamId.current, {
+        isLive: false,
+        endedAt: new Date().toISOString(),
+        duration,
+        viewers,
+      });
+    }
+    setSavedDuration(duration);
+    setIsLive(false);
+    setFinished(true);
   };
 
   const fmtDuration = (sec: number) => {
@@ -109,6 +129,34 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
     );
   }
 
+  // Экран после завершения эфира
+  if (finished) {
+    return (
+      <div className="max-w-md mx-auto px-4 py-24 text-center animate-fade-in">
+        <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-5">
+          <Icon name="CheckCircle" size={40} className="text-primary" />
+        </div>
+        <h2 className="font-oswald text-2xl font-semibold text-foreground mb-2">Эфир завершён</h2>
+        <p className="text-sm text-muted-foreground mb-1">«{title}»</p>
+        <p className="text-sm text-muted-foreground mb-8">Длительность: {fmtDuration(savedDuration)}</p>
+        <div className="flex flex-col gap-3 max-w-xs mx-auto">
+          <button
+            onClick={() => { setFinished(false); setTitle(""); setDuration(0); currentStreamId.current = null; }}
+            className="bg-primary text-primary-foreground font-semibold px-6 py-3 rounded-xl hover:opacity-90 transition-opacity"
+          >
+            Начать новый эфир
+          </button>
+          <button
+            onClick={() => setPage("dashboard")}
+            className="border border-border text-foreground font-semibold px-6 py-3 rounded-xl hover:bg-secondary transition-colors"
+          >
+            В кабинет
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 animate-fade-in">
       <button
@@ -127,25 +175,17 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center">
             <Icon name="VideoOff" size={40} className="text-muted-foreground opacity-40" />
             <p className="text-sm text-muted-foreground">{cameraError}</p>
-            <button
-              onClick={() => startCamera(facingMode)}
-              className="text-sm text-primary hover:underline"
-            >
+            <button onClick={() => startCamera(facingMode)} className="text-sm text-primary hover:underline">
               Попробовать снова
             </button>
           </div>
         ) : (
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
+          <video ref={videoRef} autoPlay playsInline muted
             className="w-full h-full object-cover"
             style={{ transform: facingMode === "user" ? "scaleX(-1)" : "none" }}
           />
         )}
 
-        {/* LIVE бейдж */}
         {isLive && (
           <div className="absolute top-4 left-4 flex items-center gap-2">
             <div className="flex items-center gap-1.5 bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded">
@@ -158,37 +198,27 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
           </div>
         )}
 
-        {/* Зрители */}
         {isLive && (
           <div className="absolute top-4 right-4 bg-black/60 text-white text-xs px-2.5 py-1.5 rounded flex items-center gap-1.5">
-            <Icon name="Eye" size={12} />
-            {viewers}
+            <Icon name="Eye" size={12} />{viewers}
           </div>
         )}
 
-        {/* Кнопки управления камерой */}
         {cameraStarted && (
           <div className="absolute bottom-4 right-4 flex flex-col gap-2">
-            <button
-              onClick={switchCamera}
+            <button onClick={switchCamera}
               className="w-11 h-11 rounded-full bg-black/50 backdrop-blur flex items-center justify-center text-white hover:bg-black/70 transition-colors"
-              title="Переключить камеру"
-            >
+              title="Переключить камеру">
               <Icon name="RefreshCw" size={18} />
             </button>
-            <button
-              onClick={toggleMute}
-              className={`w-11 h-11 rounded-full backdrop-blur flex items-center justify-center text-white transition-colors ${
-                isMuted ? "bg-red-500/80 hover:bg-red-500" : "bg-black/50 hover:bg-black/70"
-              }`}
-              title={isMuted ? "Включить микрофон" : "Выключить микрофон"}
-            >
+            <button onClick={toggleMute}
+              className={`w-11 h-11 rounded-full backdrop-blur flex items-center justify-center text-white transition-colors ${isMuted ? "bg-red-500/80 hover:bg-red-500" : "bg-black/50 hover:bg-black/70"}`}
+              title={isMuted ? "Включить микрофон" : "Выключить микрофон"}>
               <Icon name={isMuted ? "MicOff" : "Mic"} size={18} />
             </button>
           </div>
         )}
 
-        {/* Индикатор фронтальной/основной камеры */}
         {cameraStarted && (
           <div className="absolute top-4 left-1/2 -translate-x-1/2">
             <span className="bg-black/50 text-white text-[10px] px-2 py-1 rounded">
@@ -198,7 +228,6 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
         )}
       </div>
 
-      {/* Название эфира + кнопка старт/стоп */}
       {!isLive ? (
         <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
           <div>
@@ -206,6 +235,7 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
             <input
               value={title}
               onChange={e => setTitle(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && startBroadcast()}
               placeholder="Например: Новая коллекция украшений"
               className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors"
             />
@@ -228,8 +258,7 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
             <div>
               <p className="font-semibold text-foreground">{title}</p>
               <p className="text-sm text-muted-foreground mt-0.5 flex items-center gap-1.5">
-                <Icon name="Eye" size={13} />
-                {viewers} зрителей
+                <Icon name="Eye" size={13} />{viewers} зрителей
               </p>
             </div>
             <div className="text-right">

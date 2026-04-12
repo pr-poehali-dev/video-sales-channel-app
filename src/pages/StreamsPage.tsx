@@ -1,14 +1,22 @@
 import Icon from "@/components/ui/icon";
-import { streams } from "@/data/mockData";
 import { useAuth } from "@/context/AuthContext";
+import { useStore } from "@/context/StoreContext";
 import type { Page } from "@/App";
 
 interface StreamsPageProps {
   setPage: (p: Page) => void;
 }
 
+function fmtDuration(sec?: number) {
+  if (!sec) return "";
+  const m = Math.floor(sec / 60), s = sec % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
 export default function StreamsPage({ setPage }: StreamsPageProps) {
   const { user } = useAuth();
+  const { streams } = useStore();
+
   const liveStreams = streams.filter(s => s.isLive);
   const recordedStreams = streams.filter(s => !s.isLive);
 
@@ -17,7 +25,7 @@ export default function StreamsPage({ setPage }: StreamsPageProps) {
       <div className="max-w-7xl mx-auto px-4 py-8 animate-fade-in">
         <div className="flex items-center justify-between mb-8">
           <h1 className="font-oswald text-2xl font-semibold text-foreground tracking-wide">Эфиры</h1>
-          {user?.role === "seller" && (
+          {user && (
             <button
               onClick={() => setPage("broadcast")}
               className="flex items-center gap-2 bg-primary text-primary-foreground font-semibold px-4 py-2.5 rounded-xl hover:opacity-90 transition-opacity text-sm"
@@ -34,9 +42,9 @@ export default function StreamsPage({ setPage }: StreamsPageProps) {
           </div>
           <h2 className="font-oswald text-xl font-semibold text-foreground tracking-wide mb-2">Эфиров пока нет</h2>
           <p className="text-muted-foreground text-sm max-w-xs mx-auto mb-6">
-            Продавцы ещё не запустили ни одной трансляции. Подпишись и получи уведомление, когда начнётся первый эфир.
+            Никто ещё не запустил трансляцию. Будьте первым!
           </p>
-          {user?.role === "seller" && (
+          {user ? (
             <button
               onClick={() => setPage("broadcast")}
               className="inline-flex items-center gap-2 bg-primary text-primary-foreground font-semibold px-6 py-3 rounded-xl hover:opacity-90 transition-opacity"
@@ -44,8 +52,7 @@ export default function StreamsPage({ setPage }: StreamsPageProps) {
               <Icon name="Video" size={16} />
               Запустить первый эфир
             </button>
-          )}
-          {!user && (
+          ) : (
             <button
               onClick={() => setPage("auth")}
               className="inline-flex items-center gap-2 border border-border text-foreground font-semibold px-6 py-3 rounded-xl hover:bg-secondary transition-colors"
@@ -63,7 +70,7 @@ export default function StreamsPage({ setPage }: StreamsPageProps) {
     <div className="max-w-7xl mx-auto px-4 py-8 animate-fade-in">
       <div className="flex items-center justify-between mb-8">
         <h1 className="font-oswald text-2xl font-semibold text-foreground tracking-wide">Эфиры</h1>
-        {user?.role === "seller" && (
+        {user && (
           <button
             onClick={() => setPage("broadcast")}
             className="flex items-center gap-2 bg-primary text-primary-foreground font-semibold px-4 py-2.5 rounded-xl hover:opacity-90 transition-opacity text-sm"
@@ -74,6 +81,7 @@ export default function StreamsPage({ setPage }: StreamsPageProps) {
         )}
       </div>
 
+      {/* Live */}
       {liveStreams.length > 0 && (
         <div className="mb-10">
           <div className="flex items-center gap-2 mb-4">
@@ -85,21 +93,25 @@ export default function StreamsPage({ setPage }: StreamsPageProps) {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {liveStreams.map(s => (
-              <div key={s.id} className="bg-card border border-border rounded-2xl overflow-hidden hover:border-primary/30 transition-all">
-                <div className="relative aspect-video bg-secondary">
-                  <img src={s.thumb} alt={s.title} className="w-full h-full object-cover" />
+              <div key={s.id} className="bg-card border border-border rounded-2xl overflow-hidden hover:border-primary/30 transition-all cursor-pointer">
+                <div className="relative aspect-video bg-secondary flex items-center justify-center">
+                  <div className="text-center">
+                    <div className="w-16 h-16 rounded-full bg-primary/20 text-primary text-2xl font-bold flex items-center justify-center font-oswald mx-auto mb-2">
+                      {s.sellerAvatar}
+                    </div>
+                    <p className="text-xs text-muted-foreground">{s.sellerName}</p>
+                  </div>
                   <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded">
                     <span className="w-1.5 h-1.5 rounded-full bg-white animate-live-pulse inline-block" />
                     LIVE
                   </div>
                   <div className="absolute top-3 right-3 bg-black/60 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
-                    <Icon name="Eye" size={11} />
-                    {s.viewers.toLocaleString("ru")}
+                    <Icon name="Eye" size={11} />{s.viewers}
                   </div>
                 </div>
                 <div className="p-4">
                   <h3 className="font-semibold text-foreground text-sm mb-1 line-clamp-1">{s.title}</h3>
-                  <p className="text-xs text-muted-foreground">{s.host} · {s.category}</p>
+                  <p className="text-xs text-muted-foreground">{s.sellerName} · {s.startedAt}</p>
                 </div>
               </div>
             ))}
@@ -107,23 +119,40 @@ export default function StreamsPage({ setPage }: StreamsPageProps) {
         </div>
       )}
 
+      {/* История */}
       {recordedStreams.length > 0 && (
         <div>
-          <h2 className="font-oswald text-lg font-semibold text-foreground tracking-wide mb-4">Записи эфиров</h2>
+          <h2 className="font-oswald text-lg font-semibold text-foreground tracking-wide mb-4">
+            История эфиров
+            <span className="text-sm font-normal text-muted-foreground ml-2">{recordedStreams.length} записей</span>
+          </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {recordedStreams.map(s => (
-              <div key={s.id} className="bg-card border border-border rounded-2xl overflow-hidden hover:border-primary/30 transition-all">
-                <div className="relative aspect-video bg-secondary">
-                  <img src={s.thumb} alt={s.title} className="w-full h-full object-cover" />
+              <div key={s.id} className="bg-card border border-border rounded-2xl overflow-hidden hover:border-primary/30 transition-all cursor-pointer">
+                <div className="relative aspect-video bg-secondary flex items-center justify-center">
+                  <div className="text-center">
+                    <div className="w-14 h-14 rounded-full bg-secondary/80 border border-border text-foreground text-xl font-bold flex items-center justify-center font-oswald mx-auto mb-2">
+                      {s.sellerAvatar}
+                    </div>
+                    <p className="text-xs text-muted-foreground">{s.sellerName}</p>
+                  </div>
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="w-12 h-12 rounded-full bg-black/40 flex items-center justify-center">
                       <Icon name="Play" size={20} className="text-white ml-0.5" />
                     </div>
                   </div>
+                  {s.duration && (
+                    <div className="absolute bottom-2 right-2 bg-black/70 text-white text-[10px] font-mono px-1.5 py-0.5 rounded">
+                      {fmtDuration(s.duration)}
+                    </div>
+                  )}
                 </div>
                 <div className="p-4">
                   <h3 className="font-semibold text-foreground text-sm mb-1 line-clamp-1">{s.title}</h3>
-                  <p className="text-xs text-muted-foreground">{s.host} · {s.startedAt}</p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-muted-foreground">{s.sellerName}</p>
+                    <p className="text-xs text-muted-foreground">{s.startedAt}</p>
+                  </div>
                 </div>
               </div>
             ))}
