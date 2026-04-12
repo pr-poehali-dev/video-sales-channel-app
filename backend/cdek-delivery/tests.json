@@ -1,0 +1,18 @@
+{
+  "tests": [
+    {
+      "name": "Search cities",
+      "method": "GET",
+      "path": "/?action=cities&q=Москва",
+      "expectedStatus": 200,
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Calc delivery to Moscow",
+      "method": "GET",
+      "path": "/?action=calc&city_code=44&weight=500",
+      "expectedStatus": 200,
+      "bodyMatcher": "partial"
+    }
+  ]
+}
