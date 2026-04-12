@@ -8,8 +8,7 @@ interface AdminPageProps {
 }
 
 const ROLE_LABELS: Record<string, string> = {
-  buyer: "Покупатель",
-  seller: "Продавец",
+  user: "Пользователь",
   admin: "Администратор",
 };
 
@@ -17,7 +16,7 @@ export default function AdminPage({ setPage }: AdminPageProps) {
   const { user, getAllUsers, blockUser, unblockUser, deleteUser } = useAuth();
   const [users, setUsers] = useState<(User & { password: string })[]>(() => getAllUsers());
   const [search, setSearch] = useState("");
-  const [roleFilter, setRoleFilter] = useState<"all" | "buyer" | "seller">("all");
+  const [roleFilter, setRoleFilter] = useState<"all" | "user">("all");
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   if (!user || user.role !== "admin") {
@@ -60,8 +59,7 @@ export default function AdminPage({ setPage }: AdminPageProps) {
 
   const stats = {
     total: users.length,
-    sellers: users.filter(u => u.role === "seller").length,
-    buyers: users.filter(u => u.role === "buyer").length,
+    active: users.filter(u => !u.isBlocked).length,
     blocked: users.filter(u => u.isBlocked).length,
   };
 
@@ -82,8 +80,7 @@ export default function AdminPage({ setPage }: AdminPageProps) {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         {[
           { icon: "Users", value: stats.total, label: "Всего пользователей" },
-          { icon: "ShoppingBag", value: stats.buyers, label: "Покупателей" },
-          { icon: "Video", value: stats.sellers, label: "Продавцов" },
+          { icon: "CircleCheck", value: stats.active, label: "Активных" },
           { icon: "Ban", value: stats.blocked, label: "Заблокировано", danger: true },
         ].map((s, i) => (
           <div key={i} className={`bg-card border rounded-xl p-4 ${s.danger && s.value > 0 ? "border-destructive/30" : "border-border"}`}>
@@ -106,7 +103,7 @@ export default function AdminPage({ setPage }: AdminPageProps) {
           />
         </div>
         <div className="flex gap-1 bg-secondary rounded-xl p-1">
-          {(["all", "buyer", "seller"] as const).map(r => (
+          {(["all", "user"] as const).map(r => (
             <button
               key={r}
               onClick={() => setRoleFilter(r)}
@@ -114,7 +111,7 @@ export default function AdminPage({ setPage }: AdminPageProps) {
                 roleFilter === r ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              {r === "all" ? "Все" : r === "buyer" ? "Покупатели" : "Продавцы"}
+              {r === "all" ? "Все" : "Пользователи"}
             </button>
           ))}
         </div>
@@ -149,10 +146,8 @@ export default function AdminPage({ setPage }: AdminPageProps) {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-sm font-semibold text-foreground">{u.name}</span>
-                  <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
-                    u.role === "seller" ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground"
-                  }`}>
-                    {ROLE_LABELS[u.role]}
+                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">
+                    {ROLE_LABELS[u.role] ?? "Пользователь"}
                   </span>
                   {u.isBlocked && (
                     <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-destructive/10 text-destructive">
