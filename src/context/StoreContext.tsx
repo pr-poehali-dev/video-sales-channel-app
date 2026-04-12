@@ -7,14 +7,15 @@ const API = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c"
 
 async function api(action: string, method: "GET" | "POST" | "PATCH" = "GET", body?: object) {
   const url = `${API}?action=${action}`;
-  const res = await fetch(url, {
-    method,
-    headers: { "Content-Type": "application/json" },
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  const opts: RequestInit = { method };
+  if (body) {
+    opts.headers = { "Content-Type": "application/json" };
+    opts.body = JSON.stringify(body);
+  }
+  const res = await fetch(url, opts);
   if (!res.ok) {
     const e = await res.json().catch(() => ({}));
-    throw new Error(e.error || res.statusText);
+    throw new Error(e.error || `HTTP ${res.status}`);
   }
   return res.json();
 }

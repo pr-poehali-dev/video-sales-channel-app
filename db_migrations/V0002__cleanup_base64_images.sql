@@ -1,0 +1,1 @@
+UPDATE products SET images = '{}' WHERE id = 'prod_ab803796868a4372a7016e82a682ec81';

@@ -90,11 +90,12 @@ def handler(event: dict, context) -> dict:
 
         if action == "add_product":
             pid = f"prod_{uuid.uuid4().hex}"
+            safe_images = _clean_images(body.get("images", []))
             cur.execute("""
                 INSERT INTO products (id,name,price,category,description,images,seller_id,seller_name,seller_avatar,in_stock)
                 VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING *
             """, (pid, body["name"], body["price"], body.get("category",""),
-                  body.get("description",""), body.get("images",[]),
+                  body.get("description",""), safe_images,
                   body["seller_id"], body["seller_name"], body.get("seller_avatar",""),
                   body.get("in_stock",99)))
             conn.commit()
@@ -230,6 +231,14 @@ def handler(event: dict, context) -> dict:
         conn.close()
 
 
+def _clean_images(images):
+    """Отфильтровываем base64 — оставляем только http(s) URL."""
+    result = []
+    for img in (images or []):
+        if isinstance(img, str) and img.startswith("http"):
+            result.append(img)
+    return result
+
 def _fmt_product(r):
     return {
         "id":           r["id"],
@@ -237,7 +246,7 @@ def _fmt_product(r):
         "price":        float(r["price"]),
         "category":     r["category"],
         "description":  r["description"],
-        "images":       list(r["images"] or []),
+        "images":       _clean_images(r["images"]),
         "sellerId":     r["seller_id"],
         "sellerName":   r["seller_name"],
         "sellerAvatar": r["seller_avatar"],

@@ -17,11 +17,20 @@ function fmtDuration(sec?: number) {
 
 export default function StreamsPage({ setPage }: StreamsPageProps) {
   const { user } = useAuth();
-  const { streams } = useStore();
+  const { streams, loading } = useStore();
   const [watching, setWatching] = useState<StoreStream | null>(null);
 
   if (watching) {
     return <StreamWatchPage stream={watching} setPage={(p) => { setWatching(null); setPage(p); }} />;
+  }
+
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 py-24 text-center animate-fade-in">
+        <Icon name="Loader" size={36} className="mx-auto mb-4 text-muted-foreground animate-spin" />
+        <p className="text-muted-foreground text-sm">Загружаем эфиры...</p>
+      </div>
+    );
   }
 
   const liveStreams = streams.filter(s => s.isLive);

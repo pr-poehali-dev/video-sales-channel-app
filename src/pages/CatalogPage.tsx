@@ -12,7 +12,7 @@ interface CatalogPageProps {
 }
 
 export default function CatalogPage({ addToCart, onProductClick }: CatalogPageProps) {
-  const { products } = useStore();
+  const { products, loading } = useStore();
   const [category, setCategory] = useState("Все");
   const [sort, setSort] = useState("new");
   const [search, setSearch] = useState("");
@@ -38,7 +38,12 @@ export default function CatalogPage({ addToCart, onProductClick }: CatalogPagePr
         )}
       </div>
 
-      {products.length === 0 ? (
+      {loading ? (
+        <div className="text-center py-24 animate-fade-in">
+          <Icon name="Loader" size={36} className="mx-auto mb-4 text-muted-foreground animate-spin" />
+          <p className="text-muted-foreground text-sm">Загружаем товары...</p>
+        </div>
+      ) : products.length === 0 ? (
         <div className="text-center py-24 animate-fade-in">
           <div className="w-20 h-20 rounded-2xl bg-secondary flex items-center justify-center mx-auto mb-5">
             <Icon name="ShoppingBag" size={36} className="text-muted-foreground opacity-40" />
