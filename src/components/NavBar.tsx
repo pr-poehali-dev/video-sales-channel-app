@@ -16,7 +16,9 @@ export default function NavBar({ page, setPage, cartCount }: NavBarProps) {
     { id: "streams", label: "Эфиры", icon: "Radio" },
     { id: "catalog", label: "Каталог", icon: "ShoppingBag" },
     ...(user && user.role !== "admin" ? [{ id: "dashboard" as Page, label: "Кабинет", icon: "LayoutDashboard" }] : []),
+    ...(user && user.role !== "admin" ? [{ id: "support" as Page, label: "Поддержка", icon: "MessageCircle" }] : []),
     ...(user?.role === "admin" ? [{ id: "admin" as Page, label: "Админ", icon: "ShieldCheck" }] : []),
+    ...(user?.role === "admin" ? [{ id: "support-admin" as Page, label: "Чаты", icon: "MessageSquare" }] : []),
   ];
 
   const mobileItems = [
@@ -105,6 +107,18 @@ export default function NavBar({ page, setPage, cartCount }: NavBarProps) {
               )}
               <span>{user ? user.name.split(" ")[0] : "Войти"}</span>
             </button>
+
+            {/* Поддержка — мобиль (в хедере) */}
+            {user && user.role !== "admin" && (
+              <button
+                onClick={() => setPage("support")}
+                className={`md:hidden flex items-center px-2 py-2 rounded-md transition-colors ${
+                  page === "support" ? "text-primary" : "text-muted-foreground"
+                }`}
+              >
+                <Icon name="MessageCircle" size={22} />
+              </button>
+            )}
 
             {/* Корзина — мобиль (в хедере справа) */}
             <button

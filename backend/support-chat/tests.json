@@ -1,0 +1,30 @@
+{
+  "tests": [
+    {
+      "name": "get_or_create_chat creates new chat",
+      "method": "POST",
+      "path": "/?action=get_or_create_chat",
+      "body": {"user_id": "test_user_123", "user_name": "Тест", "user_avatar": "Т"},
+      "expectedStatus": 201,
+      "expectedBody": {"userId": "test_user_123"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "get_or_create_chat returns existing chat",
+      "method": "POST",
+      "path": "/?action=get_or_create_chat",
+      "body": {"user_id": "test_user_123", "user_name": "Тест", "user_avatar": "Т"},
+      "expectedStatus": 200,
+      "expectedBody": {"userId": "test_user_123"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "get_all_chats returns list",
+      "method": "GET",
+      "path": "/?action=get_all_chats",
+      "expectedStatus": 200,
+      "expectedBody": [],
+      "bodyMatcher": "partial"
+    }
+  ]
+}

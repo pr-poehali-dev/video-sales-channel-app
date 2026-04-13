@@ -14,13 +14,16 @@ import SellerPage from "@/pages/SellerPage";
 import AuthPage from "@/pages/AuthPage";
 import AdminPage from "@/pages/AdminPage";
 import SellerRegisterPage from "@/pages/SellerRegisterPage";
+import SupportPage from "@/pages/SupportPage";
+import SupportAdminPage from "@/pages/SupportAdminPage";
 import NavBar from "@/components/NavBar";
 
 const BroadcastPage = lazy(() => import("@/pages/BroadcastPage"));
 
 export type Page =
   | "home" | "streams" | "catalog" | "profile" | "cart"
-  | "dashboard" | "product" | "seller" | "auth" | "broadcast" | "admin" | "seller-register";
+  | "dashboard" | "product" | "seller" | "auth" | "broadcast" | "admin" | "seller-register"
+  | "support" | "support-admin";
 
 export interface CartItem {
   id: string;
@@ -87,6 +90,8 @@ function AppInner() {
         {page === "broadcast" && <Suspense fallback={null}><BroadcastPage setPage={navSetPage} /></Suspense>}
         {page === "admin" && <AdminPage setPage={navSetPage} />}
         {page === "seller-register" && <SellerRegisterPage setPage={navSetPage} />}
+        {page === "support" && <SupportPage setPage={navSetPage} />}
+        {page === "support-admin" && <SupportAdminPage setPage={navSetPage} />}
         {page === "product" && selectedProductId !== null && (
           <ProductPage
             productId={selectedProductId}
