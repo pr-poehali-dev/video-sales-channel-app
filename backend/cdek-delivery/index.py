@@ -8,24 +8,24 @@ import urllib.request
 import urllib.parse
 
 
-CDEK_API = "https://api.cdek.ru/v2"
+CDEK_API = "https://api.edu.cdek.ru/v2"
 
 
 def get_token() -> str:
     client_id = os.environ.get("CDEK_CLIENT_ID", "EMscd6r9JnFiQ3bLoyjJY6eM78JrJceI")
     client_secret = os.environ.get("CDEK_CLIENT_SECRET", "PjLZkKBHEiLK3YsjtNrt3TGNG0ahs3kG")
-    data = urllib.parse.urlencode({
+    body = urllib.parse.urlencode({
         "grant_type": "client_credentials",
         "client_id": client_id,
         "client_secret": client_secret,
-    }).encode()
+    }).encode("utf-8")
     req = urllib.request.Request(
-        f"{CDEK_API}/oauth/token",
-        data=data,
+        f"{CDEK_API}/oauth/token?parameters",
+        data=body,
         headers={"Content-Type": "application/x-www-form-urlencoded"},
         method="POST",
     )
-    with urllib.request.urlopen(req, timeout=10) as resp:
+    with urllib.request.urlopen(req, timeout=15) as resp:
         return json.loads(resp.read())["access_token"]
 
 
@@ -49,42 +49,45 @@ def search_cities(query: str, token: str) -> list:
 
 
 def calc_tariffs(city_code: int, weight_g: int, token: str) -> list:
-    payload = json.dumps({
-        "from_location": {"code": 44},
-        "to_location": {"code": city_code},
-        "packages": [{"weight": max(weight_g, 100), "length": 20, "width": 15, "height": 10}],
-        "tariff_codes": [136, 137, 138, 139],
-    }).encode()
-    req = urllib.request.Request(
-        f"{CDEK_API}/calculator/tarifflist",
-        data=payload,
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json",
-        },
-        method="POST",
-    )
-    with urllib.request.urlopen(req, timeout=10) as resp:
-        result = json.loads(resp.read())
-        tariffs = result.get("tariff_codes", [])
-        names = {
-            136: "Посылка склад-склад",
-            137: "Посылка склад-дверь",
-            138: "Посылка дверь-склад",
-            139: "Посылка дверь-дверь",
-        }
-        out = []
-        for t in tariffs:
-            code = t.get("tariff_code")
-            if t.get("delivery_sum"):
-                out.append({
-                    "code": code,
-                    "name": names.get(code, t.get("tariff_name", "")),
-                    "price": int(t["delivery_sum"]),
-                    "days_min": t.get("period_min", 1),
-                    "days_max": t.get("period_max", 7),
-                })
-        return sorted(out, key=lambda x: x["price"])
+    tariff_codes = [136, 137, 138, 139]
+    names = {
+        136: "Посылка склад-склад",
+        137: "Посылка склад-дверь",
+        138: "Посылка дверь-склад",
+        139: "Посылка дверь-дверь",
+    }
+    out = []
+    for tariff_code in tariff_codes:
+        try:
+            payload = json.dumps({
+                "tariff_code": tariff_code,
+                "from_location": {"code": 270},
+                "to_location": {"code": city_code},
+                "packages": [{"weight": max(weight_g, 100), "length": 20, "width": 15, "height": 10}],
+            }).encode()
+            req = urllib.request.Request(
+                f"{CDEK_API}/calculator/packages",
+                data=payload,
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type": "application/json",
+                },
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                result = json.loads(resp.read())
+                price = result.get("total_sum") or result.get("delivery_sum")
+                if price:
+                    out.append({
+                        "code": tariff_code,
+                        "name": names.get(tariff_code, f"Тариф {tariff_code}"),
+                        "price": int(price),
+                        "days_min": result.get("period_min", 1),
+                        "days_max": result.get("period_max", 7),
+                    })
+        except Exception:
+            continue
+    return sorted(out, key=lambda x: x["price"])
 
 
 def handler(event: dict, context) -> dict:
@@ -100,6 +103,29 @@ def handler(event: dict, context) -> dict:
 
     params = event.get("queryStringParameters") or {}
     action = params.get("action", "cities")
+
+    if action == "debug_token":
+        client_id = os.environ.get("CDEK_CLIENT_ID", "EMscd6r9JnFiQ3bLoyjJY6eM78JrJceI")
+        client_secret = os.environ.get("CDEK_CLIENT_SECRET", "PjLZkKBHEiLK3YsjtNrt3TGNG0ahs3kG")
+        body = urllib.parse.urlencode({
+            "grant_type": "client_credentials",
+            "client_id": client_id,
+            "client_secret": client_secret,
+        }).encode("utf-8")
+        token_url = f"{CDEK_API}/oauth/token?parameters"
+        req = urllib.request.Request(
+            token_url,
+            data=body,
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                raw = resp.read()
+                return {"statusCode": 200, "headers": headers, "body": json.dumps({"ok": True, "raw": raw.decode(), "url": token_url})}
+        except urllib.error.HTTPError as e:
+            raw = e.read().decode()
+            return {"statusCode": 200, "headers": headers, "body": json.dumps({"status": e.code, "reason": e.reason, "body": raw, "url": token_url, "client_id": client_id})}
 
     try:
         token = get_token()
