@@ -3,6 +3,9 @@ import Icon from "@/components/ui/icon";
 import type { CartItem } from "@/App";
 import CdekDelivery from "@/components/CdekDelivery";
 import SbpPayment from "@/components/SbpPayment";
+import { useAuth } from "@/context/AuthContext";
+
+const STORE_API = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c";
 
 interface CartPageProps {
   cart: CartItem[];
@@ -16,18 +19,77 @@ interface SelectedDelivery {
 }
 
 type PaymentMethod = "sbp" | "card" | null;
+type DeliveryType = "cdek_pvz" | "cdek_courier";
 
 export default function CartPage({ cart, removeFromCart, updateQty }: CartPageProps) {
+  const { user } = useAuth();
   const [delivery, setDelivery] = useState<SelectedDelivery>({ tariff: null, city: null });
+  const [deliveryType, setDeliveryType] = useState<DeliveryType>("cdek_pvz");
   const [payMethod, setPayMethod] = useState<PaymentMethod>(null);
   const [showSbp, setShowSbp] = useState(false);
   const [orderDone, setOrderDone] = useState(false);
+  const [orderId, setOrderId] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // Контактные данные
+  const [buyerName, setBuyerName] = useState(user?.name || "");
+  const [buyerPhone, setBuyerPhone] = useState(user?.phone || "");
+  const [buyerEmail, setBuyerEmail] = useState(user?.email || "");
+  const [deliveryAddress, setDeliveryAddress] = useState("");
 
   const goodsTotal = cart.reduce((s, c) => s + c.price * c.qty, 0);
   const deliveryCost = delivery.tariff?.price ?? null;
   const orderTotal = goodsTotal + (deliveryCost ?? 0);
   const totalWeight = cart.reduce((s, c) => s + c.qty * 300, 0);
-  const canCheckout = deliveryCost !== null && payMethod !== null;
+
+  const contactFilled = buyerName.trim() && buyerPhone.trim();
+  const canCheckout = deliveryCost !== null && payMethod !== null && !!contactFilled;
+
+  const createOrder = async () => {
+    setSubmitError(null);
+    setSubmitting(true);
+    try {
+      const res = await fetch(`${STORE_API}?action=create_order`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          buyer_id: user?.id || "",
+          buyer_name: buyerName.trim(),
+          buyer_phone: buyerPhone.trim(),
+          buyer_email: buyerEmail.trim(),
+          delivery_type: deliveryType,
+          delivery_city_code: delivery.city?.code,
+          delivery_city_name: delivery.city ? `${delivery.city.city}${delivery.city.region ? ", " + delivery.city.region : ""}` : "",
+          delivery_address: deliveryAddress.trim(),
+          delivery_tariff_code: delivery.tariff?.code,
+          delivery_tariff_name: delivery.tariff?.name || "",
+          delivery_cost: deliveryCost || 0,
+          items: cart.map(c => ({ id: c.id, name: c.name, price: c.price, qty: c.qty, image: c.image })),
+          payment_method: payMethod || "",
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Ошибка оформления заказа");
+      setOrderId(data.order_id);
+      return data.order_id as string;
+    } catch (e: unknown) {
+      setSubmitError(e instanceof Error ? e.message : "Ошибка оформления заказа");
+      return null;
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleCheckout = async () => {
+    if (payMethod === "sbp") {
+      const oid = await createOrder();
+      if (oid) setShowSbp(true);
+    } else if (payMethod === "card") {
+      const oid = await createOrder();
+      if (oid) setOrderDone(true);
+    }
+  };
 
   if (orderDone) {
     return (
@@ -36,7 +98,8 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
           <Icon name="PackageCheck" size={42} className="text-green-400" />
         </div>
         <h2 className="font-oswald text-2xl font-semibold text-foreground mb-2">Заказ оформлен!</h2>
-        <p className="text-muted-foreground text-sm">Мы уже передали его в обработку. Ожидайте уведомления о доставке.</p>
+        {orderId && <p className="text-xs text-muted-foreground mb-1">№ {orderId}</p>}
+        <p className="text-muted-foreground text-sm">Мы передали его в обработку. Ожидайте уведомления о доставке СДЭК.</p>
       </div>
     );
   }
@@ -58,46 +121,109 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
       </h1>
 
       <div className="flex flex-col lg:flex-row gap-6">
-        {/* Items */}
-        <div className="flex-1 space-y-3">
-          {cart.map(item => (
-            <div key={item.id} className="bg-card border border-border rounded-xl p-4 flex gap-4 items-center animate-fade-in">
-              <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
-                <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+        {/* Левая колонка: товары + контакты + доставка */}
+        <div className="flex-1 space-y-4">
+          {/* Товары */}
+          <div className="space-y-3">
+            {cart.map(item => (
+              <div key={item.id} className="bg-card border border-border rounded-xl p-4 flex gap-4 items-center animate-fade-in">
+                <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
+                  <img src={item.image} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground line-clamp-2">{item.name}</p>
+                  <p className="font-oswald text-base font-semibold text-foreground mt-1">
+                    {item.price.toLocaleString("ru")} ₽
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button onClick={() => updateQty(item.id, item.qty - 1)}
+                    className="w-7 h-7 rounded-lg bg-secondary flex items-center justify-center hover:bg-secondary/70 transition-colors">
+                    <Icon name="Minus" size={13} />
+                  </button>
+                  <span className="w-6 text-center text-sm font-medium text-foreground">{item.qty}</span>
+                  <button onClick={() => updateQty(item.id, item.qty + 1)}
+                    className="w-7 h-7 rounded-lg bg-secondary flex items-center justify-center hover:bg-secondary/70 transition-colors">
+                    <Icon name="Plus" size={13} />
+                  </button>
+                  <button onClick={() => removeFromCart(item.id)}
+                    className="w-7 h-7 rounded-lg ml-1 flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors">
+                    <Icon name="Trash2" size={14} />
+                  </button>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground line-clamp-2">{item.name}</p>
-                <p className="font-oswald text-base font-semibold text-foreground mt-1">
-                  {item.price.toLocaleString("ru")} ₽
-                </p>
+            ))}
+          </div>
+
+          {/* Контактные данные */}
+          <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+            <p className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <Icon name="User" size={15} className="text-muted-foreground" />
+              Контактные данные
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Имя *</label>
+                <input value={buyerName} onChange={e => setBuyerName(e.target.value)}
+                  placeholder="Иван Иванов"
+                  className="w-full bg-secondary border border-border rounded-xl px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors" />
               </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <button
-                  onClick={() => updateQty(item.id, item.qty - 1)}
-                  className="w-7 h-7 rounded-lg bg-secondary flex items-center justify-center hover:bg-secondary/70 transition-colors"
-                >
-                  <Icon name="Minus" size={13} />
-                </button>
-                <span className="w-6 text-center text-sm font-medium text-foreground">{item.qty}</span>
-                <button
-                  onClick={() => updateQty(item.id, item.qty + 1)}
-                  className="w-7 h-7 rounded-lg bg-secondary flex items-center justify-center hover:bg-secondary/70 transition-colors"
-                >
-                  <Icon name="Plus" size={13} />
-                </button>
-                <button
-                  onClick={() => removeFromCart(item.id)}
-                  className="w-7 h-7 rounded-lg ml-1 flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors"
-                >
-                  <Icon name="Trash2" size={14} />
-                </button>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Телефон *</label>
+                <input value={buyerPhone} onChange={e => setBuyerPhone(e.target.value)}
+                  placeholder="+7 900 000-00-00"
+                  className="w-full bg-secondary border border-border rounded-xl px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors" />
               </div>
             </div>
-          ))}
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Email</label>
+              <input value={buyerEmail} onChange={e => setBuyerEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="w-full bg-secondary border border-border rounded-xl px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors" />
+            </div>
+          </div>
+
+          {/* Тип доставки */}
+          <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+            <p className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <Icon name="Truck" size={15} className="text-muted-foreground" />
+              Способ получения
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { id: "cdek_pvz" as DeliveryType, icon: "Store", label: "ПВЗ СДЭК", sub: "Самовывоз из пункта" },
+                { id: "cdek_courier" as DeliveryType, icon: "Home", label: "Курьер СДЭК", sub: "До двери" },
+              ].map(opt => (
+                <button key={opt.id} onClick={() => setDeliveryType(opt.id)}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border text-left transition-all ${
+                    deliveryType === opt.id ? "border-primary bg-primary/8" : "border-border bg-secondary hover:border-border/60"
+                  }`}>
+                  <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
+                    deliveryType === opt.id ? "border-primary" : "border-muted-foreground"
+                  }`}>
+                    {deliveryType === opt.id && <div className="w-2 h-2 rounded-full bg-primary" />}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{opt.label}</p>
+                    <p className="text-xs text-muted-foreground">{opt.sub}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            {deliveryType === "cdek_courier" && (
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Адрес доставки</label>
+                <input value={deliveryAddress} onChange={e => setDeliveryAddress(e.target.value)}
+                  placeholder="Улица, дом, квартира"
+                  className="w-full bg-secondary border border-border rounded-xl px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors" />
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Summary */}
-        <div className="w-full lg:w-80 flex-shrink-0 space-y-4">
+        {/* Правая колонка: расчёт + оплата */}
+        <div className="w-full lg:w-72 flex-shrink-0 space-y-4">
           {/* CDEK */}
           <div className="bg-card border border-border rounded-xl p-4">
             <CdekDelivery
@@ -106,22 +232,17 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
             />
           </div>
 
-          {/* Payment method */}
+          {/* Способ оплаты */}
           <div className="bg-card border border-border rounded-xl p-4 space-y-3">
-            <p className="text-sm font-medium text-foreground">Способ оплаты</p>
+            <p className="text-sm font-semibold text-foreground">Способ оплаты</p>
             {[
-              { id: "sbp" as PaymentMethod, icon: "⚡", label: "СБП", sub: "Оплата через приложение банка" },
+              { id: "sbp" as PaymentMethod, icon: "⚡", label: "СБП", sub: "Через приложение банка" },
               { id: "card" as PaymentMethod, icon: "💳", label: "Карта", sub: "Visa, MasterCard, Мир" },
             ].map(m => (
-              <button
-                key={m.id}
-                onClick={() => setPayMethod(m.id)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition-all text-left ${
-                  payMethod === m.id
-                    ? "border-primary bg-primary/8"
-                    : "border-border bg-secondary hover:border-border/60"
-                }`}
-              >
+              <button key={m.id} onClick={() => setPayMethod(m.id)}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all text-left ${
+                  payMethod === m.id ? "border-primary bg-primary/8" : "border-border bg-secondary hover:border-border/60"
+                }`}>
                 <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
                   payMethod === m.id ? "border-primary" : "border-muted-foreground"
                 }`}>
@@ -136,14 +257,13 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
             ))}
           </div>
 
-          {/* Order total */}
-          <div className="bg-card border border-border rounded-xl p-5">
+          {/* Итого */}
+          <div className="bg-card border border-border rounded-xl p-4">
             <div className="space-y-2 mb-4">
               <div className="flex justify-between text-sm text-muted-foreground">
                 <span>Товары ({cart.reduce((s, c) => s + c.qty, 0)} шт.)</span>
                 <span>{goodsTotal.toLocaleString("ru")} ₽</span>
               </div>
-
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Доставка</span>
                 {deliveryCost === null ? (
@@ -152,7 +272,6 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
                   <span className="text-foreground">{deliveryCost.toLocaleString("ru")} ₽</span>
                 )}
               </div>
-
               {delivery.city && delivery.tariff && (
                 <div className="bg-secondary rounded-lg px-3 py-2 text-xs text-muted-foreground">
                   <div className="flex items-center gap-1.5 mb-0.5">
@@ -167,41 +286,50 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
                   </div>
                 </div>
               )}
-
               <div className="border-t border-border pt-2 flex justify-between font-semibold">
                 <span className="text-foreground">Итого</span>
                 <span className="font-oswald text-lg text-foreground">{orderTotal.toLocaleString("ru")} ₽</span>
               </div>
             </div>
 
-            {/* SBP inline flow */}
+            {submitError && (
+              <div className="flex items-center gap-2 bg-destructive/10 text-destructive text-xs px-3 py-2 rounded-lg mb-3">
+                <Icon name="AlertCircle" size={13} />
+                {submitError}
+              </div>
+            )}
+
             {showSbp ? (
               <SbpPayment
                 amount={orderTotal}
-                description={`Заказ LiveShop — ${cart.length} товара`}
+                description={`Заказ — ${cart.length} товар${cart.length > 1 ? "а" : ""}`}
                 onSuccess={() => setOrderDone(true)}
                 onCancel={() => setShowSbp(false)}
               />
             ) : (
               <>
                 <button
-                  disabled={!canCheckout}
-                  onClick={() => payMethod === "sbp" ? setShowSbp(true) : undefined}
+                  disabled={!canCheckout || submitting}
+                  onClick={handleCheckout}
                   className="w-full bg-primary text-primary-foreground font-semibold py-3 rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  {payMethod === "sbp" ? (
+                  {submitting ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : payMethod === "sbp" ? (
                     <><span>⚡</span> Оплатить через СБП</>
                   ) : payMethod === "card" ? (
                     <><Icon name="CreditCard" size={18} /> Оплатить картой</>
                   ) : (
-                    <><Icon name="CreditCard" size={18} /> Оформить заказ</>
+                    <><Icon name="ShoppingBag" size={18} /> Оформить заказ</>
                   )}
                 </button>
 
-                {!canCheckout && (
+                {!canCheckout && !submitting && (
                   <p className="text-xs text-muted-foreground text-center mt-2">
-                    {deliveryCost === null
-                      ? "Выберите способ доставки"
+                    {!contactFilled
+                      ? "Заполните контактные данные"
+                      : deliveryCost === null
+                      ? "Выберите город и способ доставки"
                       : "Выберите способ оплаты"}
                   </p>
                 )}

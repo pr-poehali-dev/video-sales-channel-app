@@ -71,6 +71,14 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
   const [fError, setFError] = useState<string | null>(null);
   const [fImgLoading, setFImgLoading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  // Доставка и опции
+  const [fWeightG, setFWeightG] = useState("500");
+  const [fLengthCm, setFLengthCm] = useState("20");
+  const [fWidthCm, setFWidthCm] = useState("15");
+  const [fHeightCm, setFHeightCm] = useState("10");
+  const [fCdek, setFCdek] = useState(true);
+  const [fNalog, setFNalog] = useState(false);
+  const [fFitting, setFFitting] = useState(false);
 
   if (!user) {
     return (
@@ -90,9 +98,15 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
     );
   }
 
+  const resetForm = () => {
+    setFName(""); setFPrice(""); setFCategory(CATEGORIES[0]); setFDesc(""); setFImages([]); setFError(null);
+    setFWeightG("500"); setFLengthCm("20"); setFWidthCm("15"); setFHeightCm("10");
+    setFCdek(true); setFNalog(false); setFFitting(false);
+  };
+
   const openAddForm = () => {
     setEditId(null);
-    setFName(""); setFPrice(""); setFCategory(CATEGORIES[0]); setFDesc(""); setFImages([]); setFError(null);
+    resetForm();
     setShowForm(true);
   };
 
@@ -102,6 +116,13 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
     setEditId(id);
     setFName(p.name); setFPrice(String(p.price)); setFCategory(p.category);
     setFDesc(p.description); setFImages(p.images); setFError(null);
+    setFWeightG(String((p as { weightG?: number }).weightG ?? 500));
+    setFLengthCm(String((p as { lengthCm?: number }).lengthCm ?? 20));
+    setFWidthCm(String((p as { widthCm?: number }).widthCm ?? 15));
+    setFHeightCm(String((p as { heightCm?: number }).heightCm ?? 10));
+    setFCdek((p as { cdekEnabled?: boolean }).cdekEnabled ?? true);
+    setFNalog((p as { nalogEnabled?: boolean }).nalogEnabled ?? false);
+    setFFitting((p as { fittingEnabled?: boolean }).fittingEnabled ?? false);
     setShowForm(true);
   };
 
@@ -130,17 +151,27 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
     const priceNum = Number(fPrice.replace(/\s/g, "").replace(",", "."));
     if (!fPrice.trim() || isNaN(priceNum) || priceNum <= 0) { setFError("Введите корректную цену"); return; }
 
+    const extraFields = {
+      weightG: Number(fWeightG) || 500,
+      lengthCm: Number(fLengthCm) || 20,
+      widthCm: Number(fWidthCm) || 15,
+      heightCm: Number(fHeightCm) || 10,
+      cdekEnabled: fCdek,
+      nalogEnabled: fNalog,
+      fittingEnabled: fFitting,
+    };
+
     if (editId) {
       updateProduct(editId, {
         name: fName.trim(), price: priceNum, category: fCategory,
-        description: fDesc.trim(), images: fImages,
+        description: fDesc.trim(), images: fImages, ...extraFields,
       });
     } else {
       addProduct({
         name: fName.trim(), price: priceNum, category: fCategory,
         description: fDesc.trim(), images: fImages,
         sellerId: user.id, sellerName: user.name, sellerAvatar: user.avatar,
-        inStock: 99,
+        inStock: 99, ...extraFields,
       });
     }
     setShowForm(false);
@@ -165,13 +196,22 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
           <h1 className="font-oswald text-2xl font-semibold text-foreground tracking-wide">Мой кабинет</h1>
           <p className="text-sm text-muted-foreground mt-0.5">{user.name}{user.city ? ` · ${user.city}` : ""}</p>
         </div>
-        <button
-          onClick={() => setPage("broadcast")}
-          className="bg-primary text-primary-foreground font-semibold px-4 py-2.5 rounded-xl hover:opacity-90 transition-opacity text-sm flex items-center gap-2"
-        >
-          <span className="w-2 h-2 rounded-full bg-white animate-live-pulse" />
-          Начать эфир
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setPage("seller-register" as Page)}
+            className="border border-border text-muted-foreground font-medium px-3 py-2.5 rounded-xl hover:bg-secondary transition-colors text-sm flex items-center gap-2"
+          >
+            <Icon name="FileText" size={15} />
+            Реквизиты
+          </button>
+          <button
+            onClick={() => setPage("broadcast")}
+            className="bg-primary text-primary-foreground font-semibold px-4 py-2.5 rounded-xl hover:opacity-90 transition-opacity text-sm flex items-center gap-2"
+          >
+            <span className="w-2 h-2 rounded-full bg-white animate-live-pulse" />
+            Начать эфир
+          </button>
+        </div>
       </div>
 
       {/* Статистика */}
@@ -424,6 +464,51 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
                 <textarea value={fDesc} onChange={e => setFDesc(e.target.value)}
                   placeholder="Материал, размер, особенности..." rows={3}
                   className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors resize-none" />
+              </div>
+
+              {/* Вес и габариты */}
+              <div>
+                <label className="text-xs text-muted-foreground mb-2 block">Вес и габариты (для расчёта доставки)</label>
+                <div className="grid grid-cols-4 gap-2">
+                  {[
+                    { label: "Вес, г", val: fWeightG, set: setFWeightG, placeholder: "500" },
+                    { label: "Дл., см", val: fLengthCm, set: setFLengthCm, placeholder: "20" },
+                    { label: "Шир., см", val: fWidthCm, set: setFWidthCm, placeholder: "15" },
+                    { label: "Выс., см", val: fHeightCm, set: setFHeightCm, placeholder: "10" },
+                  ].map(({ label, val, set, placeholder }) => (
+                    <div key={label}>
+                      <label className="text-[10px] text-muted-foreground mb-1 block">{label}</label>
+                      <input value={val} onChange={e => set(e.target.value.replace(/\D/g, ""))}
+                        placeholder={placeholder} inputMode="numeric"
+                        className="w-full bg-secondary border border-border rounded-lg px-2 py-2 text-sm text-foreground text-center outline-none focus:border-primary/50 transition-colors" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Опции */}
+              <div>
+                <label className="text-xs text-muted-foreground mb-2 block">Опции доставки и оплаты</label>
+                <div className="space-y-2">
+                  {[
+                    { key: "cdek" as const, label: "Доставка СДЭК", sub: "Покупатель выбирает ПВЗ или курьер", state: fCdek, setter: setFCdek },
+                    { key: "nalog" as const, label: "Безопасная сделка (Наложка)", sub: "Оплата при получении", state: fNalog, setter: setFNalog },
+                    { key: "fitting" as const, label: "Возможность примерки", sub: "Перед оплатой на ПВЗ", state: fFitting, setter: setFFitting },
+                  ].map(({ key, label, sub, state, setter }) => (
+                    <label key={key} className="flex items-center gap-3 cursor-pointer group bg-secondary rounded-xl px-3 py-2.5">
+                      <div
+                        onClick={() => setter(!state)}
+                        className={`w-10 h-5 rounded-full transition-all flex-shrink-0 relative ${state ? "bg-primary" : "bg-border"}`}
+                      >
+                        <div className={`w-4 h-4 rounded-full bg-white absolute top-0.5 transition-all ${state ? "left-5" : "left-0.5"}`} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-foreground">{label}</p>
+                        <p className="text-xs text-muted-foreground">{sub}</p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
               </div>
 
               {fError && (

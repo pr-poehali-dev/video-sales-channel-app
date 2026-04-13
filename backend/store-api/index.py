@@ -124,6 +124,77 @@ def handler(event: dict, context) -> dict:
             conn.commit()
             return ok({"ok": True})
 
+        # ─────────── SELLERS ───────────
+        if action == "get_seller_profile":
+            user_id = qs.get("user_id") or body.get("user_id")
+            if not user_id:
+                return err("user_id required")
+            cur.execute("SELECT * FROM sellers WHERE user_id=%s", (user_id,))
+            row = cur.fetchone()
+            return ok(_fmt_seller(row) if row else None)
+
+        if action == "save_seller_profile":
+            user_id = body.get("user_id")
+            if not user_id:
+                return err("user_id required")
+            cur.execute("SELECT user_id FROM sellers WHERE user_id=%s", (user_id,))
+            exists = cur.fetchone()
+            fields = ["legal_type","legal_name","inn","bank_account","bank_name","bik",
+                      "contact_phone","contact_email","cdek_id","agreed_offer","agreed_pd"]
+            if exists:
+                set_parts = [f"{f}=%s" for f in fields if f in body]
+                vals = [body[f] for f in fields if f in body]
+                if set_parts:
+                    vals.append(user_id)
+                    cur.execute(f"UPDATE sellers SET {', '.join(set_parts)} WHERE user_id=%s", vals)
+            else:
+                cur.execute("""
+                    INSERT INTO sellers (user_id,legal_type,legal_name,inn,bank_account,bank_name,bik,
+                                        contact_phone,contact_email,cdek_id,agreed_offer,agreed_pd)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                """, (user_id,
+                      body.get("legal_type","individual"), body.get("legal_name",""),
+                      body.get("inn",""), body.get("bank_account",""), body.get("bank_name",""),
+                      body.get("bik",""), body.get("contact_phone",""), body.get("contact_email",""),
+                      body.get("cdek_id",""), body.get("agreed_offer",False), body.get("agreed_pd",False)))
+            conn.commit()
+            cur.execute("SELECT * FROM sellers WHERE user_id=%s", (user_id,))
+            return ok(_fmt_seller(cur.fetchone()))
+
+        # ─────────── ORDERS ───────────
+        if action == "create_order":
+            oid = f"order_{uuid.uuid4().hex[:12]}"
+            items = body.get("items", [])
+            goods_total = sum(i.get("price",0) * i.get("qty",1) for i in items)
+            delivery_cost = float(body.get("delivery_cost", 0))
+            order_total = goods_total + delivery_cost
+            cur.execute("""
+                INSERT INTO orders (id,buyer_id,buyer_name,buyer_phone,buyer_email,
+                    delivery_type,delivery_city_code,delivery_city_name,delivery_address,
+                    delivery_tariff_code,delivery_tariff_name,delivery_cost,
+                    items,goods_total,order_total,status,payment_method)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                RETURNING id
+            """, (oid, body.get("buyer_id",""), body.get("buyer_name",""),
+                  body.get("buyer_phone",""), body.get("buyer_email",""),
+                  body.get("delivery_type","cdek_pvz"),
+                  body.get("delivery_city_code"), body.get("delivery_city_name",""),
+                  body.get("delivery_address",""), body.get("delivery_tariff_code"),
+                  body.get("delivery_tariff_name",""), delivery_cost,
+                  json.dumps(items, ensure_ascii=False), goods_total, order_total,
+                  "new", body.get("payment_method","")))
+            conn.commit()
+            return ok({"ok": True, "order_id": oid, "order_total": order_total}, 201)
+
+        if action == "get_orders":
+            buyer_id = qs.get("buyer_id") or body.get("buyer_id")
+            if buyer_id:
+                cur.execute("SELECT * FROM orders WHERE buyer_id=%s ORDER BY created_at DESC", (buyer_id,))
+            else:
+                cur.execute("SELECT * FROM orders ORDER BY created_at DESC LIMIT 100")
+            rows = cur.fetchall()
+            return ok([_fmt_order(r) for r in rows])
+
         # ─────────── PRODUCTS ───────────
         if action == "get_products":
             seller_id = qs.get("seller_id")
@@ -138,19 +209,26 @@ def handler(event: dict, context) -> dict:
             pid = f"prod_{uuid.uuid4().hex}"
             safe_images = _clean_images(body.get("images", []))
             cur.execute("""
-                INSERT INTO products (id,name,price,category,description,images,seller_id,seller_name,seller_avatar,in_stock)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING *
+                INSERT INTO products (id,name,price,category,description,images,seller_id,seller_name,seller_avatar,
+                    in_stock,weight_g,length_cm,width_cm,height_cm,cdek_enabled,nalog_enabled,fitting_enabled)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING *
             """, (pid, body["name"], body["price"], body.get("category",""),
                   body.get("description",""), safe_images,
                   body["seller_id"], body["seller_name"], body.get("seller_avatar",""),
-                  body.get("in_stock",99)))
+                  body.get("in_stock",99),
+                  body.get("weight_g",500), body.get("length_cm",20),
+                  body.get("width_cm",15), body.get("height_cm",10),
+                  body.get("cdek_enabled",True), body.get("nalog_enabled",False),
+                  body.get("fitting_enabled",False)))
             conn.commit()
             return ok(_fmt_product(cur.fetchone()), 201)
 
         if action == "update_product":
             pid = body.get("id") or qs.get("id")
             fields, vals = [], []
-            for f in ("name","price","category","description","images","in_stock"):
+            for f in ("name","price","category","description","images","in_stock",
+                      "weight_g","length_cm","width_cm","height_cm",
+                      "cdek_enabled","nalog_enabled","fitting_enabled"):
                 if f in body:
                     fields.append(f"{f}=%s")
                     vals.append(body[f])
@@ -488,19 +566,74 @@ def _clean_images(images):
             result.append(img)
     return result
 
+def _fmt_seller(r):
+    if not r:
+        return None
+    return {
+        "userId":       r["user_id"],
+        "legalType":    r["legal_type"],
+        "legalName":    r["legal_name"],
+        "inn":          r["inn"],
+        "bankAccount":  r["bank_account"],
+        "bankName":     r["bank_name"],
+        "bik":          r["bik"],
+        "contactPhone": r["contact_phone"],
+        "contactEmail": r["contact_email"],
+        "cdekId":       r["cdek_id"],
+        "agreedOffer":  r["agreed_offer"],
+        "agreedPd":     r["agreed_pd"],
+        "verified":     r["verified"],
+        "createdAt":    r["created_at"].strftime("%d.%m.%Y") if r["created_at"] else "",
+    }
+
+def _fmt_order(r):
+    items = r["items"]
+    if isinstance(items, str):
+        try:
+            items = json.loads(items)
+        except Exception:
+            items = []
+    return {
+        "id":                 r["id"],
+        "buyerId":            r["buyer_id"],
+        "buyerName":          r["buyer_name"],
+        "buyerPhone":         r["buyer_phone"],
+        "buyerEmail":         r["buyer_email"],
+        "deliveryType":       r["delivery_type"],
+        "deliveryCityCode":   r["delivery_city_code"],
+        "deliveryCityName":   r["delivery_city_name"],
+        "deliveryAddress":    r["delivery_address"],
+        "deliveryTariffCode": r["delivery_tariff_code"],
+        "deliveryTariffName": r["delivery_tariff_name"],
+        "deliveryCost":       float(r["delivery_cost"]),
+        "items":              items,
+        "goodsTotal":         float(r["goods_total"]),
+        "orderTotal":         float(r["order_total"]),
+        "status":             r["status"],
+        "paymentMethod":      r["payment_method"],
+        "createdAt":          r["created_at"].strftime("%d.%m.%Y %H:%M") if r["created_at"] else "",
+    }
+
 def _fmt_product(r):
     return {
-        "id":           r["id"],
-        "name":         r["name"],
-        "price":        float(r["price"]),
-        "category":     r["category"],
-        "description":  r["description"],
-        "images":       _clean_images(r["images"]),
-        "sellerId":     r["seller_id"],
-        "sellerName":   r["seller_name"],
-        "sellerAvatar": r["seller_avatar"],
-        "inStock":      r["in_stock"],
-        "createdAt":    r["created_at"].strftime("%d %B %Y") if r["created_at"] else "",
+        "id":             r["id"],
+        "name":           r["name"],
+        "price":          float(r["price"]),
+        "category":       r["category"],
+        "description":    r["description"],
+        "images":         _clean_images(r["images"]),
+        "sellerId":       r["seller_id"],
+        "sellerName":     r["seller_name"],
+        "sellerAvatar":   r["seller_avatar"],
+        "inStock":        r["in_stock"],
+        "weightG":        r.get("weight_g", 500),
+        "lengthCm":       r.get("length_cm", 20),
+        "widthCm":        r.get("width_cm", 15),
+        "heightCm":       r.get("height_cm", 10),
+        "cdekEnabled":    r.get("cdek_enabled", True),
+        "nalogEnabled":   r.get("nalog_enabled", False),
+        "fittingEnabled": r.get("fitting_enabled", False),
+        "createdAt":      r["created_at"].strftime("%d %B %Y") if r["created_at"] else "",
     }
 
 def _fmt_stream(r):

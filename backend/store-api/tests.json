@@ -8,20 +8,33 @@
       "bodyMatcher": "partial"
     },
     {
+      "name": "get products returns 200",
+      "method": "GET",
+      "path": "/?action=get_products",
+      "expectedStatus": 200,
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "get seller profile without user_id returns 400",
+      "method": "GET",
+      "path": "/?action=get_seller_profile",
+      "expectedStatus": 400,
+      "expectedBody": {"error": "user_id required"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "get orders returns 200",
+      "method": "GET",
+      "path": "/?action=get_orders",
+      "expectedStatus": 200,
+      "bodyMatcher": "partial"
+    },
+    {
       "name": "unknown action returns 404",
       "method": "GET",
       "path": "/?action=unknown",
       "expectedStatus": 404,
       "expectedBody": {"error": "unknown action"},
-      "bodyMatcher": "partial"
-    },
-    {
-      "name": "delete_stream without id returns 400",
-      "method": "POST",
-      "path": "/?action=delete_stream",
-      "body": {},
-      "expectedStatus": 400,
-      "expectedBody": {"error": "id required"},
       "bodyMatcher": "partial"
     },
     {
