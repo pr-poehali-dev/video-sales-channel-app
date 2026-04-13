@@ -267,6 +267,100 @@ def handler(event: dict, context) -> dict:
             conn.commit()
             return ok(_fmt_review(cur.fetchone()), 201)
 
+        # ─────────── WEBRTC SIGNALING ───────────
+        # Вещатель отправляет offer, зритель отвечает answer, оба обмениваются ICE
+        if action == "signal_send":
+            stream_id = body.get("stream_id")
+            viewer_id = body.get("viewer_id")
+            sig_type  = body.get("type")   # offer | answer | ice-broadcaster | ice-viewer
+            payload   = body.get("payload")
+            if not all([stream_id, viewer_id, sig_type, payload]):
+                return err("stream_id, viewer_id, type, payload required")
+            sid = f"sig_{uuid.uuid4().hex}"
+            cur.execute(
+                "INSERT INTO webrtc_signals (id,stream_id,viewer_id,type,payload) VALUES (%s,%s,%s,%s,%s)",
+                (sid, stream_id, viewer_id, sig_type, json.dumps(payload) if not isinstance(payload, str) else payload)
+            )
+            conn.commit()
+            # Удаляем старые сигналы этого типа для этой пары (оставляем только последний)
+            if sig_type in ("offer", "answer"):
+                cur.execute(
+                    "DELETE FROM webrtc_signals WHERE stream_id=%s AND viewer_id=%s AND type=%s AND id!=%s",
+                    (stream_id, viewer_id, sig_type, sid)
+                )
+                conn.commit()
+            return ok({"ok": True, "id": sid})
+
+        if action == "signal_get":
+            stream_id = qs.get("stream_id") or body.get("stream_id")
+            viewer_id = qs.get("viewer_id") or body.get("viewer_id")
+            sig_type  = qs.get("type") or body.get("type")
+            if not all([stream_id, viewer_id, sig_type]):
+                return err("stream_id, viewer_id, type required")
+            cur.execute(
+                "SELECT * FROM webrtc_signals WHERE stream_id=%s AND viewer_id=%s AND type=%s ORDER BY created_at DESC LIMIT 1",
+                (stream_id, viewer_id, sig_type)
+            )
+            row = cur.fetchone()
+            if not row:
+                return ok(None)
+            payload = row["payload"]
+            try:
+                payload = json.loads(payload)
+            except Exception:
+                pass
+            return ok({"id": row["id"], "type": row["type"], "payload": payload})
+
+        if action == "signal_get_viewers":
+            # Вещатель получает список зрителей, у которых есть незаотвеченный offer-запрос
+            stream_id = qs.get("stream_id") or body.get("stream_id")
+            if not stream_id:
+                return err("stream_id required")
+            # Находим viewer_id у которых есть offer но нет answer от вещателя
+            cur.execute("""
+                SELECT DISTINCT viewer_id FROM webrtc_signals
+                WHERE stream_id=%s AND type='offer'
+                AND created_at > NOW() - INTERVAL '5 minutes'
+            """, (stream_id,))
+            rows = cur.fetchall()
+            return ok([r["viewer_id"] for r in rows])
+
+        if action == "signal_ice_get":
+            # Получить все ICE кандидаты для данной пары
+            stream_id = qs.get("stream_id") or body.get("stream_id")
+            viewer_id = qs.get("viewer_id") or body.get("viewer_id")
+            sig_type  = qs.get("type") or body.get("type")  # ice-broadcaster | ice-viewer
+            after_id  = qs.get("after_id") or body.get("after_id", "")
+            if not all([stream_id, viewer_id, sig_type]):
+                return err("stream_id, viewer_id, type required")
+            if after_id:
+                cur.execute(
+                    "SELECT * FROM webrtc_signals WHERE stream_id=%s AND viewer_id=%s AND type=%s AND id>%s ORDER BY created_at ASC",
+                    (stream_id, viewer_id, sig_type, after_id)
+                )
+            else:
+                cur.execute(
+                    "SELECT * FROM webrtc_signals WHERE stream_id=%s AND viewer_id=%s AND type=%s ORDER BY created_at ASC",
+                    (stream_id, viewer_id, sig_type)
+                )
+            rows = cur.fetchall()
+            result = []
+            for r in rows:
+                payload = r["payload"]
+                try:
+                    payload = json.loads(payload)
+                except Exception:
+                    pass
+                result.append({"id": r["id"], "payload": payload})
+            return ok(result)
+
+        if action == "signal_cleanup":
+            stream_id = body.get("stream_id")
+            if stream_id:
+                cur.execute("DELETE FROM webrtc_signals WHERE stream_id=%s", (stream_id,))
+                conn.commit()
+            return ok({"ok": True})
+
         return err("unknown action", 404)
 
     except Exception as e:

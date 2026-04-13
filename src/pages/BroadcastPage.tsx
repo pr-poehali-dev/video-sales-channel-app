@@ -4,18 +4,37 @@ import { useAuth } from "@/context/AuthContext";
 import { useStore, type ChatMessage } from "@/context/StoreContext";
 import type { Page } from "@/App";
 
-const STORE_API = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c";
+const API = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c";
+
+const ICE_SERVERS = [
+  { urls: "stun:stun.l.google.com:19302" },
+  { urls: "stun:stun1.l.google.com:19302" },
+];
 
 type FacingMode = "user" | "environment";
 
-// ── Встроенный чат продавца ──────────────────────────────────────────────────
+async function sig(action: string, params: Record<string, unknown>) {
+  const r = await fetch(`${API}?action=${action}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(params),
+  });
+  return r.json();
+}
+
+async function sigGet(action: string, params: Record<string, string>) {
+  const qs = new URLSearchParams({ action, ...params }).toString();
+  const r = await fetch(`${API}?${qs}`);
+  return r.json();
+}
+
+// ── Чат вещателя ─────────────────────────────────────────────────────────────
 function LiveChat({ streamId }: { streamId: string }) {
   const { user } = useAuth();
   const { addChatMessage, getStreamMessages } = useStore();
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const chatEndRef = useRef<HTMLDivElement>(null);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const refresh = useCallback(async () => {
     try { setMessages(await getStreamMessages(streamId)); } catch { /* ignore */ }
@@ -23,8 +42,8 @@ function LiveChat({ streamId }: { streamId: string }) {
 
   useEffect(() => {
     refresh();
-    pollRef.current = setInterval(refresh, 3000);
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+    const t = setInterval(refresh, 3000);
+    return () => clearInterval(t);
   }, [refresh]);
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages.length]);
@@ -76,12 +95,18 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
   const { user } = useAuth();
   const { addStream, updateStream } = useStore();
 
-  const videoRef       = useRef<HTMLVideoElement>(null);
-  const cameraRef      = useRef<MediaStream | null>(null);
-  const recorderRef    = useRef<MediaRecorder | null>(null);
-  const chunksRef      = useRef<Blob[]>([]);
-  const timerRef       = useRef<ReturnType<typeof setInterval> | null>(null);
-  const streamIdRef    = useRef<string | null>(null);
+  const videoRef    = useRef<HTMLVideoElement>(null);
+  const cameraRef   = useRef<MediaStream | null>(null);
+  const streamIdRef = useRef<string | null>(null);
+  const timerRef    = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollRef     = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // viewerId → RTCPeerConnection
+  const peersRef = useRef<Map<string, RTCPeerConnection>>(new Map());
+  // ICE кандидаты которые пришли до setLocalDescription
+  const pendingIceRef = useRef<Map<string, RTCIceCandidateInit[]>>(new Map());
+  // последние отправленные ICE id чтобы не слать дважды
+  const sentIceRef = useRef<Map<string, string>>(new Map());
 
   const [facingMode, setFacingMode]   = useState<FacingMode>("environment");
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -90,10 +115,9 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
   const [title, setTitle]             = useState("");
   const [isLive, setIsLive]           = useState(false);
   const [duration, setDuration]       = useState(0);
-  const [uploading, setUploading]     = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
   const [finished, setFinished]       = useState(false);
   const [savedDuration, setSavedDuration] = useState(0);
+  const [viewerCount, setViewerCount] = useState(0);
 
   const startCamera = useCallback(async (facing: FacingMode) => {
     setCameraError(null);
@@ -104,7 +128,7 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
         audio: true,
       });
       cameraRef.current = stream;
-      if (videoRef.current) { videoRef.current.srcObject = stream; }
+      if (videoRef.current) videoRef.current.srcObject = stream;
       setCameraReady(true);
     } catch (e: unknown) {
       const err = e as Error;
@@ -120,98 +144,162 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
     return () => {
       cameraRef.current?.getTracks().forEach(t => t.stop());
       if (timerRef.current) clearInterval(timerRef.current);
+      if (pollRef.current) clearInterval(pollRef.current);
     };
   }, []);
 
-  const switchCamera = async () => {
-    const next: FacingMode = facingMode === "environment" ? "user" : "environment";
-    setFacingMode(next);
-    await startCamera(next);
-  };
+  // Создаём peer-соединение для нового зрителя и отправляем offer
+  const connectViewer = useCallback(async (viewerId: string) => {
+    const sid = streamIdRef.current;
+    if (!sid || !cameraRef.current || peersRef.current.has(viewerId)) return;
 
-  const toggleMute = () => {
-    cameraRef.current?.getAudioTracks().forEach(t => { t.enabled = !t.enabled; });
-    setIsMuted(m => !m);
-  };
+    const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+    peersRef.current.set(viewerId, pc);
+    pendingIceRef.current.set(viewerId, []);
+
+    // Добавляем все треки камеры
+    cameraRef.current.getTracks().forEach(t => pc.addTrack(t, cameraRef.current!));
+
+    // ICE кандидаты → отправляем зрителю
+    pc.onicecandidate = async (e) => {
+      if (e.candidate) {
+        await sig("signal_send", {
+          stream_id: sid,
+          viewer_id: viewerId,
+          type: "ice-broadcaster",
+          payload: e.candidate.toJSON(),
+        });
+      }
+    };
+
+    pc.onconnectionstatechange = () => {
+      if (pc.connectionState === "disconnected" || pc.connectionState === "failed") {
+        pc.close();
+        peersRef.current.delete(viewerId);
+        setViewerCount(peersRef.current.size);
+      }
+    };
+
+    // Создаём offer
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    await sig("signal_send", {
+      stream_id: sid,
+      viewer_id: viewerId,
+      type: "offer",
+      payload: { type: offer.type, sdp: offer.sdp },
+    });
+
+    // Применяем отложенные ICE кандидаты зрителя если пришли раньше
+    const pending = pendingIceRef.current.get(viewerId) || [];
+    for (const c of pending) {
+      try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch { /* ignore */ }
+    }
+    pendingIceRef.current.delete(viewerId);
+  }, []);
+
+  // Polling: новые зрители + answer + ICE от зрителей
+  const poll = useCallback(async () => {
+    const sid = streamIdRef.current;
+    if (!sid) return;
+
+    // Новые зрители
+    const viewersResp = await sigGet("signal_get_viewers", { stream_id: sid });
+    const viewers: string[] = Array.isArray(viewersResp) ? viewersResp : [];
+    for (const vid of viewers) {
+      if (!peersRef.current.has(vid)) {
+        await connectViewer(vid);
+      }
+    }
+    setViewerCount(peersRef.current.size);
+
+    // Answer и ICE от каждого зрителя
+    for (const [vid, pc] of peersRef.current.entries()) {
+      // Answer
+      if (pc.remoteDescription === null) {
+        const answerResp = await sigGet("signal_get", { stream_id: sid, viewer_id: vid, type: "answer" });
+        if (answerResp?.payload) {
+          try {
+            await pc.setRemoteDescription(new RTCSessionDescription(answerResp.payload));
+          } catch { /* ignore */ }
+        }
+      }
+
+      // ICE от зрителя
+      const lastIceId = sentIceRef.current.get(`ice-viewer-${vid}`) || "";
+      const ices = await sigGet("signal_ice_get", {
+        stream_id: sid,
+        viewer_id: vid,
+        type: "ice-viewer",
+        after_id: lastIceId,
+      });
+      if (Array.isArray(ices) && ices.length > 0) {
+        for (const ice of ices) {
+          try { await pc.addIceCandidate(new RTCIceCandidate(ice.payload)); } catch { /* ignore */ }
+        }
+        sentIceRef.current.set(`ice-viewer-${vid}`, ices[ices.length - 1].id);
+      }
+    }
+  }, [connectViewer]);
 
   const startBroadcast = async () => {
     if (!title.trim() || !user || !cameraRef.current) return;
-    // Создаём запись в БД
     const s = await addStream({ title: title.trim(), sellerId: user.id, sellerName: user.name, sellerAvatar: user.avatar, isLive: true, viewers: 0 });
     streamIdRef.current = s.id;
-    // Начинаем запись
-    chunksRef.current = [];
-    const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
-      ? "video/webm;codecs=vp9,opus"
-      : MediaRecorder.isTypeSupported("video/webm")
-        ? "video/webm"
-        : "video/mp4";
-    try {
-      // 300kbps — компактно для мобильного, ~2.2 МБ/мин, до 10 мин = ~22 МБ
-      const rec = new MediaRecorder(cameraRef.current, { mimeType, videoBitsPerSecond: 300_000 });
-      rec.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data); };
-      rec.start(5000); // чанки каждые 5 сек
-      recorderRef.current = rec;
-    } catch { /* запись недоступна, эфир всё равно идёт */ }
     setIsLive(true);
     setDuration(0);
     timerRef.current = setInterval(() => setDuration(d => d + 1), 1000);
+    // Polling каждые 2 сек — ищем зрителей
+    pollRef.current = setInterval(poll, 2000);
   };
 
   const stopBroadcast = async () => {
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
     const dur = duration;
     setSavedDuration(dur);
     setIsLive(false);
     const sid = streamIdRef.current;
 
-    // Помечаем в БД как завершённый
+    // Закрываем все peer-соединения
+    peersRef.current.forEach(pc => pc.close());
+    peersRef.current.clear();
+
+    // Обновляем в БД
     if (sid) {
       await updateStream(sid, { isLive: false, duration_sec: dur } as never);
-    }
-
-    // Дожидаемся финального onstop от MediaRecorder — он сбрасывает последний чанк
-    if (recorderRef.current && recorderRef.current.state !== "inactive") {
-      await new Promise<void>(resolve => {
-        recorderRef.current!.onstop = () => resolve();
-        recorderRef.current!.stop();
-      });
-    }
-
-    // chunksRef теперь точно полный — конвертируем в base64 и загружаем через бэкенд
-    if (chunksRef.current.length > 0 && sid) {
-      setUploading(true);
-      setUploadProgress(10);
-      try {
-        const blob = new Blob(chunksRef.current, { type: chunksRef.current[0]?.type || "video/webm" });
-        const mime = blob.type || "video/webm";
-        setUploadProgress(20);
-
-        // Конвертируем в base64
-        const dataUrl: string = await new Promise((res, rej) => {
-          const reader = new FileReader();
-          reader.onload = () => res(reader.result as string);
-          reader.onerror = rej;
-          reader.readAsDataURL(blob);
-        });
-        setUploadProgress(50);
-
-        // Загружаем через бэкенд — он отправит в S3 и сохранит URL
-        const resp = await fetch(`${STORE_API}?action=upload_video`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ data_url: dataUrl, stream_id: sid }),
-        });
-        setUploadProgress(90);
-        if (!resp.ok) throw new Error(`upload failed: ${resp.status}`);
-        setUploadProgress(100);
-      } catch (e) {
-        console.error("Video upload failed:", e);
-      } finally {
-        setUploading(false);
-      }
+      await sig("signal_cleanup", { stream_id: sid });
     }
     setFinished(true);
+  };
+
+  const switchCamera = async () => {
+    const next: FacingMode = facingMode === "environment" ? "user" : "environment";
+    setFacingMode(next);
+    const newFacing = next;
+    setCameraError(null);
+    cameraRef.current?.getTracks().forEach(t => t.stop());
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: newFacing, width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: true,
+      });
+      cameraRef.current = stream;
+      if (videoRef.current) videoRef.current.srcObject = stream;
+      // Обновляем треки в существующих peer-соединениях
+      peersRef.current.forEach(pc => {
+        const senders = pc.getSenders();
+        stream.getTracks().forEach(track => {
+          const sender = senders.find(s => s.track?.kind === track.kind);
+          if (sender) sender.replaceTrack(track);
+        });
+      });
+    } catch { /* ignore */ }
+  };
+
+  const toggleMute = () => {
+    cameraRef.current?.getAudioTracks().forEach(t => { t.enabled = !t.enabled; });
+    setIsMuted(m => !m);
   };
 
   const fmt = (sec: number) => {
@@ -235,120 +323,124 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
   if (finished) return (
     <div className="max-w-md mx-auto px-4 py-24 text-center animate-fade-in">
       <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-5">
-        {uploading
-          ? <Icon name="Loader" size={40} className="text-primary animate-spin" />
-          : <Icon name="CheckCircle" size={40} className="text-primary" />
-        }
+        <Icon name="CheckCircle" size={40} className="text-primary" />
       </div>
-      <h2 className="font-oswald text-2xl font-semibold text-foreground mb-2">
-        {uploading ? "Сохраняем запись..." : "Эфир завершён!"}
-      </h2>
+      <h2 className="font-oswald text-2xl font-semibold text-foreground mb-2">Эфир завершён!</h2>
       <p className="text-sm text-muted-foreground mb-1">«{title}»</p>
       <p className="text-sm text-muted-foreground mb-6">Длительность: {fmt(savedDuration)}</p>
-      {uploading && (
-        <div className="mb-6 px-4">
-          <div className="flex justify-between text-xs text-muted-foreground mb-1.5">
-            <span>Загрузка видео</span>
-            <span>{uploadProgress}%</span>
-          </div>
-          <div className="h-2 bg-secondary rounded-full overflow-hidden">
-            <div className="h-full bg-primary transition-all duration-500 rounded-full" style={{ width: `${uploadProgress}%` }} />
-          </div>
-          <p className="text-xs text-muted-foreground mt-2">Не закрывайте страницу</p>
-        </div>
-      )}
       <div className="flex flex-col gap-3 max-w-xs mx-auto">
-        <button onClick={() => { setFinished(false); setTitle(""); setDuration(0); streamIdRef.current = null; chunksRef.current = []; }}
+        <button onClick={() => { setFinished(false); setTitle(""); setDuration(0); streamIdRef.current = null; setViewerCount(0); }}
           className="bg-primary text-primary-foreground font-semibold px-6 py-3 rounded-xl hover:opacity-90">
           Начать новый эфир
         </button>
         <button onClick={() => setPage("dashboard")}
-          className="border border-border text-foreground font-semibold px-6 py-3 rounded-xl hover:bg-secondary">
-          В кабинет
+          className="border border-border text-foreground font-semibold px-6 py-3 rounded-xl hover:bg-accent">
+          Перейти в кабинет
         </button>
       </div>
     </div>
   );
 
-  // ── Основной экран (шортс-стиль: видео на весь экран) ────
+  // ── Основной экран ───────────────────────────────────────
   return (
-    <div className="flex flex-col items-center min-h-[calc(100vh-56px)] bg-black">
-      {/* Видео-контейнер — шортс формат */}
-      <div className="relative w-full max-w-sm mx-auto" style={{ height: "calc(100vh - 56px)" }}>
-        {/* Видео */}
-        {cameraError ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center bg-zinc-950">
-            <Icon name="VideoOff" size={48} className="text-white/30" />
-            <p className="text-sm text-white/60">{cameraError}</p>
-            <button onClick={() => startCamera(facingMode)} className="text-sm text-primary hover:underline">Попробовать снова</button>
+    <div className="min-h-[calc(100vh-56px)] bg-black flex flex-col lg:flex-row">
+
+      {/* Видео */}
+      <div className="relative flex-1 flex items-center justify-center bg-black min-h-[55vw] max-h-[60vh] lg:min-h-0 lg:max-h-none">
+        <video ref={videoRef} autoPlay muted playsInline
+          className="w-full h-full object-cover"
+          style={{ background: "#000", transform: facingMode === "user" ? "scaleX(-1)" : "none" }}
+        />
+
+        {/* Ошибка камеры */}
+        {cameraError && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/90 p-6 text-center">
+            <div>
+              <Icon name="VideoOff" size={36} className="mx-auto mb-3 text-red-400" />
+              <p className="text-sm text-white/80">{cameraError}</p>
+              <button onClick={() => startCamera(facingMode)} className="mt-4 text-xs text-primary underline">Попробовать снова</button>
+            </div>
           </div>
-        ) : (
-          <video ref={videoRef} autoPlay playsInline muted
-            className="absolute inset-0 w-full h-full object-cover"
-            style={{ transform: facingMode === "user" ? "scaleX(-1)" : "none" }}
-          />
         )}
 
-        {/* Градиент снизу */}
-        <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
+        {/* LIVE бейдж */}
+        {isLive && (
+          <div className="absolute top-4 left-4 flex items-center gap-2">
+            <span className="flex items-center gap-1.5 bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full">
+              <span className="w-1.5 h-1.5 rounded-full bg-white animate-live-pulse" />LIVE
+            </span>
+            <span className="bg-black/60 text-white text-xs font-mono px-2 py-0.5 rounded">{fmt(duration)}</span>
+            {viewerCount > 0 && (
+              <span className="flex items-center gap-1 bg-black/60 text-white text-xs px-2 py-0.5 rounded">
+                <Icon name="Eye" size={11} />{viewerCount}
+              </span>
+            )}
+          </div>
+        )}
 
-        {/* Верхняя панель */}
-        <div className="absolute top-0 inset-x-0 flex items-center justify-between px-4 pt-4">
-          <button onClick={() => setPage("dashboard")}
-            className="w-9 h-9 rounded-full bg-black/40 backdrop-blur flex items-center justify-center">
-            <Icon name="ArrowLeft" size={18} className="text-white" />
+        {/* Кнопки управления */}
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3">
+          {isLive ? (
+            <button onClick={stopBroadcast}
+              className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-bold px-5 py-2.5 rounded-full text-sm transition-colors shadow-lg">
+              <Icon name="Square" size={14} />
+              Завершить
+            </button>
+          ) : (
+            <button onClick={startBroadcast} disabled={!cameraReady || !title.trim()}
+              className="flex items-center gap-2 bg-red-500 hover:bg-red-600 disabled:opacity-40 text-white font-bold px-5 py-2.5 rounded-full text-sm transition-colors shadow-lg">
+              <span className="w-2 h-2 rounded-full bg-white" />
+              Начать эфир
+            </button>
+          )}
+
+          <button onClick={toggleMute}
+            className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${isMuted ? "bg-red-600 text-white" : "bg-black/60 text-white"}`}>
+            <Icon name={isMuted ? "MicOff" : "Mic"} size={16} />
           </button>
 
-          {isLive && (
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1.5 bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-full">
-                <span className="w-1.5 h-1.5 rounded-full bg-white animate-live-pulse" />LIVE
-              </div>
-              <div className="bg-black/50 text-white text-xs font-mono px-2.5 py-1 rounded-full">{fmt(duration)}</div>
-            </div>
-          )}
+          <button onClick={switchCamera}
+            className="w-10 h-10 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80">
+            <Icon name="RefreshCw" size={16} />
+          </button>
+        </div>
+      </div>
 
-          <div className="flex flex-col gap-2">
-            <button onClick={switchCamera}
-              className="w-9 h-9 rounded-full bg-black/40 backdrop-blur flex items-center justify-center">
-              <Icon name="RefreshCw" size={16} className="text-white" />
-            </button>
-            <button onClick={toggleMute}
-              className={`w-9 h-9 rounded-full backdrop-blur flex items-center justify-center ${isMuted ? "bg-red-500/80" : "bg-black/40"}`}>
-              <Icon name={isMuted ? "MicOff" : "Mic"} size={16} className="text-white" />
-            </button>
+      {/* Боковая панель */}
+      <div className="lg:w-80 xl:w-96 bg-zinc-950 border-l border-white/10 flex flex-col p-4 gap-4">
+
+        {/* Название эфира */}
+        {!isLive && (
+          <div>
+            <label className="text-xs text-white/60 mb-1.5 block">Название эфира</label>
+            <input
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              maxLength={80}
+              placeholder="Новая коллекция, акция..."
+              className="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-white/40 outline-none focus:border-primary/60"
+            />
           </div>
-        </div>
+        )}
 
-        {/* Нижняя часть — чат + кнопки */}
-        <div className="absolute bottom-0 inset-x-0 px-4 pb-5 space-y-3">
-          {/* Чат — только во время эфира */}
-          {isLive && streamIdRef.current && <LiveChat streamId={streamIdRef.current} />}
+        {/* Чат */}
+        {isLive && streamIdRef.current && (
+          <LiveChat streamId={streamIdRef.current} />
+        )}
 
-          {/* Название + кнопка старт/стоп */}
-          {!isLive ? (
-            <div className="space-y-2">
-              <input value={title} onChange={e => setTitle(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && startBroadcast()}
-                placeholder="Название эфира..."
-                className="w-full bg-black/50 backdrop-blur border border-white/20 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-white/40 outline-none focus:border-primary/60"
-              />
-              <button onClick={startBroadcast}
-                disabled={!title.trim() || !cameraReady}
-                className="w-full flex items-center justify-center gap-2 bg-red-500 text-white font-bold py-3.5 rounded-xl hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed text-sm">
-                <span className="w-2.5 h-2.5 rounded-full bg-white animate-live-pulse" />
-                Начать прямой эфир
-              </button>
-              {!cameraReady && !cameraError && <p className="text-xs text-center text-white/50">Запускаем камеру...</p>}
+        {/* Подсказки когда не в эфире */}
+        {!isLive && (
+          <div className="space-y-2">
+            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-white/5">
+              <Icon name="Wifi" size={14} className="text-primary mt-0.5 flex-shrink-0" />
+              <p className="text-[11px] text-white/60">Зрители смотрят вас в реальном времени прямо в браузере — без скачивания приложений</p>
             </div>
-          ) : (
-            <button onClick={stopBroadcast}
-              className="w-full flex items-center justify-center gap-2 bg-white/10 backdrop-blur border border-white/20 text-white font-semibold py-3.5 rounded-xl hover:bg-white/20 text-sm">
-              <Icon name="Square" size={15} className="text-red-400" />
-              Завершить эфир
-            </button>
-          )}
-        </div>
+            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-white/5">
+              <Icon name="ShoppingBag" size={14} className="text-primary mt-0.5 flex-shrink-0" />
+              <p className="text-[11px] text-white/60">Зрители видят ваши товары и могут купить прямо во время эфира</p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
