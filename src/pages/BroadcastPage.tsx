@@ -95,6 +95,9 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
   const [savedDuration, setSavedDuration] = useState(0);
   const [status, setStatus]         = useState<"idle" | "connecting" | "live" | "error">("idle");
   const [errorMsg, setErrorMsg]     = useState("");
+  const [customThumb, setCustomThumb] = useState<string | null>(null);
+  const [thumbUploading, setThumbUploading] = useState(false);
+  const thumbInputRef = useRef<HTMLInputElement>(null);
 
   // Подключаем MediaStream напрямую к нативному <video> — единственный способ на iOS
   const attachStream = useCallback((track: ILocalVideoTrack | null) => {
@@ -142,6 +145,29 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
     };
   }, []);
 
+  const handleThumbFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      const dataUrl = ev.target?.result as string;
+      setCustomThumb(dataUrl);
+      // Если эфир уже идёт — сразу загружаем
+      if (streamIdRef.current) {
+        setThumbUploading(true);
+        try {
+          await fetch(`${API}?action=upload_thumbnail`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ stream_id: streamIdRef.current, data_url: dataUrl }),
+          });
+        } catch { /* ignore */ }
+        finally { setThumbUploading(false); }
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   const startBroadcast = async () => {
     if (!title.trim() || !user) return;
     setStatus("connecting");
@@ -174,23 +200,26 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
       setDuration(0);
       timerRef.current = setInterval(() => setDuration(d => d + 1), 1000);
 
-      // Снимаем превью с нативного <video> и сохраняем на сервер
+      // Превью: если загружено вручную — используем его, иначе скриншот с камеры
       setTimeout(async () => {
         try {
-          const vid = nativeVideoRef.current;
-          if (!vid || !s.id) return;
-          const canvas = document.createElement("canvas");
-          canvas.width = vid.videoWidth || 640;
-          canvas.height = vid.videoHeight || 360;
-          canvas.getContext("2d")?.drawImage(vid, 0, 0, canvas.width, canvas.height);
-          const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
+          let dataUrl = customThumb;
+          if (!dataUrl) {
+            const vid = nativeVideoRef.current;
+            if (!vid || !s.id) return;
+            const canvas = document.createElement("canvas");
+            canvas.width = vid.videoWidth || 640;
+            canvas.height = vid.videoHeight || 360;
+            canvas.getContext("2d")?.drawImage(vid, 0, 0, canvas.width, canvas.height);
+            dataUrl = canvas.toDataURL("image/jpeg", 0.8);
+          }
           await fetch(`${API}?action=upload_thumbnail`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ stream_id: s.id, data_url: dataUrl }),
           });
         } catch { /* не критично */ }
-      }, 1500);
+      }, 1000);
     } catch (e: unknown) {
       const err = e as Error;
       setErrorMsg("Ошибка подключения: " + err.message);
@@ -333,11 +362,35 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
         {/* Нижние кнопки */}
         <div className="absolute bottom-0 left-0 right-0 px-4 pb-5 z-10">
           {!isLive && (
-            <div className="mb-3">
+            <div className="mb-3 flex flex-col gap-2">
               <input value={title} onChange={e => setTitle(e.target.value)} maxLength={80}
                 placeholder="Название эфира..."
                 className="w-full bg-black/60 backdrop-blur border border-white/20 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-white/40 outline-none focus:border-primary/60"
               />
+              {/* Загрузка превью */}
+              <input ref={thumbInputRef} type="file" accept="image/*" className="hidden" onChange={handleThumbFile} />
+              <button
+                onClick={() => thumbInputRef.current?.click()}
+                className="flex items-center gap-2 bg-black/60 backdrop-blur border border-white/20 rounded-xl px-4 py-2 text-xs text-white/70 hover:text-white hover:border-white/40 transition-colors w-full"
+              >
+                {customThumb
+                  ? <><img src={customThumb} className="w-5 h-5 rounded object-cover flex-shrink-0" /><span className="truncate">Превью загружено — нажми чтобы сменить</span></>
+                  : <><Icon name="Image" size={14} className="flex-shrink-0" /><span>Загрузить превью (необязательно)</span></>
+                }
+              </button>
+            </div>
+          )}
+          {isLive && (
+            <div className="mb-3 flex justify-end">
+              <input ref={thumbInputRef} type="file" accept="image/*" className="hidden" onChange={handleThumbFile} />
+              <button
+                onClick={() => thumbInputRef.current?.click()}
+                disabled={thumbUploading}
+                className="flex items-center gap-1.5 bg-black/60 backdrop-blur border border-white/20 rounded-xl px-3 py-1.5 text-xs text-white/60 hover:text-white transition-colors disabled:opacity-40"
+              >
+                <Icon name={thumbUploading ? "Loader" : "Image"} size={12} className={thumbUploading ? "animate-spin" : ""} />
+                {thumbUploading ? "Загружаю..." : customThumb ? "Сменить превью" : "Добавить превью"}
+              </button>
             </div>
           )}
           <div className="flex items-center justify-center gap-4">
