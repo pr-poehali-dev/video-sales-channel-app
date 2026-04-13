@@ -54,7 +54,7 @@ async function uploadImage(file: File): Promise<string> {
 
 export default function DashboardPage({ setPage }: DashboardPageProps) {
   const { user } = useAuth();
-  const { addProduct, updateProduct, deleteProduct, deleteStream, getSellerProducts, getSellerStreams } = useStore();
+  const { addProduct, updateProduct, deleteProduct, deleteStream, updateStream, getSellerProducts, getSellerStreams } = useStore();
 
   const products = user ? getSellerProducts(user.id) : [];
   const myStreams = user ? getSellerStreams(user.id) : [];
@@ -64,6 +64,17 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
   const [editId, setEditId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [confirmDeleteStream, setConfirmDeleteStream] = useState<string | null>(null);
+  const [stoppingStream, setStoppingStream] = useState<string | null>(null);
+
+  const activeStream = myStreams.find(s => s.isLive) ?? null;
+
+  const handleStopStream = async (id: string) => {
+    setStoppingStream(id);
+    try {
+      await updateStream(id, { isLive: false });
+    } catch { /* ignore */ }
+    finally { setStoppingStream(null); }
+  };
 
   // Форма
   const [fName, setFName] = useState("");
@@ -241,13 +252,30 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
             <Icon name="FileText" size={15} />
             Реквизиты
           </button>
-          <button
-            onClick={() => setPage("broadcast")}
-            className="bg-primary text-primary-foreground font-semibold px-4 py-2.5 rounded-xl hover:opacity-90 transition-opacity text-sm flex items-center gap-2"
-          >
-            <span className="w-2 h-2 rounded-full bg-white animate-live-pulse" />
-            Начать эфир
-          </button>
+          {activeStream ? (
+            <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 px-4 py-2.5 rounded-xl">
+              <span className="w-2 h-2 rounded-full bg-red-500 animate-live-pulse flex-shrink-0" />
+              <span className="text-sm font-semibold text-red-500 truncate max-w-[120px]">{activeStream.title}</span>
+              <button
+                onClick={() => handleStopStream(activeStream.id)}
+                disabled={stoppingStream === activeStream.id}
+                className="ml-1 text-xs font-semibold text-red-500 border border-red-500/40 px-2 py-1 rounded-lg hover:bg-red-500/10 transition-colors disabled:opacity-50 flex items-center gap-1 flex-shrink-0"
+              >
+                {stoppingStream === activeStream.id
+                  ? <Icon name="Loader" size={12} className="animate-spin" />
+                  : <Icon name="Square" size={12} />}
+                Стоп
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setPage("broadcast")}
+              className="bg-primary text-primary-foreground font-semibold px-4 py-2.5 rounded-xl hover:opacity-90 transition-opacity text-sm flex items-center gap-2"
+            >
+              <span className="w-2 h-2 rounded-full bg-white animate-live-pulse" />
+              Начать эфир
+            </button>
+          )}
         </div>
       </div>
 
@@ -349,11 +377,18 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
             <span className="text-sm text-muted-foreground">
               {myStreams.length > 0 ? `${myStreams.length} эфир${myStreams.length === 1 ? "" : myStreams.length < 5 ? "а" : "ов"}` : "Нет эфиров"}
             </span>
-            <button onClick={() => setPage("broadcast")}
-              className="flex items-center gap-1.5 text-sm text-primary border border-primary/30 px-3 py-1.5 rounded-lg hover:bg-primary/5 transition-colors font-medium">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-live-pulse" />
-              Начать эфир
-            </button>
+            {activeStream ? (
+              <span className="flex items-center gap-1.5 text-sm text-red-500 border border-red-500/30 px-3 py-1.5 rounded-lg font-medium">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-live-pulse" />
+                Идёт эфир
+              </span>
+            ) : (
+              <button onClick={() => setPage("broadcast")}
+                className="flex items-center gap-1.5 text-sm text-primary border border-primary/30 px-3 py-1.5 rounded-lg hover:bg-primary/5 transition-colors font-medium">
+                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-live-pulse" />
+                Начать эфир
+              </button>
+            )}
           </div>
 
           {myStreams.length === 0 ? (
@@ -390,7 +425,18 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
                       <span className="flex items-center gap-1"><Icon name="Eye" size={10} />{s.viewers}</span>
                     </div>
                   </div>
-                  {!s.isLive && (
+                  {s.isLive ? (
+                    <button
+                      onClick={() => handleStopStream(s.id)}
+                      disabled={stoppingStream === s.id}
+                      className="flex items-center gap-1.5 text-xs font-semibold text-red-500 border border-red-500/40 px-3 py-1.5 rounded-lg hover:bg-red-500/10 transition-colors disabled:opacity-50 flex-shrink-0"
+                    >
+                      {stoppingStream === s.id
+                        ? <Icon name="Loader" size={12} className="animate-spin" />
+                        : <Icon name="Square" size={12} />}
+                      Остановить
+                    </button>
+                  ) : (
                     <button onClick={() => setConfirmDeleteStream(s.id)}
                       className="p-2 hover:bg-secondary rounded-lg transition-colors flex-shrink-0">
                       <Icon name="Trash2" size={16} className="text-muted-foreground hover:text-destructive" />
