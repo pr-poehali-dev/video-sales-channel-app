@@ -1,16 +1,14 @@
 """
-Генерация RTC-токена для Agora с использованием App Certificate.
-Токен действует 1 час, после чего клиент должен получить новый.
+Генерация RTC-токена для Agora через официальную библиотеку agora-token-builder.
+Токен действует 1 час.
 """
 import os
 import time
 import json
-import hmac
-import hashlib
-import struct
-import base64
-import zlib
-import random
+from agora_token_builder import RtcTokenBuilder
+
+Role_Publisher  = 1
+Role_Subscriber = 2
 
 CORS = {
     "Access-Control-Allow-Origin": "*",
@@ -24,85 +22,9 @@ def ok(data, status=200):
 def err(msg, status=400):
     return {"statusCode": status, "headers": CORS, "body": json.dumps({"error": msg})}
 
-# ── Agora RTC Token Builder (AccessToken2) ────────────────────────────────────
-# Реализация по спецификации Agora AccessToken2
-
-ROLE_PUBLISHER  = 1
-ROLE_SUBSCRIBER = 2
-
-SERVICE_RTC = 1
-PRIVILEGE_JOIN_CHANNEL       = 1
-PRIVILEGE_PUBLISH_AUDIO      = 2
-PRIVILEGE_PUBLISH_VIDEO      = 3
-PRIVILEGE_PUBLISH_DATA       = 4
-PRIVILEGE_SUBSCRIBE_AUDIO    = 5
-PRIVILEGE_SUBSCRIBE_VIDEO    = 6
-PRIVILEGE_SUBSCRIBE_DATA     = 7
-
-def _pack_uint16(v):
-    return struct.pack("<H", v)
-
-def _pack_uint32(v):
-    return struct.pack("<I", v)
-
-def _pack_string(s):
-    b = s.encode("utf-8")
-    return _pack_uint16(len(b)) + b
-
-def _pack_map_uint32(m):
-    result = _pack_uint16(len(m))
-    for k, v in sorted(m.items()):
-        result += _pack_uint16(k) + _pack_uint32(v)
-    return result
-
-def build_token(app_id: str, app_cert: str, channel: str, uid, role: int, expire: int) -> str:
-    uid_str = str(uid) if uid else "0"
-    issued_at = int(time.time())
-    expire_at = issued_at + expire
-
-    # Salt — случайное число
-    salt = random.randint(1, 2**31 - 1)
-
-    # Привилегии в зависимости от роли
-    if role == ROLE_PUBLISHER:
-        privileges = {
-            PRIVILEGE_JOIN_CHANNEL:   expire_at,
-            PRIVILEGE_PUBLISH_AUDIO:  expire_at,
-            PRIVILEGE_PUBLISH_VIDEO:  expire_at,
-            PRIVILEGE_PUBLISH_DATA:   expire_at,
-        }
-    else:
-        privileges = {
-            PRIVILEGE_JOIN_CHANNEL:    expire_at,
-            PRIVILEGE_SUBSCRIBE_AUDIO: expire_at,
-            PRIVILEGE_SUBSCRIBE_VIDEO: expire_at,
-            PRIVILEGE_SUBSCRIBE_DATA:  expire_at,
-        }
-
-    # Собираем сообщение для подписи
-    msg  = _pack_uint32(salt)
-    msg += _pack_uint32(issued_at)
-    msg += _pack_uint32(expire_at)
-    msg += _pack_string(channel)
-    msg += _pack_string(uid_str)
-    msg += _pack_map_uint32(privileges)
-
-    # HMAC-SHA256
-    signature = hmac.new(
-        app_cert.encode("utf-8"),
-        app_id.encode("utf-8") + msg,
-        hashlib.sha256
-    ).digest()
-
-    # Итоговый токин = base64(zlib(VERSION + APP_ID + signature + msg))
-    content = b"007" + app_id.encode("utf-8") + signature + msg
-    compressed = zlib.compress(content)
-    token = base64.b64encode(compressed).decode("utf-8")
-    return token
-
 
 def handler(event: dict, context) -> dict:
-    """Генерирует Agora RTC токен с App Certificate для безопасного подключения."""
+    """Генерирует Agora RTC токен для вещателя или зрителя."""
     if event.get("httpMethod") == "OPTIONS":
         return {"statusCode": 200, "headers": CORS, "body": ""}
 
@@ -122,19 +44,24 @@ def handler(event: dict, context) -> dict:
         except Exception:
             pass
 
-    channel = qs.get("channel") or body.get("channel")
-    uid     = qs.get("uid") or body.get("uid") or "0"
-    role    = ROLE_PUBLISHER if str(qs.get("role") or body.get("role", "")) == "publisher" else ROLE_SUBSCRIBER
+    channel  = qs.get("channel") or body.get("channel")
+    uid      = int(qs.get("uid") or body.get("uid") or 0)
+    role_str = qs.get("role") or body.get("role", "subscriber")
 
     if not channel:
         return err("channel required")
 
-    token = build_token(app_id, app_cert, channel, uid, role, expire=3600)
+    expire_at = int(time.time()) + 3600
+    role = Role_Publisher if role_str == "publisher" else Role_Subscriber
+
+    token = RtcTokenBuilder.buildTokenWithUid(
+        app_id, app_cert, channel, uid, role, expire_at
+    )
 
     return ok({
         "appId":   app_id,
         "channel": channel,
         "uid":     str(uid),
         "token":   token,
-        "expires": int(time.time()) + 3600,
+        "expires": expire_at,
     })

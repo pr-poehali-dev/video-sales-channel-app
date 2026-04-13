@@ -1,0 +1,1 @@
+agora-token-builder==1.0.0
