@@ -76,12 +76,12 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
   const { user } = useAuth();
   const { addStream, updateStream } = useStore();
 
-  const clientRef    = useRef<IAgoraRTCClient | null>(null);
+  const clientRef     = useRef<IAgoraRTCClient | null>(null);
   const videoTrackRef = useRef<ILocalVideoTrack | null>(null);
   const audioTrackRef = useRef<ILocalAudioTrack | null>(null);
-  const videoElRef   = useRef<HTMLDivElement | null>(null);
-  const timerRef     = useRef<ReturnType<typeof setInterval> | null>(null);
-  const streamIdRef  = useRef<string | null>(null);
+  const nativeVideoRef = useRef<HTMLVideoElement | null>(null);
+  const timerRef      = useRef<ReturnType<typeof setInterval> | null>(null);
+  const streamIdRef   = useRef<string | null>(null);
   const facingModeRef = useRef<"user" | "environment">("user");
 
   const [title, setTitle]           = useState("");
@@ -95,30 +95,21 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
   const [status, setStatus]         = useState<"idle" | "connecting" | "live" | "error">("idle");
   const [errorMsg, setErrorMsg]     = useState("");
 
-  // Патчим <video> внутри контейнера для Safari (playsinline + size)
-  const patchVideoEl = (container: HTMLDivElement) => {
-    setTimeout(() => {
-      const v = container.querySelector("video");
-      if (v) {
-        v.setAttribute("playsinline", "");
-        v.setAttribute("webkit-playsinline", "");
-        v.style.width = "100%";
-        v.style.height = "100%";
-        v.style.objectFit = "cover";
-        v.style.position = "absolute";
-        v.style.inset = "0";
-        v.play().catch(() => {/* Safari autoplay */});
-      }
-    }, 100);
-  };
+  // Подключаем MediaStream напрямую к нативному <video> — единственный способ на iOS
+  const attachStream = useCallback((track: ILocalVideoTrack | null) => {
+    const vid = nativeVideoRef.current;
+    if (!vid || !track) return;
+    try {
+      const ms = new MediaStream([track.getMediaStreamTrack()]);
+      vid.srcObject = ms;
+      vid.play().catch(() => {/* iOS требует жест пользователя */});
+    } catch { /* ignore */ }
+  }, []);
 
-  // Callback ref — воспроизводим видео сразу как только div появится в DOM
-  const setVideoEl = useCallback((el: HTMLDivElement | null) => {
-    videoElRef.current = el;
-    if (el && videoTrackRef.current) {
-      videoTrackRef.current.play(el);
-      patchVideoEl(el);
-    }
+  // Если трек уже готов, но video-элемент появился позже — подключаем
+  useEffect(() => {
+    if (videoTrackRef.current) attachStream(videoTrackRef.current);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Инициализируем превью камеры при загрузке
@@ -135,11 +126,7 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
         );
         audioTrackRef.current = audioTrack;
         videoTrackRef.current = videoTrack;
-        // Если div уже есть в DOM — воспроизводим; иначе сработает callback ref
-        if (videoElRef.current) {
-          videoTrack.play(videoElRef.current);
-          patchVideoEl(videoElRef.current);
-        }
+        attachStream(videoTrack);
       } catch (e: unknown) {
         const err = e as Error;
         if (err.name === "NotAllowedError") setErrorMsg("Нет доступа к камере. Разрешите в настройках браузера.");
@@ -246,10 +233,7 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
         await clientRef.current.publish([newTrack]);
       }
 
-      if (videoElRef.current) {
-        newTrack.play(videoElRef.current);
-        patchVideoEl(videoElRef.current);
-      }
+      attachStream(newTrack);
     } catch { /* игнор */ }
   };
 
@@ -287,8 +271,15 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
       {/* Видео-превью */}
       <div className="relative flex-1 bg-black" style={{ minHeight: "56vw", maxHeight: "70vh" }}>
 
-        {/* Agora рендерит видео сюда */}
-        <div ref={setVideoEl} className="w-full h-full" style={{ background: "#000", position: "relative", overflow: "hidden" }} />
+        {/* Нативный <video> — единственный способ показать превью на iOS */}
+        <video
+          ref={nativeVideoRef}
+          autoPlay
+          playsInline
+          muted
+          className="w-full h-full object-cover"
+          style={{ background: "#000" }}
+        />
 
         {status === "error" && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/90 p-6 text-center z-10">
