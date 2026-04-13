@@ -267,38 +267,41 @@ def handler(event: dict, context) -> dict:
             conn.commit()
             return ok(_fmt_review(cur.fetchone()), 201)
 
-        # ─────────── LIVE CHUNK STREAMING ───────────
-        # Вещатель шлёт base64-чанки, зритель их получает и склеивает в MediaSource
-        if action == "push_chunk":
+        # ─────────── MJPEG FRAME STREAMING ───────────
+        # Вещатель шлёт jpeg-кадры, зритель получает последний кадр и показывает через <img>
+        # Работает в любом браузере включая Яндекс и Safari
+        if action == "push_frame":
             stream_id = body.get("stream_id")
-            seq       = body.get("seq")
-            data      = body.get("data")  # base64
-            if not all([stream_id, seq is not None, data]):
-                return err("stream_id, seq, data required")
+            data      = body.get("data")   # base64 jpeg
+            seq       = body.get("seq", 0)
+            if not all([stream_id, data]):
+                return err("stream_id, data required")
             cur.execute(
-                "INSERT INTO stream_chunks (stream_id, seq, data) VALUES (%s, %s, %s)",
-                (stream_id, int(seq), data)
-            )
-            conn.commit()
-            # Удаляем старые чанки (держим последние 30 = ~2 мин буфер)
-            cur.execute(
-                "DELETE FROM stream_chunks WHERE stream_id=%s AND seq < %s",
-                (stream_id, int(seq) - 30)
+                """INSERT INTO stream_frames (stream_id, frame_data, seq, updated_at)
+                   VALUES (%s, %s, %s, NOW())
+                   ON CONFLICT (stream_id) DO UPDATE
+                   SET frame_data=EXCLUDED.frame_data, seq=EXCLUDED.seq, updated_at=NOW()""",
+                (stream_id, data, int(seq))
             )
             conn.commit()
             return ok({"ok": True})
 
-        if action == "get_chunks":
+        if action == "get_frame":
             stream_id = qs.get("stream_id") or body.get("stream_id")
-            after_seq = int(qs.get("after_seq", "-1") or body.get("after_seq", -1))
+            client_seq = int(qs.get("seq", "-1") or "-1")
             if not stream_id:
                 return err("stream_id required")
             cur.execute(
-                "SELECT seq, data FROM stream_chunks WHERE stream_id=%s AND seq > %s ORDER BY seq ASC LIMIT 10",
-                (stream_id, after_seq)
+                "SELECT frame_data, seq, updated_at FROM stream_frames WHERE stream_id=%s",
+                (stream_id,)
             )
-            rows = cur.fetchall()
-            return ok([{"seq": r["seq"], "data": r["data"]} for r in rows])
+            row = cur.fetchone()
+            if not row:
+                return ok({"frame": None, "seq": -1})
+            # Отдаём только если кадр новее того что уже есть у клиента
+            if row["seq"] <= client_seq:
+                return ok({"frame": None, "seq": row["seq"]})
+            return ok({"frame": row["frame_data"], "seq": row["seq"]})
 
         # ─────────── WEBRTC SIGNALING ───────────
         # Вещатель отправляет offer, зритель отвечает answer, оба обмениваются ICE

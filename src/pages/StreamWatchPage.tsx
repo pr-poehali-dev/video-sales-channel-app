@@ -6,6 +6,8 @@ import type { CartItem, Page } from "@/App";
 
 const API = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c";
 const EMOJI_REACTIONS = ["🔥", "❤️", "👏", "😮", "😂"];
+// Интервал опроса кадров — чуть реже чем вещатель шлёт
+const POLL_MS = 250;
 
 interface Props {
   stream: StoreStream;
@@ -27,116 +29,48 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
   const { addChatMessage, getStreamMessages, getSellerProducts } = useStore();
   const sellerProducts = getSellerProducts(stream.sellerId);
 
-  const videoRef     = useRef<HTMLVideoElement>(null);
-  const msRef        = useRef<MediaSource | null>(null);
-  const sbRef        = useRef<SourceBuffer | null>(null);
-  const queueRef     = useRef<Uint8Array[]>([]);
-  const appendingRef = useRef(false);
-  const afterSeqRef  = useRef(-1);
-  const pollRef      = useRef<ReturnType<typeof setInterval> | null>(null);
-  const chatPollRef  = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollRef     = useRef<ReturnType<typeof setInterval> | null>(null);
+  const chatPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const seqRef      = useRef(-1);
+  const fetchingRef = useRef(false);
 
-  const [messages, setMessages]     = useState<ChatMessage[]>([]);
-  const [input, setInput]           = useState("");
-  const [reaction, setReaction]     = useState<string | null>(null);
-  const [sending, setSending]       = useState(false);
-  const [panelOpen, setPanelOpen]   = useState(true);
-  const [rightTab, setRightTab]     = useState<RightTab>("chat");
-  const [addedId, setAddedId]       = useState<string | null>(null);
-  const [liveStatus, setLiveStatus] = useState<"waiting" | "playing" | "error">("waiting");
+  const [frameSrc, setFrameSrc]       = useState<string | null>(null);
+  const [messages, setMessages]       = useState<ChatMessage[]>([]);
+  const [input, setInput]             = useState("");
+  const [reaction, setReaction]       = useState<string | null>(null);
+  const [sending, setSending]         = useState(false);
+  const [panelOpen, setPanelOpen]     = useState(true);
+  const [rightTab, setRightTab]       = useState<RightTab>("chat");
+  const [addedId, setAddedId]         = useState<string | null>(null);
+  const [liveStatus, setLiveStatus]   = useState<"waiting" | "playing">("waiting");
 
-  // ── Слив очереди буферов в SourceBuffer ──────────────────────────────────
-  const flushQueue = useCallback(() => {
-    const sb = sbRef.current;
-    if (!sb || appendingRef.current || sb.updating || queueRef.current.length === 0) return;
-    appendingRef.current = true;
-    try {
-      sb.appendBuffer(queueRef.current.shift()!);
-    } catch {
-      appendingRef.current = false;
-    }
-  }, []);
-
-  // ── Инициализация MediaSource ─────────────────────────────────────────────
-  const initMediaSource = useCallback(() => {
-    if (!videoRef.current || !("MediaSource" in window)) {
-      setLiveStatus("error");
-      return;
-    }
-    const ms = new MediaSource();
-    msRef.current = ms;
-    videoRef.current.src = URL.createObjectURL(ms);
-
-    ms.addEventListener("sourceopen", () => {
-      const mime = ["video/webm;codecs=vp8,opus", "video/webm;codecs=vp9,opus", "video/webm"]
-        .find(m => MediaSource.isTypeSupported(m));
-      if (!mime) { setLiveStatus("error"); return; }
-      try {
-        const sb = ms.addSourceBuffer(mime);
-        sbRef.current = sb;
-        sb.addEventListener("updateend", () => {
-          appendingRef.current = false;
-          flushQueue();
-        });
-      } catch {
-        setLiveStatus("error");
-      }
-    });
-  }, [flushQueue]);
-
-  // ── Загрузка новых чанков ─────────────────────────────────────────────────
-  const fetchChunks = useCallback(async () => {
+  // ── Опрос кадра ─────────────────────────────────────────────────────────────
+  const fetchFrame = useCallback(async () => {
+    if (fetchingRef.current) return;
+    fetchingRef.current = true;
     try {
       const qs = new URLSearchParams({
-        action: "get_chunks",
+        action: "get_frame",
         stream_id: stream.id,
-        after_seq: String(afterSeqRef.current),
+        seq: String(seqRef.current),
       });
       const resp = await fetch(`${API}?${qs}`);
-      const chunks: { seq: number; data: string }[] = await resp.json();
-      if (!Array.isArray(chunks) || chunks.length === 0) return;
-
-      for (const c of chunks) {
-        const bin = atob(c.data);
-        const buf = new Uint8Array(bin.length);
-        for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
-        queueRef.current.push(buf);
-        afterSeqRef.current = Math.max(afterSeqRef.current, c.seq);
-      }
-      flushQueue();
-      setLiveStatus("playing");
-
-      if (videoRef.current?.paused) {
-        videoRef.current.play().catch(() => {});
-      }
-
-      // Обрезаем старый буфер чтобы не росло в памяти
-      const sb = sbRef.current;
-      const vid = videoRef.current;
-      if (sb && vid && !sb.updating && vid.buffered.length > 0) {
-        const start = vid.buffered.start(0);
-        const end = vid.buffered.end(vid.buffered.length - 1);
-        if (end - start > 30) {
-          try { sb.remove(start, end - 20); } catch { /* ignore */ }
-        }
+      const data: { frame: string | null; seq: number } = await resp.json();
+      if (data.frame) {
+        seqRef.current = data.seq;
+        setFrameSrc(`data:image/jpeg;base64,${data.frame}`);
+        setLiveStatus("playing");
       }
     } catch { /* ignore */ }
-  }, [stream.id, flushQueue]);
+    finally { fetchingRef.current = false; }
+  }, [stream.id]);
 
-  // ── Запуск для лайва ─────────────────────────────────────────────────────
   useEffect(() => {
     if (!stream.isLive) return;
-    initMediaSource();
-    const t0 = setTimeout(() => {
-      fetchChunks();
-      pollRef.current = setInterval(fetchChunks, 4000);
-    }, 2000);
-    return () => {
-      clearTimeout(t0);
-      if (pollRef.current) clearInterval(pollRef.current);
-      try { if (msRef.current?.readyState === "open") msRef.current.endOfStream(); } catch { /* ignore */ }
-    };
-  }, [stream.isLive, initMediaSource, fetchChunks]);
+    fetchFrame();
+    pollRef.current = setInterval(fetchFrame, POLL_MS);
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, [stream.isLive, fetchFrame]);
 
   // ── Чат ──────────────────────────────────────────────────────────────────
   const fetchMessages = useCallback(async () => {
@@ -186,28 +120,28 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
           <Icon name="ArrowLeft" size={18} className="text-white" />
         </button>
 
-        {/* LIVE: MediaSource видео */}
+        {/* LIVE: кадры JPEG — работает в любом браузере */}
         {stream.isLive && (
           <>
-            <video ref={videoRef} autoPlay playsInline
-              className="w-full h-full object-contain max-h-[calc(100vh-56px)]"
-              style={{ background: "black", display: liveStatus === "playing" ? "block" : "none" }}
-            />
-            {liveStatus !== "playing" && (
-              <div className="flex flex-col items-center justify-center gap-4 py-16 px-8 text-center select-none">
-                <div className="w-20 h-20 rounded-full bg-primary/20 text-primary text-3xl font-bold flex items-center justify-center font-oswald">
+            {frameSrc && (
+              <img
+                src={frameSrc}
+                alt="live"
+                className="w-full h-full object-contain max-h-[calc(100vh-56px)]"
+                style={{ background: "black", display: "block" }}
+              />
+            )}
+            {liveStatus === "waiting" && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black px-8 text-center">
+                <div className="w-20 h-20 rounded-full bg-primary/20 text-primary text-3xl font-bold flex items-center justify-center">
                   {stream.sellerAvatar}
                 </div>
                 <p className="text-white font-semibold text-lg">{stream.sellerName}</p>
                 <p className="text-white/50 text-sm">{stream.title}</p>
-                {liveStatus === "waiting" ? (
-                  <div className="flex items-center gap-2 text-white/60 text-sm">
-                    <Icon name="Loader" size={16} className="animate-spin" />
-                    Подключение к эфиру...
-                  </div>
-                ) : (
-                  <p className="text-red-400 text-sm">Браузер не поддерживает просмотр</p>
-                )}
+                <div className="flex items-center gap-2 text-white/60 text-sm">
+                  <Icon name="Loader" size={16} className="animate-spin" />
+                  Подключение к эфиру...
+                </div>
                 <span className="flex items-center gap-1.5 bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded-full">
                   <span className="w-1.5 h-1.5 rounded-full bg-white animate-live-pulse" />LIVE
                 </span>
@@ -242,19 +176,16 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
           </div>
         )}
 
-        {/* Длительность для записи */}
         {!stream.isLive && stream.duration && (
           <div className="absolute bottom-16 right-4 bg-black/70 text-white text-xs font-mono px-2 py-1 rounded z-10">
             {fmtDuration(stream.duration)}
           </div>
         )}
 
-        {/* Реакция */}
         {reaction && (
           <div className="absolute bottom-20 right-8 text-5xl animate-bounce pointer-events-none z-20">{reaction}</div>
         )}
 
-        {/* Эмодзи */}
         {stream.isLive && (
           <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex gap-2 z-10">
             {EMOJI_REACTIONS.map(e => (
@@ -266,7 +197,6 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
           </div>
         )}
 
-        {/* Кнопка панели (мобильный) */}
         <button onClick={() => setPanelOpen(o => !o)}
           className="absolute top-4 right-4 z-20 lg:hidden w-9 h-9 rounded-full bg-black/50 backdrop-blur flex items-center justify-center">
           <Icon name="MessageSquare" size={17} className="text-white" />
@@ -288,13 +218,12 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
               <Icon name={tab === "chat" ? "MessageSquare" : "ShoppingBag"} size={14} />
               {tab === "chat" ? "Чат" : "Товары"}
               {tab === "chat" && messages.length > 0 && <span className="bg-white/10 text-white/60 text-[10px] px-1.5 py-0.5 rounded-full">{messages.length}</span>}
-              {tab === "chat" && stream.isLive && <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-live-pulse" />}
+              {tab === "chat" && stream.isLive && <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-live-pulse ml-1" />}
               {tab === "products" && sellerProducts.length > 0 && <span className="bg-white/10 text-white/60 text-[10px] px-1.5 py-0.5 rounded-full">{sellerProducts.length}</span>}
             </button>
           ))}
         </div>
 
-        {/* Чат */}
         {rightTab === "chat" && (
           <div className="flex flex-col flex-1 min-h-0">
             <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2">
@@ -326,7 +255,6 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
           </div>
         )}
 
-        {/* Товары */}
         {rightTab === "products" && (
           <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2">
             {sellerProducts.length === 0

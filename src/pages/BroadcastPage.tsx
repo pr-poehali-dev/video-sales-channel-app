@@ -5,6 +5,10 @@ import { useStore, type ChatMessage } from "@/context/StoreContext";
 import type { Page } from "@/App";
 
 const API = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c";
+// Качество JPEG: 0.5 = ~15-30 KB на кадр, достаточно для стрима
+const JPEG_QUALITY = 0.5;
+// Интервал кадров: 200мс = ~5 fps (экономия трафика и сервера)
+const FRAME_INTERVAL_MS = 200;
 type FacingMode = "user" | "environment";
 
 // ── Чат вещателя ─────────────────────────────────────────────────────────────
@@ -74,11 +78,13 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
   const { addStream, updateStream } = useStore();
 
   const videoRef    = useRef<HTMLVideoElement>(null);
+  const canvasRef   = useRef<HTMLCanvasElement>(null);
   const cameraRef   = useRef<MediaStream | null>(null);
-  const recorderRef = useRef<MediaRecorder | null>(null);
-  const streamIdRef = useRef<string | null>(null);
   const timerRef    = useRef<ReturnType<typeof setInterval> | null>(null);
+  const frameRef    = useRef<ReturnType<typeof setInterval> | null>(null);
+  const streamIdRef = useRef<string | null>(null);
   const seqRef      = useRef(0);
+  const sendingRef  = useRef(false);
 
   const [facingMode, setFacingMode]   = useState<FacingMode>("environment");
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -89,13 +95,15 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
   const [duration, setDuration]       = useState(0);
   const [finished, setFinished]       = useState(false);
   const [savedDuration, setSavedDuration] = useState(0);
+  const [fps, setFps]                 = useState(0);
+  const fpsCountRef                   = useRef(0);
 
   const startCamera = useCallback(async (facing: FacingMode) => {
     setCameraError(null);
     cameraRef.current?.getTracks().forEach(t => t.stop());
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: facing, width: { ideal: 1280 }, height: { ideal: 720 } },
+        video: { facingMode: facing, width: { ideal: 640 }, height: { ideal: 480 } },
         audio: true,
       });
       cameraRef.current = stream;
@@ -115,65 +123,70 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
     return () => {
       cameraRef.current?.getTracks().forEach(t => t.stop());
       if (timerRef.current) clearInterval(timerRef.current);
-      recorderRef.current?.stop();
+      if (frameRef.current) clearInterval(frameRef.current);
     };
   }, []);
 
-  const pushChunk = useCallback(async (blob: Blob) => {
+  // Захват кадра с canvas и отправка на сервер
+  const sendFrame = useCallback(async () => {
+    if (sendingRef.current) return; // пропускаем если предыдущий ещё не отправлен
     const sid = streamIdRef.current;
-    if (!sid) return;
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!sid || !video || !canvas || video.readyState < 2) return;
+
+    sendingRef.current = true;
     try {
-      const base64 = await new Promise<string>((res, rej) => {
-        const reader = new FileReader();
-        reader.onload = () => res((reader.result as string).split(",")[1]);
-        reader.onerror = rej;
-        reader.readAsDataURL(blob);
-      });
-      await fetch(`${API}?action=push_chunk`, {
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
+      // Зеркалим фронтальную камеру
+      if (facingMode === "user") {
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
+      }
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      if (facingMode === "user") ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+      const base64 = canvas.toDataURL("image/jpeg", JPEG_QUALITY).split(",")[1];
+
+      await fetch(`${API}?action=push_frame`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ stream_id: sid, seq: seqRef.current++, data: base64 }),
       });
+      fpsCountRef.current++;
     } catch { /* ignore */ }
+    finally { sendingRef.current = false; }
+  }, [facingMode]);
+
+  // FPS-счётчик
+  useEffect(() => {
+    const t = setInterval(() => { setFps(fpsCountRef.current); fpsCountRef.current = 0; }, 1000);
+    return () => clearInterval(t);
   }, []);
 
   const startBroadcast = async () => {
-    if (!title.trim() || !user || !cameraRef.current) return;
+    if (!title.trim() || !user) return;
 
     const s = await addStream({ title: title.trim(), sellerId: user.id, sellerName: user.name, sellerAvatar: user.avatar, isLive: true, viewers: 0 });
     streamIdRef.current = s.id;
     seqRef.current = 0;
 
-    const mimeType = ["video/webm;codecs=vp8,opus", "video/webm;codecs=vp9,opus", "video/webm", "video/mp4"]
-      .find(m => MediaRecorder.isTypeSupported(m)) || "";
-
-    try {
-      const rec = new MediaRecorder(cameraRef.current, {
-        ...(mimeType ? { mimeType } : {}),
-        videoBitsPerSecond: 500_000,
-      });
-      rec.ondataavailable = async (e) => {
-        if (e.data && e.data.size > 0) await pushChunk(e.data);
-      };
-      rec.start(4000);
-      recorderRef.current = rec;
-    } catch (e) {
-      console.error("MediaRecorder error:", e);
-    }
-
     setIsLive(true);
     setDuration(0);
     timerRef.current = setInterval(() => setDuration(d => d + 1), 1000);
+    frameRef.current = setInterval(sendFrame, FRAME_INTERVAL_MS);
   };
 
   const stopBroadcast = async () => {
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+    if (frameRef.current) { clearInterval(frameRef.current); frameRef.current = null; }
     const dur = duration;
     setSavedDuration(dur);
     setIsLive(false);
     const sid = streamIdRef.current;
-    recorderRef.current?.stop();
-    recorderRef.current = null;
     if (sid) await updateStream(sid, { isLive: false, duration_sec: dur } as never);
     setFinished(true);
   };
@@ -224,11 +237,16 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
 
   return (
     <div className="min-h-[calc(100vh-56px)] bg-black flex flex-col lg:flex-row">
+      {/* Скрытый canvas для захвата кадров */}
+      <canvas ref={canvasRef} style={{ display: "none" }} />
+
+      {/* Видео-превью */}
       <div className="relative flex-1 flex items-center justify-center bg-black" style={{ minHeight: "56vw", maxHeight: "70vh" }}>
         <video ref={videoRef} autoPlay muted playsInline
           className="w-full h-full object-cover"
           style={{ background: "#000", transform: facingMode === "user" ? "scaleX(-1)" : "none" }}
         />
+
         {cameraError && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/90 p-6 text-center">
             <div>
@@ -238,14 +256,17 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
             </div>
           </div>
         )}
+
         {isLive && (
           <div className="absolute top-4 left-4 flex items-center gap-2 z-10">
             <span className="flex items-center gap-1.5 bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full">
               <span className="w-1.5 h-1.5 rounded-full bg-white animate-live-pulse" />LIVE
             </span>
             <span className="bg-black/60 text-white text-xs font-mono px-2 py-0.5 rounded">{fmt(duration)}</span>
+            <span className="bg-black/60 text-white/60 text-[10px] font-mono px-1.5 py-0.5 rounded">{fps} fps</span>
           </div>
         )}
+
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 z-10">
           {isLive ? (
             <button onClick={stopBroadcast}
@@ -267,6 +288,8 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
           </button>
         </div>
       </div>
+
+      {/* Боковая панель */}
       <div className="lg:w-80 xl:w-96 bg-zinc-950 border-l border-white/10 flex flex-col p-4 gap-4">
         {!isLive && (
           <div>
@@ -277,7 +300,7 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
             />
             <div className="mt-3 p-3 rounded-xl bg-white/5 flex items-start gap-2.5">
               <Icon name="Wifi" size={14} className="text-primary mt-0.5 flex-shrink-0" />
-              <p className="text-[11px] text-white/60">Зрители смотрят вас в реальном времени с задержкой ~8 секунд</p>
+              <p className="text-[11px] text-white/60">Работает в любом браузере — Chrome, Safari, Яндекс. Зрители видят вас с задержкой ~1 сек.</p>
             </div>
           </div>
         )}
