@@ -9,7 +9,12 @@ const AGORA_TOKEN  = "https://functions.poehali.dev/a2751c9f-9c4b-4808-bf97-73f3
 const EMOJI_REACTIONS = ["🔥", "❤️", "👏", "😮", "😂"];
 const STREAM_THUMBNAIL = "https://cdn.poehali.dev/projects/a4bacfcf-1dfc-4307-b19f-4266aaeae1d7/files/5cdc424e-1406-41e5-9e82-3dcbd622fe88.jpg";
 
-AgoraRTC.setLogLevel(4);
+AgoraRTC.setLogLevel(3);
+
+const CODEC = (() => {
+  const ua = navigator.userAgent.toLowerCase();
+  return ua.includes("safari") && !ua.includes("chrome") ? "h264" : "vp8";
+})();
 
 interface Props {
   stream: StoreStream;
@@ -53,14 +58,16 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
 
     (async () => {
       try {
-        client = AgoraRTC.createClient({ mode: "live", codec: "vp8" });
+        client = AgoraRTC.createClient({ mode: "live", codec: CODEC });
         clientRef.current = client;
         await client.setClientRole("audience");
 
-        const tokenResp = await fetch(`${AGORA_TOKEN}?channel=${stream.id}&uid=0&role=subscriber`);
+        // Уникальный uid для зрителя (случайный)
+        const viewerUid = Math.floor(Math.random() * 100000) + 1000;
+        const tokenResp = await fetch(`${AGORA_TOKEN}?channel=${stream.id}&uid=${viewerUid}&role=subscriber`);
         const tokenData = await tokenResp.json();
 
-        await client.join(tokenData.appId, stream.id, tokenData.token, 0);
+        await client.join(tokenData.appId, stream.id, tokenData.token, viewerUid);
 
         client.on("user-published", async (remoteUser, mediaType) => {
           await client!.subscribe(remoteUser, mediaType);

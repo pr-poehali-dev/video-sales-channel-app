@@ -5,10 +5,15 @@ import { useAuth } from "@/context/AuthContext";
 import { useStore, type ChatMessage } from "@/context/StoreContext";
 import type { Page } from "@/App";
 
-const STORE_API   = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c";
 const AGORA_TOKEN = "https://functions.poehali.dev/a2751c9f-9c4b-4808-bf97-73f350e873a1";
 
-AgoraRTC.setLogLevel(4); // только ошибки
+AgoraRTC.setLogLevel(3);
+
+// Safari требует h264, остальные поддерживают vp8
+const CODEC = (() => {
+  const ua = navigator.userAgent.toLowerCase();
+  return ua.includes("safari") && !ua.includes("chrome") ? "h264" : "vp8";
+})();
 
 // ── Чат вещателя ──────────────────────────────────────────────────────────────
 function LiveChat({ streamId }: { streamId: string }) {
@@ -96,8 +101,8 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
     (async () => {
       try {
         [audioTrack, videoTrack] = await AgoraRTC.createMicrophoneAndCameraTracks(
-          { encoderConfig: "music_standard" },
-          { encoderConfig: { width: 640, height: 360, frameRate: 15, bitrateMax: 800 } }
+          { encoderConfig: "speech_standard" },
+          { encoderConfig: { width: 640, height: 360, frameRate: 15, bitrateMax: 600 }, optimizationMode: "motion" }
         );
         audioTrackRef.current = audioTrack;
         videoTrackRef.current = videoTrack;
@@ -131,7 +136,7 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
       const tokenData = await tokenResp.json();
 
       // Создаём клиент в режиме вещателя
-      const client = AgoraRTC.createClient({ mode: "live", codec: "vp8" });
+      const client = AgoraRTC.createClient({ mode: "live", codec: CODEC });
       clientRef.current = client;
       await client.setClientRole("host");
 
