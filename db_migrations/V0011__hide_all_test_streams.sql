@@ -1,0 +1,1 @@
+UPDATE "t_p63706319_video_sales_channel_"."streams" SET hidden = true WHERE is_live = false OR (is_live = true AND started_at < now() - interval '10 minutes');

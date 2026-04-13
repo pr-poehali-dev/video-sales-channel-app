@@ -171,13 +171,30 @@ def handler(event: dict, context) -> dict:
             conn.commit()
             return ok({"ok": True})
 
+        # ─────────── THUMBNAIL ───────────
+        if action == "upload_thumbnail":
+            stream_id = body.get("stream_id")
+            data_url  = body.get("data_url", "")
+            if not stream_id or not data_url.startswith("data:image/"):
+                return err("stream_id and image data_url required")
+            header, encoded = data_url.split(",", 1)
+            ext = header.split("/")[1].split(";")[0]
+            img_bytes = base64.b64decode(encoded)
+            key = f"thumbnails/{stream_id}.{ext}"
+            s3 = get_s3()
+            s3.put_object(Bucket="files", Key=key, Body=img_bytes, ContentType=f"image/{ext}")
+            url = f"{CDN_BASE}/{key}"
+            cur.execute("UPDATE streams SET thumbnail=%s WHERE id=%s", (url, stream_id))
+            conn.commit()
+            return ok({"url": url})
+
         # ─────────── STREAMS ───────────
         if action == "get_streams":
             seller_id = qs.get("seller_id")
             if seller_id:
-                cur.execute("SELECT * FROM streams WHERE seller_id=%s ORDER BY started_at DESC", (seller_id,))
+                cur.execute("SELECT * FROM streams WHERE seller_id=%s AND hidden=false ORDER BY started_at DESC", (seller_id,))
             else:
-                cur.execute("SELECT * FROM streams ORDER BY is_live DESC, started_at DESC")
+                cur.execute("SELECT * FROM streams WHERE hidden=false ORDER BY is_live DESC, started_at DESC")
             rows = cur.fetchall()
             return ok([_fmt_stream(r) for r in rows])
 
@@ -462,6 +479,7 @@ def _fmt_stream(r):
         "endedAt":      r["ended_at"].isoformat() if r["ended_at"] else None,
         "duration":     r["duration_sec"],
         "videoUrl":     r.get("video_url"),
+        "thumbnail":    r.get("thumbnail"),
     }
 
 def _fmt_chat(r):

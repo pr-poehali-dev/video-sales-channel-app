@@ -6,6 +6,7 @@ import { useStore, type ChatMessage } from "@/context/StoreContext";
 import type { Page } from "@/App";
 
 const AGORA_TOKEN = "https://functions.poehali.dev/a2751c9f-9c4b-4808-bf97-73f350e873a1";
+const API = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c";
 
 AgoraRTC.setLogLevel(3);
 
@@ -172,6 +173,24 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
       setStatus("live");
       setDuration(0);
       timerRef.current = setInterval(() => setDuration(d => d + 1), 1000);
+
+      // Снимаем превью с нативного <video> и сохраняем на сервер
+      setTimeout(async () => {
+        try {
+          const vid = nativeVideoRef.current;
+          if (!vid || !s.id) return;
+          const canvas = document.createElement("canvas");
+          canvas.width = vid.videoWidth || 640;
+          canvas.height = vid.videoHeight || 360;
+          canvas.getContext("2d")?.drawImage(vid, 0, 0, canvas.width, canvas.height);
+          const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
+          await fetch(`${API}?action=upload_thumbnail`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ stream_id: s.id, data_url: dataUrl }),
+          });
+        } catch { /* не критично */ }
+      }, 1500);
     } catch (e: unknown) {
       const err = e as Error;
       setErrorMsg("Ошибка подключения: " + err.message);

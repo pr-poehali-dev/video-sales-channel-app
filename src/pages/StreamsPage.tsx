@@ -85,13 +85,18 @@ export default function StreamsPage({ setPage, addToCart, onProductClick }: Stre
       onClick={() => setWatching(s)}
       className="bg-card border border-border rounded-2xl overflow-hidden hover:border-primary/40 transition-all cursor-pointer group"
     >
-      <div className="relative aspect-video bg-secondary flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-14 h-14 rounded-full bg-primary/20 text-primary text-xl font-bold flex items-center justify-center font-oswald mx-auto mb-2">
-            {s.sellerAvatar}
-          </div>
-          <p className="text-xs text-muted-foreground">{s.sellerName}</p>
-        </div>
+      <div className="relative aspect-video bg-secondary flex items-center justify-center overflow-hidden">
+        {s.thumbnail
+          ? <img src={s.thumbnail} alt={s.title} className="absolute inset-0 w-full h-full object-cover" />
+          : (
+            <div className="text-center">
+              <div className="w-14 h-14 rounded-full bg-primary/20 text-primary text-xl font-bold flex items-center justify-center font-oswald mx-auto mb-2">
+                {s.sellerAvatar}
+              </div>
+              <p className="text-xs text-muted-foreground">{s.sellerName}</p>
+            </div>
+          )
+        }
         {s.isLive ? (
           <>
             <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded">
