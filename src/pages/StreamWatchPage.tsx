@@ -6,9 +6,8 @@ import type { CartItem, Page } from "@/App";
 
 const API = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c";
 const EMOJI_REACTIONS = ["🔥", "❤️", "👏", "😮", "😂"];
-// Интервал опроса — чуть быстрее чем вещатель шлёт
-const POLL_MS = 120;
 const AUDIO_SAMPLE_RATE = 16000;
+const STREAM_THUMBNAIL = "https://cdn.poehali.dev/projects/a4bacfcf-1dfc-4307-b19f-4266aaeae1d7/files/5cdc424e-1406-41e5-9e82-3dcbd622fe88.jpg";
 
 interface Props {
   stream: StoreStream;
@@ -20,34 +19,31 @@ interface Props {
 function fmtDuration(sec?: number) {
   if (!sec) return "";
   const m = Math.floor(sec / 60), s = sec % 60;
-  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
 }
-
-type RightTab = "chat" | "products";
 
 export default function StreamWatchPage({ stream, setPage, addToCart, onProductClick }: Props) {
   const { user } = useAuth();
   const { addChatMessage, getStreamMessages, getSellerProducts } = useStore();
   const sellerProducts = getSellerProducts(stream.sellerId);
 
-  const pollRef     = useRef<ReturnType<typeof setInterval> | null>(null);
-  const chatPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const seqRef      = useRef(-1);
-  const fetchingRef = useRef(false);
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const audioTimeRef = useRef(0); // когда начать следующий чанк
+  const seqRef       = useRef(-1);
+  const activeRef    = useRef(false);
+  const chatPollRef  = useRef<ReturnType<typeof setInterval> | null>(null);
+  const audioCtxRef  = useRef<AudioContext | null>(null);
+  const audioTimeRef = useRef(0);
 
-  const [frameSrc, setFrameSrc]       = useState<string | null>(null);
-  const [messages, setMessages]       = useState<ChatMessage[]>([]);
-  const [input, setInput]             = useState("");
-  const [reaction, setReaction]       = useState<string | null>(null);
-  const [sending, setSending]         = useState(false);
-  const [panelOpen, setPanelOpen]     = useState(true);
-  const [rightTab, setRightTab]       = useState<RightTab>("chat");
-  const [addedId, setAddedId]         = useState<string | null>(null);
-  const [liveStatus, setLiveStatus]   = useState<"waiting" | "playing">("waiting");
+  const [frameSrc, setFrameSrc]     = useState<string | null>(null);
+  const [messages, setMessages]     = useState<ChatMessage[]>([]);
+  const [input, setInput]           = useState("");
+  const [reaction, setReaction]     = useState<string | null>(null);
+  const [sending, setSending]       = useState(false);
+  const [chatOpen, setChatOpen]     = useState(false);
+  const [rightTab, setRightTab]     = useState<"chat" | "products">("chat");
+  const [addedId, setAddedId]       = useState<string | null>(null);
+  const [liveStatus, setLiveStatus] = useState<"waiting" | "playing">("waiting");
 
-  // Воспроизводим base64-PCM через AudioContext (Int16, 16000 Гц, моно)
+  // ── Аудио ─────────────────────────────────────────────────────────────────
   const playAudio = useCallback((b64: string) => {
     try {
       if (!audioCtxRef.current) {
@@ -61,52 +57,52 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
       const i16 = new Int16Array(bytes.buffer);
       const f32 = new Float32Array(i16.length);
       for (let i = 0; i < i16.length; i++) f32[i] = i16[i] / 32768;
-
       const buf = ctx.createBuffer(1, f32.length, AUDIO_SAMPLE_RATE);
       buf.copyToChannel(f32, 0);
       const src = ctx.createBufferSource();
       src.buffer = buf;
       src.connect(ctx.destination);
-
-      // Планируем воспроизведение вплотную к предыдущему чанку
       const startAt = Math.max(ctx.currentTime, audioTimeRef.current);
       src.start(startAt);
       audioTimeRef.current = startAt + buf.duration;
     } catch { /* ignore */ }
   }, []);
 
-  // ── Опрос кадра + аудио ───────────────────────────────────────────────────
-  const fetchFrame = useCallback(async () => {
-    if (fetchingRef.current) return;
-    fetchingRef.current = true;
-    try {
-      const qs = new URLSearchParams({
-        action: "get_frame",
-        stream_id: stream.id,
-        seq: String(seqRef.current),
-      });
-      const resp = await fetch(`${API}?${qs}`);
-      const data: { frame: string | null; audio: string | null; seq: number } = await resp.json();
-      if (data.frame) {
-        seqRef.current = data.seq;
-        setFrameSrc(`data:image/jpeg;base64,${data.frame}`);
-        setLiveStatus("playing");
+  // ── Цепочка получения кадров (без накопления запросов) ────────────────────
+  const fetchLoop = useCallback(async () => {
+    while (activeRef.current) {
+      try {
+        const qs = new URLSearchParams({
+          action: "get_frame",
+          stream_id: stream.id,
+          seq: String(seqRef.current),
+        });
+        const resp = await fetch(`${API}?${qs}`);
+        const data: { frame: string | null; audio: string | null; seq: number } = await resp.json();
+        if (data.frame) {
+          seqRef.current = data.seq;
+          setFrameSrc(`data:image/jpeg;base64,${data.frame}`);
+          setLiveStatus("playing");
+        }
+        if (data.audio) playAudio(data.audio);
+        // Если кадра нет — ждём 300мс перед следующим запросом
+        if (!data.frame) await new Promise(r => setTimeout(r, 300));
+      } catch {
+        await new Promise(r => setTimeout(r, 500));
       }
-      if (data.audio) playAudio(data.audio);
-    } catch { /* ignore */ }
-    finally { fetchingRef.current = false; }
+    }
   }, [stream.id, playAudio]);
 
   useEffect(() => {
     if (!stream.isLive) return;
-    fetchFrame();
-    pollRef.current = setInterval(fetchFrame, POLL_MS);
+    activeRef.current = true;
+    fetchLoop();
     return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
+      activeRef.current = false;
       audioCtxRef.current?.close();
       audioCtxRef.current = null;
     };
-  }, [stream.isLive, fetchFrame]);
+  }, [stream.isLive, fetchLoop]);
 
   // ── Чат ──────────────────────────────────────────────────────────────────
   const fetchMessages = useCallback(async () => {
@@ -145,177 +141,251 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
     setTimeout(() => setAddedId(null), 1500);
   };
 
+  // ══════════════════════════════════════════════════════════════════════════
+  // МОБИЛЬНЫЙ LAYOUT (как YouTube Live)
+  // ══════════════════════════════════════════════════════════════════════════
   return (
-    <div className="flex flex-col lg:flex-row min-h-[calc(100vh-56px)] bg-black">
+    <div className="flex flex-col min-h-[calc(100vh-56px)] bg-black lg:flex-row">
 
-      {/* ── ВИДЕО ─────────────────────────────────────────── */}
-      <div className="relative flex-1 flex items-center justify-center bg-black min-h-[50vh] lg:min-h-0">
+      {/* ── ВИДЕО БЛОК ──────────────────────────────────────────────────── */}
+      <div className="relative w-full bg-black lg:flex-1" style={{ aspectRatio: "16/9", maxHeight: "56vw" }}>
 
-        <button onClick={() => setPage("streams")}
-          className="absolute top-4 left-4 z-20 w-9 h-9 rounded-full bg-black/50 backdrop-blur flex items-center justify-center">
-          <Icon name="ArrowLeft" size={18} className="text-white" />
-        </button>
-
-        {/* LIVE: кадры JPEG — работает в любом браузере */}
-        {stream.isLive && (
+        {/* Заставка / кадр */}
+        {stream.isLive ? (
           <>
+            {/* Заставка видна пока нет кадра */}
+            <img
+              src={STREAM_THUMBNAIL}
+              alt="thumbnail"
+              className="absolute inset-0 w-full h-full object-cover"
+              style={{ opacity: liveStatus === "playing" ? 0 : 1, transition: "opacity 0.5s" }}
+            />
             {frameSrc && (
               <img
                 src={frameSrc}
                 alt="live"
-                className="w-full h-full object-contain max-h-[calc(100vh-56px)]"
-                style={{ background: "black", display: "block" }}
+                className="absolute inset-0 w-full h-full object-cover"
+                style={{ opacity: liveStatus === "playing" ? 1 : 0, transition: "opacity 0.3s" }}
               />
             )}
+            {/* Прелоадер поверх заставки */}
             {liveStatus === "waiting" && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black px-8 text-center">
-                <div className="w-20 h-20 rounded-full bg-primary/20 text-primary text-3xl font-bold flex items-center justify-center">
-                  {stream.sellerAvatar}
+              <div className="absolute inset-0 flex flex-col items-end justify-end p-4 bg-gradient-to-t from-black/80 via-transparent to-black/40">
+                <div className="flex items-center gap-2 text-white/70 text-xs mb-auto mt-2 self-start">
+                  <Icon name="Loader" size={14} className="animate-spin" />
+                  Подключение...
                 </div>
-                <p className="text-white font-semibold text-lg">{stream.sellerName}</p>
-                <p className="text-white/50 text-sm">{stream.title}</p>
-                <div className="flex items-center gap-2 text-white/60 text-sm">
-                  <Icon name="Loader" size={16} className="animate-spin" />
-                  Подключение к эфиру...
-                </div>
-                <span className="flex items-center gap-1.5 bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded-full">
-                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-live-pulse" />LIVE
-                </span>
               </div>
             )}
           </>
-        )}
-
-        {/* Запись */}
-        {!stream.isLive && stream.videoUrl && (
-          <video src={stream.videoUrl} controls autoPlay playsInline
-            className="w-full h-full object-contain max-h-[calc(100vh-56px)]"
-            style={{ background: "black" }}
-          />
-        )}
-        {!stream.isLive && !stream.videoUrl && (
-          <div className="flex flex-col items-center justify-center gap-3 py-16 px-8 text-center">
-            <div className="w-20 h-20 rounded-full bg-white/10 text-white text-3xl font-bold flex items-center justify-center">
-              {stream.sellerAvatar}
+        ) : (
+          /* Для завершённых эфиров — заставка + иконка */
+          <div className="absolute inset-0">
+            <img src={STREAM_THUMBNAIL} alt="thumbnail" className="w-full h-full object-cover opacity-50" />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-14 h-14 rounded-full bg-black/60 flex items-center justify-center">
+                <Icon name="Play" size={24} className="text-white ml-1" />
+              </div>
             </div>
-            <p className="text-white font-semibold">{stream.sellerName}</p>
-            <p className="text-white/40 text-sm">Запись недоступна</p>
           </div>
         )}
 
-        {/* LIVE бейдж */}
-        {stream.isLive && liveStatus === "playing" && (
-          <div className="absolute top-4 left-14 z-10">
-            <span className="flex items-center gap-1.5 bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded">
+        {/* Градиент сверху и снизу */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/40 pointer-events-none" />
+
+        {/* Шапка: назад + LIVE бейдж */}
+        <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-3 pt-3 z-10">
+          <button onClick={() => setPage("streams")}
+            className="w-9 h-9 rounded-full bg-black/50 backdrop-blur flex items-center justify-center">
+            <Icon name="ArrowLeft" size={18} className="text-white" />
+          </button>
+          {stream.isLive && (
+            <span className="flex items-center gap-1.5 bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full">
               <span className="w-1.5 h-1.5 rounded-full bg-white animate-live-pulse" />LIVE
             </span>
-          </div>
-        )}
+          )}
+          {!stream.isLive && stream.duration && (
+            <span className="bg-black/60 text-white text-xs font-mono px-2 py-1 rounded">{fmtDuration(stream.duration)}</span>
+          )}
+          {/* Кнопка чата на мобильном */}
+          <button onClick={() => setChatOpen(o => !o)}
+            className="w-9 h-9 rounded-full bg-black/50 backdrop-blur flex items-center justify-center relative lg:hidden">
+            <Icon name="MessageSquare" size={16} className="text-white" />
+            {messages.length > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 bg-primary text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
+                {messages.length > 9 ? "9+" : messages.length}
+              </span>
+            )}
+          </button>
+        </div>
 
-        {!stream.isLive && stream.duration && (
-          <div className="absolute bottom-16 right-4 bg-black/70 text-white text-xs font-mono px-2 py-1 rounded z-10">
-            {fmtDuration(stream.duration)}
-          </div>
-        )}
-
+        {/* Реакция */}
         {reaction && (
-          <div className="absolute bottom-20 right-8 text-5xl animate-bounce pointer-events-none z-20">{reaction}</div>
+          <div className="absolute bottom-20 right-5 text-4xl animate-bounce pointer-events-none z-20">{reaction}</div>
         )}
 
+        {/* Эмодзи реакции (только на лайве) */}
         {stream.isLive && (
-          <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
             {EMOJI_REACTIONS.map(e => (
               <button key={e} onClick={() => sendReaction(e)} disabled={!user}
-                className="text-xl bg-black/50 backdrop-blur rounded-full w-10 h-10 flex items-center justify-center hover:bg-black/70 disabled:opacity-40">
+                className="text-lg bg-black/50 backdrop-blur rounded-full w-9 h-9 flex items-center justify-center hover:bg-black/70 active:scale-110 disabled:opacity-40 transition-transform">
                 {e}
               </button>
             ))}
           </div>
         )}
-
-        <button onClick={() => setPanelOpen(o => !o)}
-          className="absolute top-4 right-4 z-20 lg:hidden w-9 h-9 rounded-full bg-black/50 backdrop-blur flex items-center justify-center">
-          <Icon name="MessageSquare" size={17} className="text-white" />
-          {messages.length > 0 && (
-            <span className="absolute -top-1 -right-1 bg-primary text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
-              {messages.length > 99 ? "99" : messages.length}
-            </span>
-          )}
-        </button>
       </div>
 
-      {/* ── ПРАВАЯ ПАНЕЛЬ ─────────────────────────────────── */}
-      <div className={`flex flex-col bg-zinc-950 border-l border-white/10 lg:w-80 xl:w-96 lg:flex-shrink-0 ${panelOpen ? "h-[65vh] lg:h-auto" : "h-0 overflow-hidden lg:flex lg:h-auto"}`}>
+      {/* ── ИНФО ПОД ВИДЕО (только мобильный) ──────────────────────────── */}
+      <div className="lg:hidden bg-zinc-950 px-4 py-3 flex items-start gap-3">
+        <div className="flex-1 min-w-0">
+          <h2 className="text-white font-semibold text-sm leading-tight truncate">{stream.title}</h2>
+          <p className="text-white/50 text-xs mt-0.5">{stream.sellerName}</p>
+        </div>
+        {stream.isLive && (
+          <span className="flex items-center gap-1 text-white/40 text-xs flex-shrink-0">
+            <Icon name="Eye" size={12} />
+            смотрит
+          </span>
+        )}
+      </div>
 
+      {/* ── ПРАВАЯ ПАНЕЛЬ (десктоп) + ВЫДВИЖНАЯ (мобильный) ────────────── */}
+      {/* Мобильный overlay чат */}
+      {chatOpen && (
+        <div className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end" onClick={() => setChatOpen(false)}>
+          <div className="bg-zinc-900 rounded-t-2xl" style={{ maxHeight: "70vh" }} onClick={e => e.stopPropagation()}>
+            <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mt-3 mb-2" />
+            {/* Табы */}
+            <div className="flex border-b border-white/10">
+              {(["chat", "products"] as const).map(tab => (
+                <button key={tab} onClick={() => setRightTab(tab)}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold border-b-2 transition-colors ${rightTab === tab ? "text-white border-primary" : "text-white/40 border-transparent"}`}>
+                  <Icon name={tab === "chat" ? "MessageSquare" : "ShoppingBag"} size={13} />
+                  {tab === "chat" ? `Чат (${messages.length})` : `Товары (${sellerProducts.length})`}
+                </button>
+              ))}
+            </div>
+            <div className="flex flex-col" style={{ height: "50vh" }}>
+              {rightTab === "chat" ? (
+                <ChatPanel messages={messages} user={user} input={input} setInput={setInput}
+                  sendMessage={sendMessage} sending={sending} />
+              ) : (
+                <ProductsPanel products={sellerProducts} addedId={addedId} handleAddToCart={handleAddToCart} onProductClick={onProductClick} />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Десктоп панель */}
+      <div className="hidden lg:flex lg:flex-col lg:w-80 xl:w-96 bg-zinc-950 border-l border-white/10 flex-shrink-0">
+        {/* Инфо о стриме */}
+        <div className="px-4 py-3 border-b border-white/10">
+          <h2 className="text-white font-semibold text-sm leading-tight">{stream.title}</h2>
+          <p className="text-white/50 text-xs mt-0.5">{stream.sellerName}</p>
+        </div>
+        {/* Табы */}
         <div className="flex border-b border-white/10 flex-shrink-0">
-          {(["chat", "products"] as RightTab[]).map(tab => (
+          {(["chat", "products"] as const).map(tab => (
             <button key={tab} onClick={() => setRightTab(tab)}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-semibold transition-colors border-b-2 ${rightTab === tab ? "text-white border-primary" : "text-white/40 border-transparent hover:text-white/70"}`}>
-              <Icon name={tab === "chat" ? "MessageSquare" : "ShoppingBag"} size={14} />
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold border-b-2 transition-colors ${rightTab === tab ? "text-white border-primary" : "text-white/40 border-transparent hover:text-white/70"}`}>
+              <Icon name={tab === "chat" ? "MessageSquare" : "ShoppingBag"} size={13} />
               {tab === "chat" ? "Чат" : "Товары"}
-              {tab === "chat" && messages.length > 0 && <span className="bg-white/10 text-white/60 text-[10px] px-1.5 py-0.5 rounded-full">{messages.length}</span>}
-              {tab === "chat" && stream.isLive && <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-live-pulse ml-1" />}
-              {tab === "products" && sellerProducts.length > 0 && <span className="bg-white/10 text-white/60 text-[10px] px-1.5 py-0.5 rounded-full">{sellerProducts.length}</span>}
+              {tab === "chat" && messages.length > 0 && <span className="bg-white/10 text-white/50 text-[10px] px-1.5 rounded-full">{messages.length}</span>}
+              {tab === "chat" && stream.isLive && <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-live-pulse" />}
+              {tab === "products" && <span className="bg-white/10 text-white/50 text-[10px] px-1.5 rounded-full">{sellerProducts.length}</span>}
             </button>
           ))}
         </div>
-
-        {rightTab === "chat" && (
-          <div className="flex flex-col flex-1 min-h-0">
-            <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2">
-              {messages.length === 0
-                ? <p className="text-center text-white/30 text-xs pt-8">Чат пуст</p>
-                : messages.map(m => (
-                  <div key={m.id} className="flex items-start gap-2">
-                    <div className="w-5 h-5 rounded-full bg-primary/30 text-white text-[9px] font-bold flex items-center justify-center flex-shrink-0">{m.userAvatar}</div>
-                    <p className="text-[12px] text-white/80 leading-snug"><span className="text-primary/90 font-semibold">{m.userName} </span>{m.text}</p>
-                  </div>
-                ))
-              }
-              <div ref={el => el?.scrollIntoView()} />
-            </div>
-            {user ? (
-              <div className="px-3 py-3 border-t border-white/10 flex gap-2 flex-shrink-0">
-                <input value={input} onChange={e => setInput(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && sendMessage()} placeholder="Написать..." maxLength={200}
-                  className="flex-1 bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-xs text-white placeholder:text-white/40 outline-none focus:border-primary/50"
-                />
-                <button onClick={() => sendMessage()} disabled={!input.trim() || sending}
-                  className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center disabled:opacity-40">
-                  <Icon name="Send" size={13} className="text-white" />
-                </button>
-              </div>
-            ) : (
-              <p className="text-center text-white/30 text-xs py-3 border-t border-white/10 flex-shrink-0">Войдите чтобы писать в чат</p>
-            )}
-          </div>
-        )}
-
-        {rightTab === "products" && (
-          <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2">
-            {sellerProducts.length === 0
-              ? <p className="text-center text-white/30 text-xs pt-8">Нет товаров</p>
-              : sellerProducts.map(p => (
-                <div key={p.id} onClick={() => onProductClick(p.id)}
-                  className="flex items-center gap-3 p-2.5 rounded-xl bg-white/5 hover:bg-white/10 cursor-pointer transition-colors">
-                  {p.images[0]
-                    ? <img src={p.images[0]} className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
-                    : <div className="w-12 h-12 rounded-lg bg-white/10 flex-shrink-0" />
-                  }
-                  <div className="flex-1 min-w-0">
-                    <p className="text-white text-xs font-medium truncate">{p.name}</p>
-                    <p className="text-primary text-xs font-bold mt-0.5">{p.price.toLocaleString("ru-RU")} ₽</p>
-                  </div>
-                  <button onClick={e => handleAddToCart(e, p)}
-                    className={`px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-colors flex-shrink-0 ${addedId === p.id ? "bg-green-600 text-white" : "bg-primary text-primary-foreground hover:opacity-90"}`}>
-                    {addedId === p.id ? "✓" : "В корзину"}
-                  </button>
-                </div>
-              ))
-            }
-          </div>
-        )}
+        <div className="flex-1 min-h-0 flex flex-col">
+          {rightTab === "chat" ? (
+            <ChatPanel messages={messages} user={user} input={input} setInput={setInput}
+              sendMessage={sendMessage} sending={sending} />
+          ) : (
+            <ProductsPanel products={sellerProducts} addedId={addedId} handleAddToCart={handleAddToCart} onProductClick={onProductClick} />
+          )}
+        </div>
       </div>
+    </div>
+  );
+}
+
+// ── Переиспользуемые панели ───────────────────────────────────────────────────
+interface ChatPanelProps {
+  messages: ChatMessage[];
+  user: { id: string; name: string; avatar: string } | null;
+  input: string;
+  setInput: (v: string) => void;
+  sendMessage: (text?: string) => void;
+  sending: boolean;
+}
+function ChatPanel({ messages, user, input, setInput, sendMessage, sending }: ChatPanelProps) {
+  const endRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages.length]);
+
+  return (
+    <div className="flex flex-col flex-1 min-h-0">
+      <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2">
+        {messages.length === 0
+          ? <p className="text-center text-white/30 text-xs pt-8">Чат пуст</p>
+          : messages.map(m => (
+            <div key={m.id} className="flex items-start gap-2">
+              <div className="w-5 h-5 rounded-full bg-primary/30 text-white text-[9px] font-bold flex items-center justify-center flex-shrink-0">{m.userAvatar}</div>
+              <p className="text-[12px] text-white/80 leading-snug"><span className="text-primary/90 font-semibold">{m.userName} </span>{m.text}</p>
+            </div>
+          ))
+        }
+        <div ref={endRef} />
+      </div>
+      {user ? (
+        <div className="px-3 py-3 border-t border-white/10 flex gap-2 flex-shrink-0">
+          <input value={input} onChange={e => setInput(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && sendMessage()} placeholder="Написать..." maxLength={200}
+            className="flex-1 bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-xs text-white placeholder:text-white/40 outline-none focus:border-primary/50"
+          />
+          <button onClick={() => sendMessage()} disabled={!input.trim() || sending}
+            className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center disabled:opacity-40">
+            <Icon name="Send" size={13} className="text-white" />
+          </button>
+        </div>
+      ) : (
+        <p className="text-center text-white/30 text-xs py-3 border-t border-white/10">Войдите чтобы писать</p>
+      )}
+    </div>
+  );
+}
+
+interface ProductsPanelProps {
+  products: ReturnType<ReturnType<typeof useStore>["getSellerProducts"]>;
+  addedId: string | null;
+  handleAddToCart: (e: React.MouseEvent, p: ProductsPanelProps["products"][0]) => void;
+  onProductClick: (id: string) => void;
+}
+function ProductsPanel({ products, addedId, handleAddToCart, onProductClick }: ProductsPanelProps) {
+  return (
+    <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2">
+      {products.length === 0
+        ? <p className="text-center text-white/30 text-xs pt-8">Нет товаров</p>
+        : products.map(p => (
+          <div key={p.id} onClick={() => onProductClick(p.id)}
+            className="flex items-center gap-3 p-2.5 rounded-xl bg-white/5 hover:bg-white/10 cursor-pointer transition-colors">
+            {p.images[0]
+              ? <img src={p.images[0]} className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
+              : <div className="w-12 h-12 rounded-lg bg-white/10 flex-shrink-0" />
+            }
+            <div className="flex-1 min-w-0">
+              <p className="text-white text-xs font-medium truncate">{p.name}</p>
+              <p className="text-primary text-xs font-bold mt-0.5">{p.price.toLocaleString("ru-RU")} ₽</p>
+            </div>
+            <button onClick={e => handleAddToCart(e, p)}
+              className={`px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0 transition-colors ${addedId === p.id ? "bg-green-600 text-white" : "bg-primary text-primary-foreground"}`}>
+              {addedId === p.id ? "✓" : "В корзину"}
+            </button>
+          </div>
+        ))
+      }
     </div>
   );
 }
