@@ -79,19 +79,29 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
   const clientRef    = useRef<IAgoraRTCClient | null>(null);
   const videoTrackRef = useRef<ILocalVideoTrack | null>(null);
   const audioTrackRef = useRef<ILocalAudioTrack | null>(null);
-  const videoElRef   = useRef<HTMLDivElement>(null);
+  const videoElRef   = useRef<HTMLDivElement | null>(null);
   const timerRef     = useRef<ReturnType<typeof setInterval> | null>(null);
   const streamIdRef  = useRef<string | null>(null);
+  const facingModeRef = useRef<"user" | "environment">("user");
 
   const [title, setTitle]           = useState("");
   const [isLive, setIsLive]         = useState(false);
   const [isMuted, setIsMuted]       = useState(false);
   const [isCamOff, setIsCamOff]     = useState(false);
+  const [isFront, setIsFront]       = useState(true);
   const [duration, setDuration]     = useState(0);
   const [finished, setFinished]     = useState(false);
   const [savedDuration, setSavedDuration] = useState(0);
   const [status, setStatus]         = useState<"idle" | "connecting" | "live" | "error">("idle");
   const [errorMsg, setErrorMsg]     = useState("");
+
+  // Callback ref — воспроизводим видео сразу как только div появится в DOM
+  const setVideoEl = useCallback((el: HTMLDivElement | null) => {
+    videoElRef.current = el;
+    if (el && videoTrackRef.current) {
+      videoTrackRef.current.play(el);
+    }
+  }, []);
 
   // Инициализируем превью камеры при загрузке
   useEffect(() => {
@@ -102,10 +112,12 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
       try {
         [audioTrack, videoTrack] = await AgoraRTC.createMicrophoneAndCameraTracks(
           { encoderConfig: "speech_standard" },
-          { encoderConfig: { width: 640, height: 360, frameRate: 15, bitrateMax: 600 }, optimizationMode: "motion" }
+          { encoderConfig: { width: 640, height: 360, frameRate: 15, bitrateMax: 600 }, optimizationMode: "motion",
+            facingMode: facingModeRef.current }
         );
         audioTrackRef.current = audioTrack;
         videoTrackRef.current = videoTrack;
+        // Если div уже есть в DOM — воспроизводим; иначе сработает callback ref
         if (videoElRef.current) videoTrack.play(videoElRef.current);
       } catch (e: unknown) {
         const err = e as Error;
@@ -190,6 +202,33 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
     setIsCamOff(c => !c);
   };
 
+  const flipCamera = async () => {
+    const newFacing = facingModeRef.current === "user" ? "environment" : "user";
+    facingModeRef.current = newFacing;
+    setIsFront(newFacing === "user");
+
+    // Останавливаем старый трек
+    const oldTrack = videoTrackRef.current;
+    if (oldTrack) { oldTrack.stop(); oldTrack.close(); }
+
+    try {
+      const newTrack = await AgoraRTC.createCameraVideoTrack({
+        encoderConfig: { width: 640, height: 360, frameRate: 15, bitrateMax: 600 },
+        optimizationMode: "motion",
+        facingMode: newFacing,
+      });
+      videoTrackRef.current = newTrack;
+
+      // Если в эфире — меняем трек на лету
+      if (clientRef.current && isLive) {
+        await clientRef.current.unpublish([oldTrack!]);
+        await clientRef.current.publish([newTrack]);
+      }
+
+      if (videoElRef.current) newTrack.play(videoElRef.current);
+    } catch { /* игнор */ }
+  };
+
   const fmt = (s: number) => `${String(Math.floor(s / 60)).padStart(2,"0")}:${String(s % 60).padStart(2,"0")}`;
 
   if (!user) return (
@@ -225,7 +264,7 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
       <div className="relative flex-1 bg-black" style={{ minHeight: "56vw", maxHeight: "70vh" }}>
 
         {/* Agora рендерит видео сюда */}
-        <div ref={videoElRef} className="w-full h-full" style={{ background: "#000" }} />
+        <div ref={setVideoEl} className="w-full h-full" style={{ background: "#000" }} />
 
         {status === "error" && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/90 p-6 text-center z-10">
@@ -292,6 +331,12 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
             <button onClick={toggleCamera}
               className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${isCamOff ? "bg-red-600" : "bg-black/60 backdrop-blur border border-white/20"}`}>
               <Icon name={isCamOff ? "VideoOff" : "Video"} size={18} className="text-white" />
+            </button>
+
+            <button onClick={flipCamera} disabled={isCamOff}
+              className="w-12 h-12 rounded-full bg-black/60 backdrop-blur border border-white/20 flex items-center justify-center disabled:opacity-30 transition-colors"
+              title={isFront ? "Переключить на основную" : "Переключить на фронтальную"}>
+              <Icon name="RefreshCw" size={18} className="text-white" />
             </button>
           </div>
         </div>
