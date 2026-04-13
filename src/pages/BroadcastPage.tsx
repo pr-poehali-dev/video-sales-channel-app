@@ -95,11 +95,29 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
   const [status, setStatus]         = useState<"idle" | "connecting" | "live" | "error">("idle");
   const [errorMsg, setErrorMsg]     = useState("");
 
+  // Патчим <video> внутри контейнера для Safari (playsinline + size)
+  const patchVideoEl = (container: HTMLDivElement) => {
+    setTimeout(() => {
+      const v = container.querySelector("video");
+      if (v) {
+        v.setAttribute("playsinline", "");
+        v.setAttribute("webkit-playsinline", "");
+        v.style.width = "100%";
+        v.style.height = "100%";
+        v.style.objectFit = "cover";
+        v.style.position = "absolute";
+        v.style.inset = "0";
+        v.play().catch(() => {/* Safari autoplay */});
+      }
+    }, 100);
+  };
+
   // Callback ref — воспроизводим видео сразу как только div появится в DOM
   const setVideoEl = useCallback((el: HTMLDivElement | null) => {
     videoElRef.current = el;
     if (el && videoTrackRef.current) {
       videoTrackRef.current.play(el);
+      patchVideoEl(el);
     }
   }, []);
 
@@ -118,7 +136,10 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
         audioTrackRef.current = audioTrack;
         videoTrackRef.current = videoTrack;
         // Если div уже есть в DOM — воспроизводим; иначе сработает callback ref
-        if (videoElRef.current) videoTrack.play(videoElRef.current);
+        if (videoElRef.current) {
+          videoTrack.play(videoElRef.current);
+          patchVideoEl(videoElRef.current);
+        }
       } catch (e: unknown) {
         const err = e as Error;
         if (err.name === "NotAllowedError") setErrorMsg("Нет доступа к камере. Разрешите в настройках браузера.");
@@ -225,7 +246,10 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
         await clientRef.current.publish([newTrack]);
       }
 
-      if (videoElRef.current) newTrack.play(videoElRef.current);
+      if (videoElRef.current) {
+        newTrack.play(videoElRef.current);
+        patchVideoEl(videoElRef.current);
+      }
     } catch { /* игнор */ }
   };
 
@@ -264,7 +288,7 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
       <div className="relative flex-1 bg-black" style={{ minHeight: "56vw", maxHeight: "70vh" }}>
 
         {/* Agora рендерит видео сюда */}
-        <div ref={setVideoEl} className="w-full h-full" style={{ background: "#000" }} />
+        <div ref={setVideoEl} className="w-full h-full" style={{ background: "#000", position: "relative", overflow: "hidden" }} />
 
         {status === "error" && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/90 p-6 text-center z-10">
