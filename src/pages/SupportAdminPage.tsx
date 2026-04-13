@@ -46,22 +46,22 @@ export default function SupportAdminPage({ setPage }: SupportAdminPageProps) {
     try {
       const r = await fetch(`${API}?action=get_all_chats`);
       const data = await r.json();
-      setChats(data);
+      if (Array.isArray(data)) setChats(data);
     } catch { /* ignore */ }
+    finally { setLoading(false); }
   }, []);
 
   const loadMessages = useCallback(async (chatId: string) => {
     try {
       const r = await fetch(`${API}?action=get_messages&chat_id=${chatId}&role=admin`);
       const data = await r.json();
-      setMessages(data);
-      // обновляем счётчик в локальном стейте
+      if (Array.isArray(data)) setMessages(data);
       setChats(prev => prev.map(c => c.id === chatId ? { ...c, unreadAdmin: 0 } : c));
     } catch { /* ignore */ }
   }, []);
 
   useEffect(() => {
-    loadChats().finally(() => setLoading(false));
+    loadChats();
     chatsPollRef.current = setInterval(loadChats, 5000);
     return () => { if (chatsPollRef.current) clearInterval(chatsPollRef.current); };
   }, []);
@@ -133,7 +133,11 @@ export default function SupportAdminPage({ setPage }: SupportAdminPageProps) {
     <div className="max-w-md mx-auto px-4 py-24 text-center">
       <Icon name="ShieldOff" size={36} className="mx-auto mb-4 text-muted-foreground opacity-40" />
       <h2 className="font-oswald text-xl font-semibold mb-2">Нет доступа</h2>
-      <button onClick={() => setPage("home")} className="bg-primary text-primary-foreground font-semibold px-6 py-3 rounded-xl hover:opacity-90">На главную</button>
+      <p className="text-sm text-muted-foreground mb-5">
+        Войдите как администратор:<br/>
+        <span className="font-mono text-xs">admin@yugastore.ru / admin2024</span>
+      </p>
+      <button onClick={() => setPage("auth")} className="bg-primary text-primary-foreground font-semibold px-6 py-3 rounded-xl hover:opacity-90">Войти</button>
     </div>
   );
 
