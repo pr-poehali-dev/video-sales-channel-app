@@ -5,10 +5,7 @@ import { useStore, type StoreStream, type ChatMessage } from "@/context/StoreCon
 import type { CartItem, Page } from "@/App";
 
 const API = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c";
-const ICE_SERVERS = [
-  { urls: "stun:stun.l.google.com:19302" },
-  { urls: "stun:stun1.l.google.com:19302" },
-];
+const EMOJI_REACTIONS = ["🔥", "❤️", "👏", "😮", "😂"];
 
 interface Props {
   stream: StoreStream;
@@ -17,27 +14,10 @@ interface Props {
   onProductClick: (id: string) => void;
 }
 
-const EMOJI_REACTIONS = ["🔥", "❤️", "👏", "😮", "😂"];
-
 function fmtDuration(sec?: number) {
   if (!sec) return "";
   const m = Math.floor(sec / 60), s = sec % 60;
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-}
-
-async function apiPost(action: string, body: Record<string, unknown>) {
-  const r = await fetch(`${API}?action=${action}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  return r.json();
-}
-
-async function apiGet(action: string, params: Record<string, string>) {
-  const qs = new URLSearchParams({ action, ...params }).toString();
-  const r = await fetch(`${API}?${qs}`);
-  return r.json();
 }
 
 type RightTab = "chat" | "products";
@@ -45,132 +25,118 @@ type RightTab = "chat" | "products";
 export default function StreamWatchPage({ stream, setPage, addToCart, onProductClick }: Props) {
   const { user } = useAuth();
   const { addChatMessage, getStreamMessages, getSellerProducts } = useStore();
-
   const sellerProducts = getSellerProducts(stream.sellerId);
 
-  const videoRef   = useRef<HTMLVideoElement>(null);
-  const pcRef      = useRef<RTCPeerConnection | null>(null);
-  const pollRef    = useRef<ReturnType<typeof setInterval> | null>(null);
-  const chatPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const viewerIdRef = useRef<string>(`viewer_${Math.random().toString(36).slice(2)}`);
-  const lastIceIdRef = useRef<string>("");
-  const connectedRef = useRef(false);
+  const videoRef     = useRef<HTMLVideoElement>(null);
+  const msRef        = useRef<MediaSource | null>(null);
+  const sbRef        = useRef<SourceBuffer | null>(null);
+  const queueRef     = useRef<Uint8Array[]>([]);
+  const appendingRef = useRef(false);
+  const afterSeqRef  = useRef(-1);
+  const pollRef      = useRef<ReturnType<typeof setInterval> | null>(null);
+  const chatPollRef  = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState("");
-  const [reaction, setReaction] = useState<string | null>(null);
-  const [sending, setSending] = useState(false);
-  const [panelOpen, setPanelOpen] = useState(true);
-  const [rightTab, setRightTab] = useState<RightTab>("chat");
-  const [addedId, setAddedId] = useState<string | null>(null);
-  const [connState, setConnState] = useState<"connecting" | "connected" | "failed">("connecting");
+  const [messages, setMessages]     = useState<ChatMessage[]>([]);
+  const [input, setInput]           = useState("");
+  const [reaction, setReaction]     = useState<string | null>(null);
+  const [sending, setSending]       = useState(false);
+  const [panelOpen, setPanelOpen]   = useState(true);
+  const [rightTab, setRightTab]     = useState<RightTab>("chat");
+  const [addedId, setAddedId]       = useState<string | null>(null);
+  const [liveStatus, setLiveStatus] = useState<"waiting" | "playing" | "error">("waiting");
 
-  // ── WebRTC: подключение к вещателю ────────────────────────────────────────
-  const connect = useCallback(async () => {
-    if (connectedRef.current || !stream.isLive) return;
-
-    const viewerId = viewerIdRef.current;
-    const streamId = stream.id;
-
-    // Создаём peer
-    const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
-    pcRef.current = pc;
-
-    // Когда получаем медиа-поток от вещателя — показываем в video
-    pc.ontrack = (e) => {
-      if (videoRef.current && e.streams[0]) {
-        videoRef.current.srcObject = e.streams[0];
-        connectedRef.current = true;
-        setConnState("connected");
-      }
-    };
-
-    pc.onconnectionstatechange = () => {
-      if (pc.connectionState === "disconnected" || pc.connectionState === "failed") {
-        setConnState("failed");
-        connectedRef.current = false;
-      }
-    };
-
-    // Наши ICE кандидаты → отправляем вещателю
-    pc.onicecandidate = async (e) => {
-      if (e.candidate) {
-        await apiPost("signal_send", {
-          stream_id: streamId,
-          viewer_id: viewerId,
-          type: "ice-viewer",
-          payload: e.candidate.toJSON(),
-        });
-      }
-    };
-
-    // Шлём пустой offer чтобы вещатель нас "заметил"
-    // (реальный offer создаст вещатель и пришлёт нам)
-    await apiPost("signal_send", {
-      stream_id: streamId,
-      viewer_id: viewerId,
-      type: "offer",
-      payload: { type: "request", sdp: "" },
-    });
-
-    // Polling: ждём offer от вещателя, затем отправляем answer
-    const tryOffer = async () => {
-      if (connectedRef.current) return;
-      const resp = await apiGet("signal_get", { stream_id: streamId, viewer_id: viewerId, type: "offer" });
-      if (!resp?.payload?.sdp) return; // ещё нет offer с реальным SDP
-
-      // Вещатель прислал настоящий offer
-      if (pc.signalingState !== "stable") return;
-      try {
-        await pc.setRemoteDescription(new RTCSessionDescription(resp.payload));
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-        await apiPost("signal_send", {
-          stream_id: streamId,
-          viewer_id: viewerId,
-          type: "answer",
-          payload: { type: answer.type, sdp: answer.sdp },
-        });
-        // Останавливаем polling на offer
-        clearInterval(offerPollRef);
-        // Стартуем polling ICE кандидатов от вещателя
-        startIcePoll();
-      } catch { /* ignore */ }
-    };
-
-    const startIcePoll = () => {
-      const iceInterval = setInterval(async () => {
-        if (!pcRef.current) { clearInterval(iceInterval); return; }
-        const ices = await apiGet("signal_ice_get", {
-          stream_id: streamId,
-          viewer_id: viewerId,
-          type: "ice-broadcaster",
-          after_id: lastIceIdRef.current,
-        });
-        if (Array.isArray(ices) && ices.length > 0) {
-          for (const ice of ices) {
-            try { await pcRef.current.addIceCandidate(new RTCIceCandidate(ice.payload)); } catch { /* ignore */ }
-          }
-          lastIceIdRef.current = ices[ices.length - 1].id;
-        }
-        if (connectedRef.current) clearInterval(iceInterval);
-      }, 1500);
-    };
-
-    const offerPollRef = setInterval(tryOffer, 2000) as unknown as ReturnType<typeof setInterval>;
-    pollRef.current = offerPollRef;
-  }, [stream.id, stream.isLive]);
-
-  useEffect(() => {
-    if (stream.isLive) {
-      connect();
+  // ── Слив очереди буферов в SourceBuffer ──────────────────────────────────
+  const flushQueue = useCallback(() => {
+    const sb = sbRef.current;
+    if (!sb || appendingRef.current || sb.updating || queueRef.current.length === 0) return;
+    appendingRef.current = true;
+    try {
+      sb.appendBuffer(queueRef.current.shift()!);
+    } catch {
+      appendingRef.current = false;
     }
+  }, []);
+
+  // ── Инициализация MediaSource ─────────────────────────────────────────────
+  const initMediaSource = useCallback(() => {
+    if (!videoRef.current || !("MediaSource" in window)) {
+      setLiveStatus("error");
+      return;
+    }
+    const ms = new MediaSource();
+    msRef.current = ms;
+    videoRef.current.src = URL.createObjectURL(ms);
+
+    ms.addEventListener("sourceopen", () => {
+      const mime = ["video/webm;codecs=vp8,opus", "video/webm;codecs=vp9,opus", "video/webm"]
+        .find(m => MediaSource.isTypeSupported(m));
+      if (!mime) { setLiveStatus("error"); return; }
+      try {
+        const sb = ms.addSourceBuffer(mime);
+        sbRef.current = sb;
+        sb.addEventListener("updateend", () => {
+          appendingRef.current = false;
+          flushQueue();
+        });
+      } catch {
+        setLiveStatus("error");
+      }
+    });
+  }, [flushQueue]);
+
+  // ── Загрузка новых чанков ─────────────────────────────────────────────────
+  const fetchChunks = useCallback(async () => {
+    try {
+      const qs = new URLSearchParams({
+        action: "get_chunks",
+        stream_id: stream.id,
+        after_seq: String(afterSeqRef.current),
+      });
+      const resp = await fetch(`${API}?${qs}`);
+      const chunks: { seq: number; data: string }[] = await resp.json();
+      if (!Array.isArray(chunks) || chunks.length === 0) return;
+
+      for (const c of chunks) {
+        const bin = atob(c.data);
+        const buf = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+        queueRef.current.push(buf);
+        afterSeqRef.current = Math.max(afterSeqRef.current, c.seq);
+      }
+      flushQueue();
+      setLiveStatus("playing");
+
+      if (videoRef.current?.paused) {
+        videoRef.current.play().catch(() => {});
+      }
+
+      // Обрезаем старый буфер чтобы не росло в памяти
+      const sb = sbRef.current;
+      const vid = videoRef.current;
+      if (sb && vid && !sb.updating && vid.buffered.length > 0) {
+        const start = vid.buffered.start(0);
+        const end = vid.buffered.end(vid.buffered.length - 1);
+        if (end - start > 30) {
+          try { sb.remove(start, end - 20); } catch { /* ignore */ }
+        }
+      }
+    } catch { /* ignore */ }
+  }, [stream.id, flushQueue]);
+
+  // ── Запуск для лайва ─────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!stream.isLive) return;
+    initMediaSource();
+    const t0 = setTimeout(() => {
+      fetchChunks();
+      pollRef.current = setInterval(fetchChunks, 4000);
+    }, 2000);
     return () => {
+      clearTimeout(t0);
       if (pollRef.current) clearInterval(pollRef.current);
-      pcRef.current?.close();
-      pcRef.current = null;
+      try { if (msRef.current?.readyState === "open") msRef.current.endOfStream(); } catch { /* ignore */ }
     };
-  }, [connect, stream.isLive]);
+  }, [stream.isLive, initMediaSource, fetchChunks]);
 
   // ── Чат ──────────────────────────────────────────────────────────────────
   const fetchMessages = useCallback(async () => {
@@ -196,6 +162,7 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
   };
 
   const sendReaction = (emoji: string) => {
+    if (!user) return;
     sendMessage(emoji);
     setReaction(emoji);
     setTimeout(() => setReaction(null), 1000);
@@ -208,8 +175,6 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
     setTimeout(() => setAddedId(null), 1500);
   };
 
-  const hasRecordedVideo = !!stream.videoUrl && !stream.isLive;
-
   return (
     <div className="flex flex-col lg:flex-row min-h-[calc(100vh-56px)] bg-black">
 
@@ -221,48 +186,44 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
           <Icon name="ArrowLeft" size={18} className="text-white" />
         </button>
 
-        {/* LIVE: WebRTC видео */}
+        {/* LIVE: MediaSource видео */}
         {stream.isLive && (
-          <video ref={videoRef} autoPlay playsInline
-            className="w-full h-full object-contain max-h-[calc(100vh-56px)]"
-            style={{ background: "black", display: connState === "connected" ? "block" : "none" }}
-          />
-        )}
-
-        {/* LIVE: статус подключения */}
-        {stream.isLive && connState !== "connected" && (
-          <div className="flex flex-col items-center justify-center gap-4 py-16 px-8 text-center select-none">
-            <div className="w-20 h-20 rounded-full bg-primary/20 text-primary text-3xl font-bold flex items-center justify-center font-oswald">
-              {stream.sellerAvatar}
-            </div>
-            <p className="text-white font-semibold text-lg">{stream.sellerName}</p>
-            <p className="text-white/50 text-sm">{stream.title}</p>
-            {connState === "connecting" ? (
-              <div className="flex items-center gap-2 text-white/60 text-sm">
-                <Icon name="Loader" size={16} className="animate-spin" />
-                Подключение к эфиру...
-              </div>
-            ) : (
-              <div className="flex flex-col items-center gap-2">
-                <p className="text-red-400 text-sm">Не удалось подключиться</p>
-                <button onClick={() => { connectedRef.current = false; setConnState("connecting"); connect(); }}
-                  className="text-xs text-primary underline">Попробовать снова</button>
+          <>
+            <video ref={videoRef} autoPlay playsInline
+              className="w-full h-full object-contain max-h-[calc(100vh-56px)]"
+              style={{ background: "black", display: liveStatus === "playing" ? "block" : "none" }}
+            />
+            {liveStatus !== "playing" && (
+              <div className="flex flex-col items-center justify-center gap-4 py-16 px-8 text-center select-none">
+                <div className="w-20 h-20 rounded-full bg-primary/20 text-primary text-3xl font-bold flex items-center justify-center font-oswald">
+                  {stream.sellerAvatar}
+                </div>
+                <p className="text-white font-semibold text-lg">{stream.sellerName}</p>
+                <p className="text-white/50 text-sm">{stream.title}</p>
+                {liveStatus === "waiting" ? (
+                  <div className="flex items-center gap-2 text-white/60 text-sm">
+                    <Icon name="Loader" size={16} className="animate-spin" />
+                    Подключение к эфиру...
+                  </div>
+                ) : (
+                  <p className="text-red-400 text-sm">Браузер не поддерживает просмотр</p>
+                )}
+                <span className="flex items-center gap-1.5 bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded-full">
+                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-live-pulse" />LIVE
+                </span>
               </div>
             )}
-            <span className="flex items-center gap-1.5 bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded-full">
-              <span className="w-1.5 h-1.5 rounded-full bg-white animate-live-pulse" />LIVE
-            </span>
-          </div>
+          </>
         )}
 
-        {/* Запись (не лайв) */}
-        {!stream.isLive && hasRecordedVideo && (
-          <video src={stream.videoUrl!} controls autoPlay playsInline
+        {/* Запись */}
+        {!stream.isLive && stream.videoUrl && (
+          <video src={stream.videoUrl} controls autoPlay playsInline
             className="w-full h-full object-contain max-h-[calc(100vh-56px)]"
             style={{ background: "black" }}
           />
         )}
-        {!stream.isLive && !hasRecordedVideo && (
+        {!stream.isLive && !stream.videoUrl && (
           <div className="flex flex-col items-center justify-center gap-3 py-16 px-8 text-center">
             <div className="w-20 h-20 rounded-full bg-white/10 text-white text-3xl font-bold flex items-center justify-center">
               {stream.sellerAvatar}
@@ -272,8 +233,8 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
           </div>
         )}
 
-        {/* LIVE бейдж поверх видео */}
-        {stream.isLive && connState === "connected" && (
+        {/* LIVE бейдж */}
+        {stream.isLive && liveStatus === "playing" && (
           <div className="absolute top-4 left-14 z-10">
             <span className="flex items-center gap-1.5 bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded">
               <span className="w-1.5 h-1.5 rounded-full bg-white animate-live-pulse" />LIVE
@@ -281,7 +242,7 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
           </div>
         )}
 
-        {/* Длительность */}
+        {/* Длительность для записи */}
         {!stream.isLive && stream.duration && (
           <div className="absolute bottom-16 right-4 bg-black/70 text-white text-xs font-mono px-2 py-1 rounded z-10">
             {fmtDuration(stream.duration)}
@@ -290,9 +251,7 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
 
         {/* Реакция */}
         {reaction && (
-          <div className="absolute bottom-20 right-8 text-5xl animate-bounce pointer-events-none z-20">
-            {reaction}
-          </div>
+          <div className="absolute bottom-20 right-8 text-5xl animate-bounce pointer-events-none z-20">{reaction}</div>
         )}
 
         {/* Эмодзи */}
@@ -300,7 +259,7 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
           <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex gap-2 z-10">
             {EMOJI_REACTIONS.map(e => (
               <button key={e} onClick={() => sendReaction(e)} disabled={!user}
-                className="text-xl bg-black/50 backdrop-blur rounded-full w-10 h-10 flex items-center justify-center hover:bg-black/70 transition-colors disabled:opacity-40">
+                className="text-xl bg-black/50 backdrop-blur rounded-full w-10 h-10 flex items-center justify-center hover:bg-black/70 disabled:opacity-40">
                 {e}
               </button>
             ))}
@@ -322,20 +281,15 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
       {/* ── ПРАВАЯ ПАНЕЛЬ ─────────────────────────────────── */}
       <div className={`flex flex-col bg-zinc-950 border-l border-white/10 lg:w-80 xl:w-96 lg:flex-shrink-0 ${panelOpen ? "h-[65vh] lg:h-auto" : "h-0 overflow-hidden lg:flex lg:h-auto"}`}>
 
-        {/* Табы */}
         <div className="flex border-b border-white/10 flex-shrink-0">
           {(["chat", "products"] as RightTab[]).map(tab => (
             <button key={tab} onClick={() => setRightTab(tab)}
               className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-semibold transition-colors border-b-2 ${rightTab === tab ? "text-white border-primary" : "text-white/40 border-transparent hover:text-white/70"}`}>
               <Icon name={tab === "chat" ? "MessageSquare" : "ShoppingBag"} size={14} />
               {tab === "chat" ? "Чат" : "Товары"}
-              {tab === "chat" && messages.length > 0 && (
-                <span className="bg-white/10 text-white/60 text-[10px] px-1.5 py-0.5 rounded-full">{messages.length}</span>
-              )}
+              {tab === "chat" && messages.length > 0 && <span className="bg-white/10 text-white/60 text-[10px] px-1.5 py-0.5 rounded-full">{messages.length}</span>}
               {tab === "chat" && stream.isLive && <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-live-pulse" />}
-              {tab === "products" && sellerProducts.length > 0 && (
-                <span className="bg-white/10 text-white/60 text-[10px] px-1.5 py-0.5 rounded-full">{sellerProducts.length}</span>
-              )}
+              {tab === "products" && sellerProducts.length > 0 && <span className="bg-white/10 text-white/60 text-[10px] px-1.5 py-0.5 rounded-full">{sellerProducts.length}</span>}
             </button>
           ))}
         </div>
@@ -357,7 +311,7 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
             </div>
             {user ? (
               <div className="px-3 py-3 border-t border-white/10 flex gap-2 flex-shrink-0">
-                <input ref={el => el && (el as HTMLInputElement)} value={input} onChange={e => setInput(e.target.value)}
+                <input value={input} onChange={e => setInput(e.target.value)}
                   onKeyDown={e => e.key === "Enter" && sendMessage()} placeholder="Написать..." maxLength={200}
                   className="flex-1 bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-xs text-white placeholder:text-white/40 outline-none focus:border-primary/50"
                 />
