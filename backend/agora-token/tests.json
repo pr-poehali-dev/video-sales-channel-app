@@ -1,0 +1,18 @@
+{
+  "tests": [
+    {
+      "name": "Get token for channel",
+      "method": "GET",
+      "path": "/?channel=test-stream",
+      "expectedStatus": 200,
+      "expectedBody": { "channel": "test-stream" },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Missing channel returns 400",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 400
+    }
+  ]
+}

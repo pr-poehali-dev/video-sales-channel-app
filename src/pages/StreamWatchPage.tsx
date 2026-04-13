@@ -1,13 +1,15 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import AgoraRTC, { type IAgoraRTCClient, type IRemoteVideoTrack, type IRemoteAudioTrack } from "agora-rtc-sdk-ng";
 import Icon from "@/components/ui/icon";
 import { useAuth } from "@/context/AuthContext";
 import { useStore, type StoreStream, type ChatMessage } from "@/context/StoreContext";
 import type { CartItem, Page } from "@/App";
 
-const API = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c";
+const AGORA_TOKEN  = "https://functions.poehali.dev/a2751c9f-9c4b-4808-bf97-73f350e873a1";
 const EMOJI_REACTIONS = ["🔥", "❤️", "👏", "😮", "😂"];
-const AUDIO_SAMPLE_RATE = 16000;
 const STREAM_THUMBNAIL = "https://cdn.poehali.dev/projects/a4bacfcf-1dfc-4307-b19f-4266aaeae1d7/files/5cdc424e-1406-41e5-9e82-3dcbd622fe88.jpg";
+
+AgoraRTC.setLogLevel(4);
 
 interface Props {
   stream: StoreStream;
@@ -27,13 +29,10 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
   const { addChatMessage, getStreamMessages, getSellerProducts } = useStore();
   const sellerProducts = getSellerProducts(stream.sellerId);
 
-  const seqRef       = useRef(-1);
-  const activeRef    = useRef(false);
-  const chatPollRef  = useRef<ReturnType<typeof setInterval> | null>(null);
-  const audioCtxRef  = useRef<AudioContext | null>(null);
-  const audioTimeRef = useRef(0);
+  const clientRef   = useRef<IAgoraRTCClient | null>(null);
+  const videoElRef  = useRef<HTMLDivElement>(null);
+  const chatPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const [frameSrc, setFrameSrc]     = useState<string | null>(null);
   const [messages, setMessages]     = useState<ChatMessage[]>([]);
   const [input, setInput]           = useState("");
   const [reaction, setReaction]     = useState<string | null>(null);
@@ -41,68 +40,57 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
   const [chatOpen, setChatOpen]     = useState(false);
   const [rightTab, setRightTab]     = useState<"chat" | "products">("chat");
   const [addedId, setAddedId]       = useState<string | null>(null);
-  const [liveStatus, setLiveStatus] = useState<"waiting" | "playing">("waiting");
+  const [liveStatus, setLiveStatus] = useState<"waiting" | "playing" | "error">("waiting");
+  const [errorMsg, setErrorMsg]     = useState("");
 
-  // ── Аудио ─────────────────────────────────────────────────────────────────
-  const playAudio = useCallback((b64: string) => {
-    try {
-      if (!audioCtxRef.current) {
-        audioCtxRef.current = new AudioContext({ sampleRate: AUDIO_SAMPLE_RATE });
-        audioTimeRef.current = audioCtxRef.current.currentTime;
-      }
-      const ctx = audioCtxRef.current;
-      const raw = atob(b64);
-      const bytes = new Uint8Array(raw.length);
-      for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
-      const i16 = new Int16Array(bytes.buffer);
-      const f32 = new Float32Array(i16.length);
-      for (let i = 0; i < i16.length; i++) f32[i] = i16[i] / 32768;
-      const buf = ctx.createBuffer(1, f32.length, AUDIO_SAMPLE_RATE);
-      buf.copyToChannel(f32, 0);
-      const src = ctx.createBufferSource();
-      src.buffer = buf;
-      src.connect(ctx.destination);
-      const startAt = Math.max(ctx.currentTime, audioTimeRef.current);
-      src.start(startAt);
-      audioTimeRef.current = startAt + buf.duration;
-    } catch { /* ignore */ }
-  }, []);
-
-  // ── Цепочка получения кадров (без накопления запросов) ────────────────────
-  const fetchLoop = useCallback(async () => {
-    while (activeRef.current) {
-      try {
-        const qs = new URLSearchParams({
-          action: "get_frame",
-          stream_id: stream.id,
-          seq: String(seqRef.current),
-        });
-        const resp = await fetch(`${API}?${qs}`);
-        const data: { frame: string | null; audio: string | null; seq: number } = await resp.json();
-        if (data.frame) {
-          seqRef.current = data.seq;
-          setFrameSrc(`data:image/jpeg;base64,${data.frame}`);
-          setLiveStatus("playing");
-        }
-        if (data.audio) playAudio(data.audio);
-        // Если кадра нет — ждём 300мс перед следующим запросом
-        if (!data.frame) await new Promise(r => setTimeout(r, 300));
-      } catch {
-        await new Promise(r => setTimeout(r, 500));
-      }
-    }
-  }, [stream.id, playAudio]);
-
+  // ── Agora подключение ─────────────────────────────────────────────────────
   useEffect(() => {
     if (!stream.isLive) return;
-    activeRef.current = true;
-    fetchLoop();
+
+    let client: IAgoraRTCClient | null = null;
+    let videoTrack: IRemoteVideoTrack | null = null;
+    let audioTrack: IRemoteAudioTrack | null = null;
+
+    (async () => {
+      try {
+        client = AgoraRTC.createClient({ mode: "live", codec: "vp8" });
+        clientRef.current = client;
+        await client.setClientRole("audience");
+
+        const tokenResp = await fetch(`${AGORA_TOKEN}?channel=${stream.id}&uid=0`);
+        const tokenData = await tokenResp.json();
+
+        await client.join(tokenData.appId, stream.id, tokenData.token, 0);
+
+        client.on("user-published", async (remoteUser, mediaType) => {
+          await client!.subscribe(remoteUser, mediaType);
+          if (mediaType === "video") {
+            videoTrack = remoteUser.videoTrack!;
+            if (videoElRef.current) videoTrack.play(videoElRef.current);
+            setLiveStatus("playing");
+          }
+          if (mediaType === "audio") {
+            audioTrack = remoteUser.audioTrack!;
+            audioTrack.play();
+          }
+        });
+
+        client.on("user-unpublished", () => setLiveStatus("waiting"));
+
+      } catch (e: unknown) {
+        const err = e as Error;
+        setErrorMsg(err.message);
+        setLiveStatus("error");
+      }
+    })();
+
     return () => {
-      activeRef.current = false;
-      audioCtxRef.current?.close();
-      audioCtxRef.current = null;
+      videoTrack?.stop();
+      audioTrack?.stop();
+      client?.leave().catch(() => {});
+      clientRef.current = null;
     };
-  }, [stream.isLive, fetchLoop]);
+  }, [stream.isLive, stream.id]);
 
   // ── Чат ──────────────────────────────────────────────────────────────────
   const fetchMessages = useCallback(async () => {
@@ -141,65 +129,50 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
     setTimeout(() => setAddedId(null), 1500);
   };
 
-  // ══════════════════════════════════════════════════════════════════════════
-  // МОБИЛЬНЫЙ LAYOUT (как YouTube Live)
-  // ══════════════════════════════════════════════════════════════════════════
   return (
     <div className="flex flex-col min-h-[calc(100vh-56px)] bg-black lg:flex-row">
 
-      {/* ── ВИДЕО БЛОК ──────────────────────────────────────────────────── */}
+      {/* ── ВИДЕО ─────────────────────────────────────────────────────── */}
       <div className="relative w-full bg-black lg:flex-1" style={{ aspectRatio: "16/9", maxHeight: "56vw" }}>
 
-        {/* Заставка / кадр */}
-        {stream.isLive ? (
-          <>
-            {/* Заставка видна пока нет кадра */}
-            <img
-              src={STREAM_THUMBNAIL}
-              alt="thumbnail"
-              className="absolute inset-0 w-full h-full object-cover"
-              style={{ opacity: liveStatus === "playing" ? 0 : 1, transition: "opacity 0.5s" }}
-            />
-            {frameSrc && (
-              <img
-                src={frameSrc}
-                alt="live"
-                className="absolute inset-0 w-full h-full object-cover"
-                style={{ opacity: liveStatus === "playing" ? 1 : 0, transition: "opacity 0.3s" }}
-              />
-            )}
-            {/* Прелоадер поверх заставки */}
-            {liveStatus === "waiting" && (
-              <div className="absolute inset-0 flex flex-col items-end justify-end p-4 bg-gradient-to-t from-black/80 via-transparent to-black/40">
-                <div className="flex items-center gap-2 text-white/70 text-xs mb-auto mt-2 self-start">
-                  <Icon name="Loader" size={14} className="animate-spin" />
-                  Подключение...
-                </div>
-              </div>
-            )}
-          </>
-        ) : (
-          /* Для завершённых эфиров — заставка + иконка */
-          <div className="absolute inset-0">
-            <img src={STREAM_THUMBNAIL} alt="thumbnail" className="w-full h-full object-cover opacity-50" />
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-14 h-14 rounded-full bg-black/60 flex items-center justify-center">
-                <Icon name="Play" size={24} className="text-white ml-1" />
-              </div>
+        {/* Заставка */}
+        <img src={STREAM_THUMBNAIL} alt="thumbnail"
+          className="absolute inset-0 w-full h-full object-cover transition-opacity duration-500"
+          style={{ opacity: liveStatus === "playing" ? 0 : 1 }}
+        />
+
+        {/* Agora видео */}
+        <div ref={videoElRef} className="absolute inset-0 w-full h-full"
+          style={{ opacity: liveStatus === "playing" ? 1 : 0, transition: "opacity 0.5s" }}
+        />
+
+        {/* Статус подключения */}
+        {stream.isLive && liveStatus === "waiting" && (
+          <div className="absolute inset-0 flex items-end p-4 bg-gradient-to-t from-black/70 via-transparent to-black/30">
+            <div className="flex items-center gap-2 text-white/60 text-xs">
+              <Icon name="Loader" size={13} className="animate-spin" />Подключение к эфиру...
+            </div>
+          </div>
+        )}
+        {liveStatus === "error" && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/80 p-6 text-center">
+            <div>
+              <Icon name="WifiOff" size={32} className="mx-auto mb-3 text-red-400" />
+              <p className="text-white/70 text-sm">{errorMsg || "Не удалось подключиться"}</p>
             </div>
           </div>
         )}
 
-        {/* Градиент сверху и снизу */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/40 pointer-events-none" />
+        {/* Градиент */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/30 pointer-events-none" />
 
-        {/* Шапка: назад + LIVE бейдж */}
+        {/* Шапка */}
         <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-3 pt-3 z-10">
           <button onClick={() => setPage("streams")}
             className="w-9 h-9 rounded-full bg-black/50 backdrop-blur flex items-center justify-center">
             <Icon name="ArrowLeft" size={18} className="text-white" />
           </button>
-          {stream.isLive && (
+          {stream.isLive && liveStatus === "playing" && (
             <span className="flex items-center gap-1.5 bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full">
               <span className="w-1.5 h-1.5 rounded-full bg-white animate-live-pulse" />LIVE
             </span>
@@ -207,7 +180,6 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
           {!stream.isLive && stream.duration && (
             <span className="bg-black/60 text-white text-xs font-mono px-2 py-1 rounded">{fmtDuration(stream.duration)}</span>
           )}
-          {/* Кнопка чата на мобильном */}
           <button onClick={() => setChatOpen(o => !o)}
             className="w-9 h-9 rounded-full bg-black/50 backdrop-blur flex items-center justify-center relative lg:hidden">
             <Icon name="MessageSquare" size={16} className="text-white" />
@@ -224,7 +196,7 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
           <div className="absolute bottom-20 right-5 text-4xl animate-bounce pointer-events-none z-20">{reaction}</div>
         )}
 
-        {/* Эмодзи реакции (только на лайве) */}
+        {/* Эмодзи */}
         {stream.isLive && (
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
             {EMOJI_REACTIONS.map(e => (
@@ -237,27 +209,24 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
         )}
       </div>
 
-      {/* ── ИНФО ПОД ВИДЕО (только мобильный) ──────────────────────────── */}
-      <div className="lg:hidden bg-zinc-950 px-4 py-3 flex items-start gap-3">
+      {/* ── ИНФО (мобильный) ──────────────────────────────────────────── */}
+      <div className="lg:hidden bg-zinc-950 px-4 py-3 flex items-center gap-3">
         <div className="flex-1 min-w-0">
-          <h2 className="text-white font-semibold text-sm leading-tight truncate">{stream.title}</h2>
+          <h2 className="text-white font-semibold text-sm truncate">{stream.title}</h2>
           <p className="text-white/50 text-xs mt-0.5">{stream.sellerName}</p>
         </div>
-        {stream.isLive && (
-          <span className="flex items-center gap-1 text-white/40 text-xs flex-shrink-0">
-            <Icon name="Eye" size={12} />
-            смотрит
+        {stream.isLive && liveStatus === "playing" && (
+          <span className="text-white/40 text-xs flex items-center gap-1 flex-shrink-0">
+            <Icon name="Eye" size={12} />смотрит
           </span>
         )}
       </div>
 
-      {/* ── ПРАВАЯ ПАНЕЛЬ (десктоп) + ВЫДВИЖНАЯ (мобильный) ────────────── */}
-      {/* Мобильный overlay чат */}
+      {/* ── ЧАТ-ШТОРКА (мобильный) ────────────────────────────────────── */}
       {chatOpen && (
         <div className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end" onClick={() => setChatOpen(false)}>
           <div className="bg-zinc-900 rounded-t-2xl" style={{ maxHeight: "70vh" }} onClick={e => e.stopPropagation()}>
-            <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mt-3 mb-2" />
-            {/* Табы */}
+            <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mt-3 mb-1" />
             <div className="flex border-b border-white/10">
               {(["chat", "products"] as const).map(tab => (
                 <button key={tab} onClick={() => setRightTab(tab)}
@@ -267,26 +236,22 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
                 </button>
               ))}
             </div>
-            <div className="flex flex-col" style={{ height: "50vh" }}>
-              {rightTab === "chat" ? (
-                <ChatPanel messages={messages} user={user} input={input} setInput={setInput}
-                  sendMessage={sendMessage} sending={sending} />
-              ) : (
-                <ProductsPanel products={sellerProducts} addedId={addedId} handleAddToCart={handleAddToCart} onProductClick={onProductClick} />
-              )}
+            <div style={{ height: "50vh" }} className="flex flex-col">
+              {rightTab === "chat"
+                ? <ChatPanel messages={messages} user={user} input={input} setInput={setInput} sendMessage={sendMessage} sending={sending} />
+                : <ProductsPanel products={sellerProducts} addedId={addedId} handleAddToCart={handleAddToCart} onProductClick={onProductClick} />
+              }
             </div>
           </div>
         </div>
       )}
 
-      {/* Десктоп панель */}
+      {/* ── ДЕСКТОП ПАНЕЛЬ ────────────────────────────────────────────── */}
       <div className="hidden lg:flex lg:flex-col lg:w-80 xl:w-96 bg-zinc-950 border-l border-white/10 flex-shrink-0">
-        {/* Инфо о стриме */}
         <div className="px-4 py-3 border-b border-white/10">
-          <h2 className="text-white font-semibold text-sm leading-tight">{stream.title}</h2>
+          <h2 className="text-white font-semibold text-sm">{stream.title}</h2>
           <p className="text-white/50 text-xs mt-0.5">{stream.sellerName}</p>
         </div>
-        {/* Табы */}
         <div className="flex border-b border-white/10 flex-shrink-0">
           {(["chat", "products"] as const).map(tab => (
             <button key={tab} onClick={() => setRightTab(tab)}
@@ -294,25 +259,23 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
               <Icon name={tab === "chat" ? "MessageSquare" : "ShoppingBag"} size={13} />
               {tab === "chat" ? "Чат" : "Товары"}
               {tab === "chat" && messages.length > 0 && <span className="bg-white/10 text-white/50 text-[10px] px-1.5 rounded-full">{messages.length}</span>}
-              {tab === "chat" && stream.isLive && <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-live-pulse" />}
+              {tab === "chat" && stream.isLive && <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-live-pulse ml-1" />}
               {tab === "products" && <span className="bg-white/10 text-white/50 text-[10px] px-1.5 rounded-full">{sellerProducts.length}</span>}
             </button>
           ))}
         </div>
         <div className="flex-1 min-h-0 flex flex-col">
-          {rightTab === "chat" ? (
-            <ChatPanel messages={messages} user={user} input={input} setInput={setInput}
-              sendMessage={sendMessage} sending={sending} />
-          ) : (
-            <ProductsPanel products={sellerProducts} addedId={addedId} handleAddToCart={handleAddToCart} onProductClick={onProductClick} />
-          )}
+          {rightTab === "chat"
+            ? <ChatPanel messages={messages} user={user} input={input} setInput={setInput} sendMessage={sendMessage} sending={sending} />
+            : <ProductsPanel products={sellerProducts} addedId={addedId} handleAddToCart={handleAddToCart} onProductClick={onProductClick} />
+          }
         </div>
       </div>
     </div>
   );
 }
 
-// ── Переиспользуемые панели ───────────────────────────────────────────────────
+// ── Переиспользуемые компоненты ───────────────────────────────────────────────
 interface ChatPanelProps {
   messages: ChatMessage[];
   user: { id: string; name: string; avatar: string } | null;
@@ -324,7 +287,6 @@ interface ChatPanelProps {
 function ChatPanel({ messages, user, input, setInput, sendMessage, sending }: ChatPanelProps) {
   const endRef = useRef<HTMLDivElement>(null);
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages.length]);
-
   return (
     <div className="flex flex-col flex-1 min-h-0">
       <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2">
@@ -335,8 +297,7 @@ function ChatPanel({ messages, user, input, setInput, sendMessage, sending }: Ch
               <div className="w-5 h-5 rounded-full bg-primary/30 text-white text-[9px] font-bold flex items-center justify-center flex-shrink-0">{m.userAvatar}</div>
               <p className="text-[12px] text-white/80 leading-snug"><span className="text-primary/90 font-semibold">{m.userName} </span>{m.text}</p>
             </div>
-          ))
-        }
+          ))}
         <div ref={endRef} />
       </div>
       {user ? (

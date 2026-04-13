@@ -1,13 +1,14 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import AgoraRTC, { type IAgoraRTCClient, type ILocalVideoTrack, type ILocalAudioTrack } from "agora-rtc-sdk-ng";
 import Icon from "@/components/ui/icon";
 import { useAuth } from "@/context/AuthContext";
 import { useStore, type ChatMessage } from "@/context/StoreContext";
 import type { Page } from "@/App";
 
-const API = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c";
-const JPEG_QUALITY = 0.4;
-const FRAME_WIDTH = 400;
-type FacingMode = "user" | "environment";
+const STORE_API   = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c";
+const AGORA_TOKEN = "https://functions.poehali.dev/a2751c9f-9c4b-4808-bf97-73f350e873a1";
+
+AgoraRTC.setLogLevel(4); // только ошибки
 
 // ── Чат вещателя ──────────────────────────────────────────────────────────────
 function LiveChat({ streamId }: { streamId: string }) {
@@ -70,159 +71,118 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
   const { user } = useAuth();
   const { addStream, updateStream } = useStore();
 
-  const videoRef     = useRef<HTMLVideoElement>(null);
-  const canvasRef    = useRef<HTMLCanvasElement>(null);
-  const cameraRef    = useRef<MediaStream | null>(null);
+  const clientRef    = useRef<IAgoraRTCClient | null>(null);
+  const videoTrackRef = useRef<ILocalVideoTrack | null>(null);
+  const audioTrackRef = useRef<ILocalAudioTrack | null>(null);
+  const videoElRef   = useRef<HTMLDivElement>(null);
   const timerRef     = useRef<ReturnType<typeof setInterval> | null>(null);
   const streamIdRef  = useRef<string | null>(null);
-  const seqRef       = useRef(0);
-  const activeRef    = useRef(false); // эфир идёт
-  const audioCtxRef  = useRef<AudioContext | null>(null);
-  const processorRef = useRef<ScriptProcessorNode | null>(null);
-  const audioBufRef  = useRef<Float32Array | null>(null);
 
-  const [facingMode, setFacingMode] = useState<FacingMode>("environment");
-  const [cameraError, setCameraError] = useState<string | null>(null);
-  const [cameraReady, setCameraReady] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
-  const [title, setTitle] = useState("");
-  const [isLive, setIsLive] = useState(false);
-  const [duration, setDuration] = useState(0);
-  const [finished, setFinished] = useState(false);
+  const [title, setTitle]           = useState("");
+  const [isLive, setIsLive]         = useState(false);
+  const [isMuted, setIsMuted]       = useState(false);
+  const [isCamOff, setIsCamOff]     = useState(false);
+  const [duration, setDuration]     = useState(0);
+  const [finished, setFinished]     = useState(false);
   const [savedDuration, setSavedDuration] = useState(0);
+  const [status, setStatus]         = useState<"idle" | "connecting" | "live" | "error">("idle");
+  const [errorMsg, setErrorMsg]     = useState("");
 
-  const startCamera = useCallback(async (facing: FacingMode) => {
-    setCameraError(null);
-    cameraRef.current?.getTracks().forEach(t => t.stop());
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: facing, width: { ideal: 640 }, height: { ideal: 480 } },
-        audio: true,
-      });
-      cameraRef.current = stream;
-      if (videoRef.current) videoRef.current.srcObject = stream;
-      setCameraReady(true);
-    } catch (e: unknown) {
-      const err = e as Error;
-      setCameraReady(false);
-      if (err.name === "NotAllowedError") setCameraError("Нет доступа к камере. Разрешите в настройках браузера.");
-      else if (err.name === "NotFoundError") setCameraError("Камера не найдена.");
-      else setCameraError("Ошибка: " + err.message);
-    }
-  }, []);
-
+  // Инициализируем превью камеры при загрузке
   useEffect(() => {
-    startCamera(facingMode);
+    let videoTrack: ILocalVideoTrack | null = null;
+    let audioTrack: ILocalAudioTrack | null = null;
+
+    (async () => {
+      try {
+        [audioTrack, videoTrack] = await AgoraRTC.createMicrophoneAndCameraTracks(
+          { encoderConfig: "music_standard" },
+          { encoderConfig: { width: 640, height: 360, frameRate: 15, bitrateMax: 800 } }
+        );
+        audioTrackRef.current = audioTrack;
+        videoTrackRef.current = videoTrack;
+        if (videoElRef.current) videoTrack.play(videoElRef.current);
+      } catch (e: unknown) {
+        const err = e as Error;
+        if (err.name === "NotAllowedError") setErrorMsg("Нет доступа к камере. Разрешите в настройках браузера.");
+        else setErrorMsg("Ошибка камеры: " + err.message);
+        setStatus("error");
+      }
+    })();
+
     return () => {
-      activeRef.current = false;
-      cameraRef.current?.getTracks().forEach(t => t.stop());
-      if (timerRef.current) clearInterval(timerRef.current);
-      processorRef.current?.disconnect();
-      audioCtxRef.current?.close();
+      videoTrack?.stop(); videoTrack?.close();
+      audioTrack?.stop(); audioTrack?.close();
     };
   }, []);
 
-  const startAudioCapture = useCallback((stream: MediaStream) => {
+  const startBroadcast = async () => {
+    if (!title.trim() || !user) return;
+    setStatus("connecting");
+    setErrorMsg("");
+
     try {
-      const ctx = new AudioContext({ sampleRate: 16000 });
-      audioCtxRef.current = ctx;
-      const src = ctx.createMediaStreamSource(stream);
-      const proc = ctx.createScriptProcessor(2048, 1, 1);
-      processorRef.current = proc;
-      proc.onaudioprocess = (e) => {
-        audioBufRef.current = new Float32Array(e.inputBuffer.getChannelData(0));
-      };
-      src.connect(proc);
-      proc.connect(ctx.destination);
-    } catch { /* ignore */ }
-  }, []);
+      // Создаём эфир в БД
+      const s = await addStream({ title: title.trim(), sellerId: user.id, sellerName: user.name, sellerAvatar: user.avatar, isLive: true, viewers: 0 });
+      streamIdRef.current = s.id;
 
-  // Цепочка отправки: каждый кадр шлётся ТОЛЬКО после того как предыдущий получил ответ
-  const sendLoop = useCallback(async () => {
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    if (!video || !canvas) return;
+      // Получаем токен
+      const tokenResp = await fetch(`${AGORA_TOKEN}?channel=${s.id}&uid=1`);
+      const tokenData = await tokenResp.json();
 
-    while (activeRef.current) {
-      const sid = streamIdRef.current;
-      if (!sid || video.readyState < 2) {
-        await new Promise(r => setTimeout(r, 50));
-        continue;
+      // Создаём клиент в режиме вещателя
+      const client = AgoraRTC.createClient({ mode: "live", codec: "vp8" });
+      clientRef.current = client;
+      await client.setClientRole("host");
+
+      // Подключаемся к каналу
+      await client.join(tokenData.appId, s.id, tokenData.token, 1);
+
+      // Публикуем треки
+      if (audioTrackRef.current && videoTrackRef.current) {
+        await client.publish([audioTrackRef.current, videoTrackRef.current]);
       }
 
-      try {
-        const ctx = canvas.getContext("2d");
-        if (!ctx) break;
-
-        const aspect = (video.videoHeight || 480) / (video.videoWidth || 640);
-        canvas.width  = FRAME_WIDTH;
-        canvas.height = Math.round(FRAME_WIDTH * aspect);
-
-        if (facingMode === "user") { ctx.translate(canvas.width, 0); ctx.scale(-1, 1); }
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        if (facingMode === "user") ctx.setTransform(1, 0, 0, 1, 0, 0);
-
-        const frameB64 = canvas.toDataURL("image/jpeg", JPEG_QUALITY).split(",")[1];
-
-        let audioB64: string | null = null;
-        const abuf = audioBufRef.current;
-        if (abuf) {
-          const i16 = new Int16Array(abuf.length);
-          for (let i = 0; i < abuf.length; i++) i16[i] = Math.max(-32768, Math.min(32767, abuf[i] * 32768));
-          const u8 = new Uint8Array(i16.buffer);
-          let bin = "";
-          // Быстрый btoa через chunk
-          for (let i = 0; i < u8.length; i += 8192) {
-            bin += String.fromCharCode(...u8.subarray(i, i + 8192));
-          }
-          audioB64 = btoa(bin);
-          audioBufRef.current = null;
-        }
-
-        await fetch(`${API}?action=push_frame`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ stream_id: sid, seq: seqRef.current++, frame: frameB64, audio: audioB64 }),
-        });
-      } catch { /* ignore */ }
+      setIsLive(true);
+      setStatus("live");
+      setDuration(0);
+      timerRef.current = setInterval(() => setDuration(d => d + 1), 1000);
+    } catch (e: unknown) {
+      const err = e as Error;
+      setErrorMsg("Ошибка подключения: " + err.message);
+      setStatus("error");
+      streamIdRef.current = null;
     }
-  }, [facingMode]);
-
-  const startBroadcast = async () => {
-    if (!title.trim() || !user || !cameraRef.current) return;
-    const s = await addStream({ title: title.trim(), sellerId: user.id, sellerName: user.name, sellerAvatar: user.avatar, isLive: true, viewers: 0 });
-    streamIdRef.current = s.id;
-    seqRef.current = 0;
-    activeRef.current = true;
-    startAudioCapture(cameraRef.current);
-    setIsLive(true);
-    setDuration(0);
-    timerRef.current = setInterval(() => setDuration(d => d + 1), 1000);
-    sendLoop();
   };
 
   const stopBroadcast = async () => {
-    activeRef.current = false;
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
-    processorRef.current?.disconnect(); processorRef.current = null;
-    audioCtxRef.current?.close(); audioCtxRef.current = null;
     const dur = duration;
     setSavedDuration(dur);
-    setIsLive(false);
+
+    try {
+      await clientRef.current?.leave();
+    } catch { /* ignore */ }
+    clientRef.current = null;
+
     const sid = streamIdRef.current;
     if (sid) await updateStream(sid, { isLive: false, duration_sec: dur } as never);
+
+    setIsLive(false);
+    setStatus("idle");
     setFinished(true);
   };
 
-  const switchCamera = async () => {
-    const next: FacingMode = facingMode === "environment" ? "user" : "environment";
-    setFacingMode(next);
-    await startCamera(next);
+  const toggleMute = async () => {
+    if (!audioTrackRef.current) return;
+    await audioTrackRef.current.setEnabled(isMuted);
+    setIsMuted(m => !m);
   };
 
-  const toggleMute = () => {
-    cameraRef.current?.getAudioTracks().forEach(t => { t.enabled = !t.enabled; });
-    setIsMuted(m => !m);
+  const toggleCamera = async () => {
+    if (!videoTrackRef.current) return;
+    await videoTrackRef.current.setEnabled(isCamOff);
+    setIsCamOff(c => !c);
   };
 
   const fmt = (s: number) => `${String(Math.floor(s / 60)).padStart(2,"0")}:${String(s % 60).padStart(2,"0")}`;
@@ -245,7 +205,7 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
       <p className="text-sm text-muted-foreground mb-1">«{title}»</p>
       <p className="text-sm text-muted-foreground mb-6">Длительность: {fmt(savedDuration)}</p>
       <div className="flex flex-col gap-3 max-w-xs mx-auto">
-        <button onClick={() => { setFinished(false); setTitle(""); setDuration(0); streamIdRef.current = null; }}
+        <button onClick={() => { setFinished(false); setTitle(""); setDuration(0); streamIdRef.current = null; setStatus("idle"); }}
           className="bg-primary text-primary-foreground font-semibold px-6 py-3 rounded-xl hover:opacity-90">Новый эфир</button>
         <button onClick={() => setPage("dashboard")}
           className="border border-border font-semibold px-6 py-3 rounded-xl hover:bg-accent">Кабинет</button>
@@ -255,20 +215,18 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
 
   return (
     <div className="min-h-[calc(100vh-56px)] bg-black flex flex-col lg:flex-row">
-      <canvas ref={canvasRef} style={{ display: "none" }} />
 
       {/* Видео-превью */}
       <div className="relative flex-1 bg-black" style={{ minHeight: "56vw", maxHeight: "70vh" }}>
-        <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover"
-          style={{ transform: facingMode === "user" ? "scaleX(-1)" : "none" }}
-        />
 
-        {cameraError && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/90 p-6 text-center">
+        {/* Agora рендерит видео сюда */}
+        <div ref={videoElRef} className="w-full h-full" style={{ background: "#000" }} />
+
+        {status === "error" && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/90 p-6 text-center z-10">
             <div>
               <Icon name="VideoOff" size={36} className="mx-auto mb-3 text-red-400" />
-              <p className="text-sm text-white/80 mb-4">{cameraError}</p>
-              <button onClick={() => startCamera(facingMode)} className="text-xs text-primary underline">Попробовать снова</button>
+              <p className="text-sm text-white/80 mb-4">{errorMsg}</p>
             </div>
           </div>
         )}
@@ -286,13 +244,16 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
               <span className="bg-black/60 text-white text-xs font-mono px-2 py-1 rounded-lg">{fmt(duration)}</span>
             </div>
           )}
-          <button onClick={switchCamera} className="w-9 h-9 rounded-full bg-black/50 backdrop-blur flex items-center justify-center">
-            <Icon name="RefreshCw" size={16} className="text-white" />
-          </button>
+          {status === "connecting" && (
+            <div className="flex items-center gap-1.5 bg-black/60 text-white/70 text-xs px-3 py-1.5 rounded-full">
+              <Icon name="Loader" size={12} className="animate-spin" />Подключение...
+            </div>
+          )}
+          <div className="w-9 h-9" />
         </div>
 
         {/* Нижние кнопки */}
-        <div className="absolute bottom-0 left-0 right-0 px-4 pb-4 z-10">
+        <div className="absolute bottom-0 left-0 right-0 px-4 pb-5 z-10">
           {!isLive && (
             <div className="mb-3">
               <input value={title} onChange={e => setTitle(e.target.value)} maxLength={80}
@@ -303,36 +264,44 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
           )}
           <div className="flex items-center justify-center gap-4">
             <button onClick={toggleMute}
-              className={`w-12 h-12 rounded-full flex items-center justify-center ${isMuted ? "bg-red-600" : "bg-black/60 backdrop-blur border border-white/20"}`}>
+              className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${isMuted ? "bg-red-600" : "bg-black/60 backdrop-blur border border-white/20"}`}>
               <Icon name={isMuted ? "MicOff" : "Mic"} size={18} className="text-white" />
             </button>
 
             {isLive ? (
               <button onClick={stopBroadcast}
-                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-bold px-8 py-3.5 rounded-full text-sm shadow-lg">
+                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-bold px-8 py-3.5 rounded-full text-sm shadow-lg transition-colors">
                 <Icon name="Square" size={16} />Завершить
               </button>
             ) : (
-              <button onClick={startBroadcast} disabled={!cameraReady || !title.trim()}
-                className="flex items-center gap-2 bg-red-500 hover:bg-red-600 disabled:opacity-40 text-white font-bold px-8 py-3.5 rounded-full text-sm shadow-lg">
-                <span className="w-2.5 h-2.5 rounded-full bg-white" />Начать эфир
+              <button onClick={startBroadcast}
+                disabled={!title.trim() || status === "connecting" || status === "error"}
+                className="flex items-center gap-2 bg-red-500 hover:bg-red-600 disabled:opacity-40 text-white font-bold px-8 py-3.5 rounded-full text-sm shadow-lg transition-colors">
+                {status === "connecting"
+                  ? <><Icon name="Loader" size={16} className="animate-spin" />Подключение...</>
+                  : <><span className="w-2.5 h-2.5 rounded-full bg-white" />Начать эфир</>
+                }
               </button>
             )}
 
-            <div className="w-12 h-12" /> {/* Заглушка для симметрии */}
+            <button onClick={toggleCamera}
+              className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${isCamOff ? "bg-red-600" : "bg-black/60 backdrop-blur border border-white/20"}`}>
+              <Icon name={isCamOff ? "VideoOff" : "Video"} size={18} className="text-white" />
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Боковая / нижняя панель */}
-      <div className="lg:w-80 xl:w-96 bg-zinc-950 border-l border-white/10 flex flex-col" style={{ minHeight: isLive ? "220px" : "auto" }}>
+      {/* Боковая панель */}
+      <div className="lg:w-80 xl:w-96 bg-zinc-950 border-l border-white/10 flex flex-col"
+        style={{ minHeight: isLive ? "220px" : "auto" }}>
         {isLive && streamIdRef.current
           ? <LiveChat streamId={streamIdRef.current} />
           : (
-            <div className="p-4 flex flex-col gap-3">
+            <div className="p-4">
               <div className="p-3 rounded-xl bg-white/5 flex items-start gap-2.5">
-                <Icon name="Wifi" size={14} className="text-primary mt-0.5 flex-shrink-0" />
-                <p className="text-[11px] text-white/50">Работает в Яндекс, Chrome, Safari. Задержка ~1-2 сек.</p>
+                <Icon name="Zap" size={14} className="text-primary mt-0.5 flex-shrink-0" />
+                <p className="text-[11px] text-white/50">Agora — профессиональный стриминг. Задержка &lt;1 сек, HD-качество, звук без заиканий.</p>
               </div>
             </div>
           )
