@@ -19,128 +19,160 @@ export default function NavBar({ page, setPage, cartCount }: NavBarProps) {
     ...(user?.role === "admin" ? [{ id: "admin" as Page, label: "Админ", icon: "ShieldCheck" }] : []),
   ];
 
-  return (
-    <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b border-border">
-      <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
-        <button
-          onClick={() => setPage("home")}
-          className="font-oswald text-xl font-semibold tracking-wider text-foreground hover:text-primary transition-colors flex items-center gap-1"
-        >
-          <span className="text-primary">ЮГА</span><span>ЗИН</span>
-          <span className="text-[10px] font-normal text-muted-foreground">.рф</span>
-        </button>
+  const mobileItems = [
+    { id: "home" as Page, label: "Главная", icon: "Home" },
+    { id: "streams" as Page, label: "Эфиры", icon: "Radio" },
+    { id: "catalog" as Page, label: "Каталог", icon: "ShoppingBag" },
+    { id: "cart" as Page, label: "Корзина", icon: "ShoppingCart" },
+    { id: (user ? "profile" : "auth") as Page, label: user ? "Профиль" : "Войти", icon: "User" },
+  ];
 
-        <nav className="hidden md:flex items-center gap-1">
-          {navItems.map(item => (
+  return (
+    <>
+      {/* ── Топ-хедер (десктоп + мобиль) ──────────────────────────── */}
+      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b border-border">
+        <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
+          <button
+            onClick={() => setPage("home")}
+            className="font-oswald text-xl font-semibold tracking-wider text-foreground hover:text-primary transition-colors flex items-center gap-1"
+          >
+            <span className="text-primary">ЮГА</span><span>ЗИН</span>
+            <span className="text-[10px] font-normal text-muted-foreground">.рф</span>
+          </button>
+
+          {/* Десктоп навигация */}
+          <nav className="hidden md:flex items-center gap-1">
+            {navItems.map(item => (
+              <button
+                key={item.id}
+                onClick={() => setPage(item.id)}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  page === item.id
+                    ? "text-primary bg-primary/10"
+                    : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                }`}
+              >
+                <Icon name={item.icon} size={15} />
+                {item.label}
+              </button>
+            ))}
+          </nav>
+
+          <div className="flex items-center gap-1">
+            {/* Кнопка эфира — только десктоп */}
+            {user && user.role !== "admin" && (
+              <button
+                onClick={() => setPage("broadcast")}
+                className={`hidden md:flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  page === "broadcast" ? "text-red-500 bg-red-500/10" : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                }`}
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-live-pulse" />
+                Эфир
+              </button>
+            )}
+
+            {/* Корзина — десктоп */}
             <button
-              key={item.id}
-              onClick={() => setPage(item.id)}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                page === item.id
+              onClick={() => setPage("cart")}
+              className={`hidden md:flex relative items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                page === "cart" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+              }`}
+            >
+              <Icon name="ShoppingCart" size={18} />
+              {cartCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                  {cartCount}
+                </span>
+              )}
+            </button>
+
+            {/* Профиль — десктоп */}
+            <button
+              onClick={() => setPage(user ? "profile" : "auth")}
+              className={`hidden md:flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                page === "profile" || page === "auth"
                   ? "text-primary bg-primary/10"
                   : "text-muted-foreground hover:text-foreground hover:bg-secondary"
               }`}
             >
-              <Icon name={item.icon} size={15} />
-              {item.label}
+              {user ? (
+                <div className="w-6 h-6 rounded-full bg-primary/20 text-primary text-[10px] font-bold flex items-center justify-center">
+                  {user.avatar}
+                </div>
+              ) : (
+                <Icon name="User" size={18} />
+              )}
+              <span>{user ? user.name.split(" ")[0] : "Войти"}</span>
             </button>
-          ))}
-        </nav>
 
-        <div className="flex items-center gap-1">
-          {/* Кнопка эфира — для всех залогиненных */}
-          {user && user.role !== "admin" && (
+            {/* Корзина — мобиль (в хедере справа) */}
             <button
-              onClick={() => setPage("broadcast")}
-              className={`hidden md:flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                page === "broadcast" ? "text-red-500 bg-red-500/10" : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+              onClick={() => setPage("cart")}
+              className={`md:hidden relative flex items-center px-2 py-2 rounded-md transition-colors ${
+                page === "cart" ? "text-primary" : "text-muted-foreground"
               }`}
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-live-pulse" />
-              Эфир
+              <Icon name="ShoppingCart" size={22} />
+              {cartCount > 0 && (
+                <span className="absolute top-0.5 right-0 bg-primary text-primary-foreground text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                  {cartCount}
+                </span>
+              )}
             </button>
-          )}
 
-          {/* Корзина */}
-          <button
-            onClick={() => setPage("cart")}
-            className={`relative flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-              page === "cart" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground hover:bg-secondary"
-            }`}
-          >
-            <Icon name="ShoppingCart" size={18} />
-            {cartCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
-                {cartCount}
-              </span>
+            {/* Эфир — мобиль (в хедере) */}
+            {user && user.role !== "admin" && (
+              <button
+                onClick={() => setPage("broadcast")}
+                className={`md:hidden flex items-center px-2 py-2 rounded-md transition-colors ${
+                  page === "broadcast" ? "text-red-500" : "text-muted-foreground"
+                }`}
+              >
+                <span className="w-5 h-5 rounded-full border-2 border-current flex items-center justify-center">
+                  <span className="w-2 h-2 rounded-full bg-red-500 animate-live-pulse" />
+                </span>
+              </button>
             )}
-          </button>
-
-          {/* Профиль / Вход */}
-          <button
-            onClick={() => setPage(user ? "profile" : "auth")}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-              page === "profile" || page === "auth"
-                ? "text-primary bg-primary/10"
-                : "text-muted-foreground hover:text-foreground hover:bg-secondary"
-            }`}
-          >
-            {user ? (
-              <div className="w-6 h-6 rounded-full bg-primary/20 text-primary text-[10px] font-bold flex items-center justify-center">
-                {user.avatar}
-              </div>
-            ) : (
-              <Icon name="User" size={18} />
-            )}
-            <span className="hidden md:inline">{user ? user.name.split(" ")[0] : "Войти"}</span>
-          </button>
+          </div>
         </div>
-      </div>
+      </header>
 
-      {/* Mobile nav */}
-      <div className="md:hidden border-t border-border flex">
-        {navItems.map(item => (
-          <button
-            key={item.id}
-            onClick={() => setPage(item.id)}
-            className={`flex-1 flex flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition-colors ${
-              page === item.id ? "text-primary" : "text-muted-foreground"
-            }`}
-          >
-            <Icon name={item.icon} size={18} />
-            {item.label}
-          </button>
-        ))}
-        <button
-          onClick={() => setPage("cart")}
-          className={`flex-1 flex flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition-colors relative ${
-            page === "cart" ? "text-primary" : "text-muted-foreground"
-          }`}
-        >
-          <Icon name="ShoppingCart" size={18} />
-          Корзина
-          {cartCount > 0 && (
-            <span className="absolute top-1 right-3 bg-primary text-primary-foreground text-[9px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center">
-              {cartCount}
-            </span>
-          )}
-        </button>
-        <button
-          onClick={() => setPage(user ? "profile" : "auth")}
-          className={`flex-1 flex flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition-colors ${
-            page === "profile" || page === "auth" ? "text-primary" : "text-muted-foreground"
-          }`}
-        >
-          {user ? (
-            <div className="w-[18px] h-[18px] rounded-full bg-primary/20 text-primary text-[8px] font-bold flex items-center justify-center">
-              {user.avatar}
-            </div>
-          ) : (
-            <Icon name="User" size={18} />
-          )}
-          {user ? "Профиль" : "Войти"}
-        </button>
-      </div>
-    </header>
+      {/* ── Мобильный таббар (fixed bottom) ──────────────────────── */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur border-t border-border flex"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+        {mobileItems.map(item => {
+          const isCart = item.id === "cart";
+          const isProfile = item.id === "profile" || item.id === "auth";
+          const isActive = isProfile
+            ? page === "profile" || page === "auth"
+            : page === item.id;
+
+          return (
+            <button
+              key={item.label}
+              onClick={() => setPage(item.id)}
+              className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium transition-colors relative ${
+                isActive ? "text-primary" : "text-muted-foreground"
+              }`}
+            >
+              {isProfile && user ? (
+                <div className={`w-5 h-5 rounded-full bg-primary/20 text-[9px] font-bold flex items-center justify-center ${isActive ? "text-primary" : "text-muted-foreground"}`}>
+                  {user.avatar}
+                </div>
+              ) : (
+                <Icon name={item.icon} size={20} />
+              )}
+              {isCart && cartCount > 0 && (
+                <span className="absolute top-1.5 right-[calc(50%-14px)] bg-primary text-primary-foreground text-[8px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center">
+                  {cartCount > 9 ? "9+" : cartCount}
+                </span>
+              )}
+              <span>{isProfile && user ? "Профиль" : item.label}</span>
+            </button>
+          );
+        })}
+      </nav>
+    </>
   );
 }

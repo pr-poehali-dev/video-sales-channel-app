@@ -28,18 +28,18 @@ function ChatPanel({ messages, user, input, setInput, sendMessage, sending }: Ch
         <div ref={endRef} />
       </div>
       {user ? (
-        <div className="px-3 py-3 border-t border-white/10 flex gap-2 flex-shrink-0">
+        <div className="px-3 py-3 border-t border-white/10 flex gap-2 flex-shrink-0" style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom))" }}>
           <input value={input} onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === "Enter" && sendMessage()} placeholder="Написать..." maxLength={200}
-            className="flex-1 bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-xs text-white placeholder:text-white/40 outline-none focus:border-primary/50"
+            className="flex-1 bg-white/10 border border-white/20 rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-white/40 outline-none focus:border-primary/50"
           />
           <button onClick={() => sendMessage()} disabled={!input.trim() || sending}
-            className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center disabled:opacity-40">
-            <Icon name="Send" size={13} className="text-white" />
+            className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center disabled:opacity-40 flex-shrink-0">
+            <Icon name="Send" size={15} className="text-white" />
           </button>
         </div>
       ) : (
-        <p className="text-center text-white/30 text-xs py-3 border-t border-white/10">Войдите чтобы писать</p>
+        <p className="text-center text-white/30 text-xs py-3 border-t border-white/10" style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom))" }}>Войдите чтобы писать</p>
       )}
     </div>
   );
@@ -146,9 +146,9 @@ export default function StreamSidePanel({
       {/* ── ЧАТ-ШТОРКА (мобильный, только когда видео не свёрнуто) ──── */}
       {chatOpen && !videoCollapsed && (
         <div className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end" onClick={() => setChatOpen(false)}>
-          <div className="bg-zinc-900 rounded-t-2xl" style={{ maxHeight: "70vh" }} onClick={e => e.stopPropagation()}>
-            <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mt-3 mb-1" />
-            <div className="flex border-b border-white/10">
+          <div className="bg-zinc-900 rounded-t-2xl flex flex-col" style={{ maxHeight: "80dvh" }} onClick={e => e.stopPropagation()}>
+            <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mt-3 mb-1 flex-shrink-0" />
+            <div className="flex border-b border-white/10 flex-shrink-0">
               {(["chat", "products"] as const).map(tab => (
                 <button key={tab} onClick={() => setRightTab(tab)}
                   className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold border-b-2 transition-colors ${rightTab === tab ? "text-white border-primary" : "text-white/40 border-transparent"}`}>
@@ -157,7 +157,7 @@ export default function StreamSidePanel({
                 </button>
               ))}
             </div>
-            <div style={{ height: "50vh" }} className="flex flex-col">
+            <div className="flex flex-col flex-1 min-h-0" style={{ height: "55dvh" }}>
               {rightTab === "chat"
                 ? <ChatPanel messages={messages} user={user} input={input} setInput={setInput} sendMessage={sendMessage} sending={sending} />
                 : <ProductsPanel products={products} addedId={addedId} handleAddToCart={handleAddToCart} onProductClick={onProductClick} />
