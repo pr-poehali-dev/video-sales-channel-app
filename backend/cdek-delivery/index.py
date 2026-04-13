@@ -12,7 +12,7 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 
 
-CDEK_API = "https://api.cdek.ru/v2"
+CDEK_API = "https://api.edu.cdek.ru/v2"
 
 # Адрес отправителя (склад по умолчанию — Краснодар, код 270)
 FROM_CITY_CODE = 270
@@ -24,8 +24,8 @@ def get_conn():
 
 
 def get_token() -> str:
-    client_id = os.environ.get("CDEK_CLIENT_ID", "EMscd6r9JnFiQ3bLoyjJY6eM78JrJceI")
-    client_secret = os.environ.get("CDEK_CLIENT_SECRET", "PjLZkKBHEiLK3YsjtNrt3TGNG0ahs3kG")
+    client_id = os.environ.get("CDEK_CLIENT_ID", "wqGwiQx0gg8mLtiEKsUinjVSICCjtTEP")
+    client_secret = os.environ.get("CDEK_CLIENT_SECRET", "RmAmgvSgSl1yirlz9QupbzOJVqhCxcP5")
     body = urllib.parse.urlencode({
         "grant_type": "client_credentials",
         "client_id": client_id,
@@ -220,9 +220,8 @@ def handler(event: dict, context) -> dict:
             return {"statusCode": 400, "headers": headers, "body": json.dumps({"error": "client_id and client_secret required"})}
         results = []
         for token_url, params in [
-            (f"{CDEK_API}/oauth/token", {"grant_type": "client_credentials", "client_id": client_id, "client_secret": client_secret}),
             (f"{CDEK_API}/oauth/token?parameters", {"grant_type": "client_credentials", "client_id": client_id, "client_secret": client_secret}),
-            ("https://api.cdek.ru/v2/oauth/token", {"grant_type": "client_credentials", "client_id": client_id, "client_secret": client_secret}),
+            (f"{CDEK_API}/oauth/token", {"grant_type": "client_credentials", "client_id": client_id, "client_secret": client_secret}),
         ]:
             try:
                 b = urllib.parse.urlencode(params).encode("utf-8")
