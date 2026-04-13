@@ -32,7 +32,7 @@ def get_token() -> str:
         "client_secret": client_secret,
     }).encode("utf-8")
     req = urllib.request.Request(
-        f"{CDEK_API}/oauth/token?parameters",
+        f"{CDEK_API}/oauth/token",
         data=body,
         headers={"Content-Type": "application/x-www-form-urlencoded"},
         method="POST",
@@ -225,7 +225,7 @@ def handler(event: dict, context) -> dict:
                 "client_secret": client_secret,
             }).encode("utf-8")
             req = urllib.request.Request(
-                f"{CDEK_API}/oauth/token?parameters",
+                f"{CDEK_API}/oauth/token",
                 data=b,
                 headers={"Content-Type": "application/x-www-form-urlencoded"},
                 method="POST",
