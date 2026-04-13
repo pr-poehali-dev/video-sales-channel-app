@@ -91,6 +91,7 @@ interface StoreContextType {
   deleteProduct: (id: string) => Promise<void>;
   addStream: (data: Omit<StoreStream, "id" | "startedAt">) => Promise<StoreStream>;
   updateStream: (id: string, data: Partial<StoreStream> & { duration_sec?: number }) => Promise<void>;
+  deleteStream: (id: string) => Promise<void>;
   getSellerProducts: (sellerId: string) => StoreProduct[];
   getSellerStreams: (sellerId: string) => StoreStream[];
   getStreamMessages: (streamId: string) => Promise<ChatMessage[]>;
@@ -169,6 +170,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setStreams(prev => prev.map(s => s.id === id ? updated : s));
   }, []);
 
+  const deleteStream = useCallback(async (id: string) => {
+    await api("delete_stream", "POST", { id });
+    setStreams(prev => prev.filter(s => s.id !== id));
+  }, []);
+
   /* ── SELECTORS ── */
   const getSellerProducts = useCallback((sellerId: string) =>
     products.filter(p => p.sellerId === sellerId), [products]);
@@ -231,7 +237,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     <StoreContext.Provider value={{
       products, streams, loading, reload: load,
       addProduct, updateProduct, deleteProduct,
-      addStream, updateStream,
+      addStream, updateStream, deleteStream,
       getSellerProducts, getSellerStreams,
       getStreamMessages, addChatMessage,
       getProductReviews, addReview, hasUserReviewed,

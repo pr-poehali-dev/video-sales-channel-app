@@ -51,7 +51,7 @@ async function uploadImage(file: File): Promise<string> {
 
 export default function DashboardPage({ setPage }: DashboardPageProps) {
   const { user } = useAuth();
-  const { addProduct, updateProduct, deleteProduct, getSellerProducts, getSellerStreams } = useStore();
+  const { addProduct, updateProduct, deleteProduct, deleteStream, getSellerProducts, getSellerStreams } = useStore();
 
   const products = user ? getSellerProducts(user.id) : [];
   const myStreams = user ? getSellerStreams(user.id) : [];
@@ -60,6 +60,7 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [confirmDeleteStream, setConfirmDeleteStream] = useState<string | null>(null);
 
   // Форма
   const [fName, setFName] = useState("");
@@ -312,6 +313,12 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
                       <span className="flex items-center gap-1"><Icon name="Eye" size={10} />{s.viewers}</span>
                     </div>
                   </div>
+                  {!s.isLive && (
+                    <button onClick={() => setConfirmDeleteStream(s.id)}
+                      className="p-2 hover:bg-secondary rounded-lg transition-colors flex-shrink-0">
+                      <Icon name="Trash2" size={16} className="text-muted-foreground hover:text-destructive" />
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
@@ -438,7 +445,30 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
         </div>
       )}
 
-      {/* ── УДАЛЕНИЕ ── */}
+      {/* ── УДАЛЕНИЕ ЭФИРА ── */}
+      {confirmDeleteStream && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-card border border-border rounded-2xl p-6 max-w-sm w-full shadow-xl">
+            <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-4">
+              <Icon name="Trash2" size={22} className="text-destructive" />
+            </div>
+            <h3 className="font-oswald text-lg font-semibold text-foreground text-center mb-2">Удалить эфир?</h3>
+            <p className="text-sm text-muted-foreground text-center mb-6">Запись будет удалена и больше не будет видна зрителям</p>
+            <div className="flex gap-3">
+              <button onClick={() => setConfirmDeleteStream(null)}
+                className="flex-1 border border-border text-foreground font-semibold py-2.5 rounded-xl hover:bg-secondary transition-colors text-sm">
+                Отмена
+              </button>
+              <button onClick={() => { deleteStream(confirmDeleteStream); setConfirmDeleteStream(null); }}
+                className="flex-1 bg-destructive text-white font-semibold py-2.5 rounded-xl hover:opacity-90 text-sm">
+                Удалить
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── УДАЛЕНИЕ ТОВАРА ── */}
       {confirmDelete && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="bg-card border border-border rounded-2xl p-6 max-w-sm w-full shadow-xl">

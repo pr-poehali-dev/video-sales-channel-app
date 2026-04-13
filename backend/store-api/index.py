@@ -231,6 +231,14 @@ def handler(event: dict, context) -> dict:
             row = cur.fetchone()
             return ok(_fmt_stream(row)) if row else err("not found", 404)
 
+        if action == "delete_stream":
+            sid = body.get("id") or qs.get("id")
+            if not sid:
+                return err("id required")
+            cur.execute("UPDATE streams SET hidden=TRUE WHERE id=%s", (sid,))
+            conn.commit()
+            return ok({"ok": True})
+
         # ─────────── CHAT ───────────
         if action == "get_chat":
             sid = qs.get("stream_id")
