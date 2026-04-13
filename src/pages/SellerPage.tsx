@@ -1,5 +1,7 @@
+import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
-import { useStore } from "@/context/StoreContext";
+import { useAuth } from "@/context/AuthContext";
+import { useStore, type SellerReview } from "@/context/StoreContext";
 import ProductCard from "@/components/ProductCard";
 import type { CartItem } from "@/App";
 
@@ -10,10 +12,66 @@ interface SellerPageProps {
   onProductClick: (productId: string) => void;
 }
 
+function Stars({ value, max = 5, size = 14, interactive = false, onChange }: {
+  value: number; max?: number; size?: number; interactive?: boolean; onChange?: (v: number) => void;
+}) {
+  const [hovered, setHovered] = useState(0);
+  return (
+    <div className="flex gap-0.5">
+      {Array.from({ length: max }, (_, i) => {
+        const filled = interactive ? (hovered || value) > i : value > i;
+        return (
+          <svg key={i} width={size} height={size} viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"}
+            stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+            className={`${filled ? "text-yellow-400" : "text-muted-foreground/40"} ${interactive ? "cursor-pointer" : ""}`}
+            onMouseEnter={() => interactive && setHovered(i + 1)}
+            onMouseLeave={() => interactive && setHovered(0)}
+            onClick={() => interactive && onChange?.(i + 1)}
+          >
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+          </svg>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function SellerPage({ sellerId, addToCart, onBack, onProductClick }: SellerPageProps) {
-  const { getSellerProducts, getSellerStreams } = useStore();
+  const { user } = useAuth();
+  const { getSellerProducts, getSellerStreams, getSellerReviews, addSellerReview } = useStore();
   const products = getSellerProducts(sellerId);
   const streams = getSellerStreams(sellerId);
+
+  const [reviews, setReviews] = useState<SellerReview[]>([]);
+  const [avg, setAvg] = useState(0);
+  const [count, setCount] = useState(0);
+  const [rating, setRating] = useState(0);
+  const [text, setText] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [alreadyReviewed, setAlreadyReviewed] = useState(false);
+  const [showReviewForm, setShowReviewForm] = useState(false);
+
+  useEffect(() => {
+    getSellerReviews(sellerId).then(d => {
+      setReviews(d.reviews); setAvg(d.avg); setCount(d.count);
+      if (user) setAlreadyReviewed(d.reviews.some(r => r.userId === user.id));
+    });
+  }, [sellerId, user]);
+
+  const submit = async () => {
+    if (!user || rating === 0 || submitting) return;
+    setSubmitting(true);
+    try {
+      const r = await addSellerReview({ sellerId, userId: user.id, userName: user.name, userAvatar: user.avatar, rating, text });
+      setReviews(prev => [r, ...prev]);
+      setAvg(prev => parseFloat(((prev * count + rating) / (count + 1)).toFixed(1)));
+      setCount(c => c + 1);
+      setAlreadyReviewed(true);
+      setShowReviewForm(false);
+      setRating(0); setText("");
+    } catch { /* уже оставил */ }
+    finally { setSubmitting(false); }
+  };
 
   const seller = products[0] ?? streams[0];
 
@@ -33,12 +91,9 @@ export default function SellerPage({ sellerId, addToCart, onBack, onProductClick
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-6 animate-fade-in">
-      <button
-        onClick={onBack}
-        className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
-      >
-        <Icon name="ArrowLeft" size={16} />
-        Назад
+      <button onClick={onBack}
+        className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6">
+        <Icon name="ArrowLeft" size={16} />Назад
       </button>
 
       {/* Шапка продавца */}
@@ -57,9 +112,46 @@ export default function SellerPage({ sellerId, addToCart, onBack, onProductClick
               <Icon name="Radio" size={12} />
               {streams.length} эфир{streams.length === 1 ? "" : streams.length < 5 ? "а" : "ов"}
             </span>
+            {count > 0 && (
+              <span className="flex items-center gap-1.5">
+                <Stars value={avg} size={12} />
+                <span>{avg} ({count} отзыв{count === 1 ? "" : count < 5 ? "а" : "ов"})</span>
+              </span>
+            )}
           </div>
         </div>
+        {user && !alreadyReviewed && (
+          <button onClick={() => setShowReviewForm(v => !v)}
+            className="flex-shrink-0 flex items-center gap-1.5 border border-border text-sm font-semibold px-3 py-2 rounded-xl hover:bg-secondary transition-colors">
+            <Icon name="Star" size={14} />Оценить
+          </button>
+        )}
       </div>
+
+      {/* Форма отзыва на продавца */}
+      {showReviewForm && user && !alreadyReviewed && (
+        <div className="bg-card border border-border rounded-2xl p-5 mb-8">
+          <h3 className="font-semibold mb-3">Ваш отзыв о продавце</h3>
+          <div className="flex items-center gap-3 mb-3">
+            <Stars value={rating} interactive onChange={setRating} size={24} />
+            {rating > 0 && <span className="text-sm text-muted-foreground">{["", "Плохо", "Не очень", "Нормально", "Хорошо", "Отлично"][rating]}</span>}
+          </div>
+          <textarea value={text} onChange={e => setText(e.target.value)} maxLength={500}
+            placeholder="Расскажите о своём опыте с продавцом..." rows={3}
+            className="w-full text-sm bg-background border border-border rounded-xl px-3 py-2.5 outline-none focus:border-primary/50 resize-none"
+          />
+          <div className="flex gap-2 mt-3">
+            <button onClick={submit} disabled={rating === 0 || submitting}
+              className="bg-primary text-primary-foreground font-semibold text-sm px-5 py-2 rounded-xl disabled:opacity-40">
+              {submitting ? "Отправляем..." : "Отправить"}
+            </button>
+            <button onClick={() => setShowReviewForm(false)}
+              className="border border-border text-sm font-semibold px-5 py-2 rounded-xl hover:bg-secondary">
+              Отмена
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Товары */}
       {products.length > 0 ? (
@@ -69,12 +161,7 @@ export default function SellerPage({ sellerId, addToCart, onBack, onProductClick
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {products.map(p => (
-              <ProductCard
-                key={p.id}
-                product={p}
-                addToCart={addToCart}
-                onClick={() => onProductClick(p.id)}
-              />
+              <ProductCard key={p.id} product={p} addToCart={addToCart} onClick={() => onProductClick(p.id)} />
             ))}
           </div>
         </div>
@@ -87,7 +174,7 @@ export default function SellerPage({ sellerId, addToCart, onBack, onProductClick
 
       {/* Прошедшие эфиры */}
       {pastStreams.length > 0 && (
-        <div>
+        <div className="mb-10">
           <h2 className="font-oswald text-lg font-semibold text-foreground tracking-wide mb-4">
             Эфиры <span className="text-muted-foreground font-normal text-base">({pastStreams.length})</span>
           </h2>
@@ -106,6 +193,49 @@ export default function SellerPage({ sellerId, addToCart, onBack, onProductClick
           </div>
         </div>
       )}
+
+      {/* Отзывы на продавца */}
+      <div>
+        <h2 className="font-oswald text-lg font-semibold text-foreground tracking-wide mb-4">
+          Отзывы о продавце
+          {count > 0 && (
+            <span className="text-muted-foreground font-normal text-base ml-2">({count})</span>
+          )}
+        </h2>
+
+        {reviews.length === 0 ? (
+          <div className="text-center py-12 bg-card border border-border rounded-2xl">
+            <Icon name="Star" size={32} className="mx-auto mb-3 text-muted-foreground opacity-40" />
+            <p className="text-sm text-muted-foreground">Отзывов пока нет. Будьте первым!</p>
+            {user && !alreadyReviewed && (
+              <button onClick={() => setShowReviewForm(true)}
+                className="mt-4 inline-flex items-center gap-1.5 bg-primary text-primary-foreground font-semibold text-sm px-5 py-2.5 rounded-xl">
+                <Icon name="Star" size={14} />Оставить отзыв
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {reviews.map(r => (
+              <div key={r.id} className="bg-card border border-border rounded-2xl px-5 py-4">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-8 h-8 rounded-full bg-primary/20 text-primary text-sm font-bold flex items-center justify-center flex-shrink-0">
+                    {r.userAvatar}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold">{r.userName}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <Stars value={r.rating} size={13} />
+                      <span className="text-xs text-muted-foreground">{r.createdAt}</span>
+                    </div>
+                  </div>
+                </div>
+                {r.text && <p className="text-sm text-muted-foreground leading-relaxed">{r.text}</p>}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

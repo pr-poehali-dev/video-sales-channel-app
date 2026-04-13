@@ -284,6 +284,35 @@ def handler(event: dict, context) -> dict:
             conn.commit()
             return ok(_fmt_review(cur.fetchone()), 201)
 
+        # ─────────── SELLER REVIEWS ───────────
+        if action == "get_seller_reviews":
+            seller_id = qs.get("seller_id")
+            if not seller_id:
+                return err("seller_id required")
+            cur.execute("SELECT * FROM seller_reviews WHERE seller_id=%s ORDER BY created_at DESC", (seller_id,))
+            rows = cur.fetchall()
+            cur.execute("SELECT ROUND(AVG(rating),1) as avg, COUNT(*) as cnt FROM seller_reviews WHERE seller_id=%s", (seller_id,))
+            stat = cur.fetchone()
+            return ok({
+                "reviews": [_fmt_seller_review(r) for r in rows],
+                "avg": float(stat["avg"]) if stat["avg"] else 0,
+                "count": int(stat["cnt"]),
+            })
+
+        if action == "add_seller_review":
+            cur.execute("SELECT id FROM seller_reviews WHERE seller_id=%s AND user_id=%s",
+                        (body["seller_id"], body["user_id"]))
+            if cur.fetchone():
+                return err("already reviewed", 409)
+            rid = f"srev_{uuid.uuid4().hex}"
+            cur.execute("""
+                INSERT INTO seller_reviews (id,seller_id,user_id,user_name,user_avatar,rating,text)
+                VALUES (%s,%s,%s,%s,%s,%s,%s) RETURNING *
+            """, (rid, body["seller_id"], body["user_id"], body["user_name"],
+                  body.get("user_avatar",""), int(body["rating"]), body.get("text","")))
+            conn.commit()
+            return ok(_fmt_seller_review(cur.fetchone()), 201)
+
         # ─────────── MJPEG + AUDIO STREAMING ───────────
         # Вещатель шлёт jpeg-кадры и pcm-аудио, зритель получает их через polling
         # Работает в любом браузере включая Яндекс и Safari
@@ -491,6 +520,18 @@ def _fmt_chat(r):
         "userAvatar": r["user_avatar"],
         "text":       r["text"],
         "sentAt":     r["sent_at"].strftime("%H:%M") if r["sent_at"] else "",
+    }
+
+def _fmt_seller_review(r):
+    return {
+        "id":         r["id"],
+        "sellerId":   r["seller_id"],
+        "userId":     r["user_id"],
+        "userName":   r["user_name"],
+        "userAvatar": r["user_avatar"],
+        "rating":     r["rating"],
+        "text":       r["text"],
+        "createdAt":  r["created_at"].strftime("%d %b %Y") if r["created_at"] else "",
     }
 
 def _fmt_review(r):

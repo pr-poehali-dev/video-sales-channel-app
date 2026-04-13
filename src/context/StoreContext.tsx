@@ -70,6 +70,17 @@ export interface Review {
   createdAt: string;
 }
 
+export interface SellerReview {
+  id: string;
+  sellerId: string;
+  userId: string;
+  userName: string;
+  userAvatar: string;
+  rating: number;
+  text: string;
+  createdAt: string;
+}
+
 interface StoreContextType {
   products: StoreProduct[];
   streams: StoreStream[];
@@ -87,6 +98,8 @@ interface StoreContextType {
   getProductReviews: (productId: string) => Promise<{ reviews: Review[]; avg: number; count: number }>;
   addReview: (data: Omit<Review, "id" | "createdAt">) => Promise<Review>;
   hasUserReviewed: (productId: string, userId: string) => boolean;
+  getSellerReviews: (sellerId: string) => Promise<{ reviews: SellerReview[]; avg: number; count: number }>;
+  addSellerReview: (data: Omit<SellerReview, "id" | "createdAt">) => Promise<SellerReview>;
 }
 
 const StoreContext = createContext<StoreContextType | null>(null);
@@ -202,6 +215,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const hasUserReviewed = useCallback((productId: string, userId: string) =>
     (reviewedCache[productId] ?? []).includes(userId), [reviewedCache]);
 
+  const getSellerReviews = useCallback(async (sellerId: string) => {
+    return api(`get_seller_reviews&seller_id=${sellerId}`);
+  }, []);
+
+  const addSellerReview = useCallback(async (data: Omit<SellerReview, "id" | "createdAt">) => {
+    return api("add_seller_review", "POST", {
+      seller_id: data.sellerId, user_id: data.userId,
+      user_name: data.userName, user_avatar: data.userAvatar,
+      rating: data.rating, text: data.text,
+    });
+  }, []);
+
   return (
     <StoreContext.Provider value={{
       products, streams, loading, reload: load,
@@ -210,6 +235,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       getSellerProducts, getSellerStreams,
       getStreamMessages, addChatMessage,
       getProductReviews, addReview, hasUserReviewed,
+      getSellerReviews, addSellerReview,
     }}>
       {children}
     </StoreContext.Provider>
