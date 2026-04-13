@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/context/AuthContext";
@@ -12,9 +12,10 @@ import DashboardPage from "@/pages/DashboardPage";
 import ProductPage from "@/pages/ProductPage";
 import SellerPage from "@/pages/SellerPage";
 import AuthPage from "@/pages/AuthPage";
-import BroadcastPage from "@/pages/BroadcastPage";
 import AdminPage from "@/pages/AdminPage";
 import NavBar from "@/components/NavBar";
+
+const BroadcastPage = lazy(() => import("@/pages/BroadcastPage"));
 
 export type Page =
   | "home" | "streams" | "catalog" | "profile" | "cart"
@@ -80,7 +81,7 @@ function AppInner() {
         {page === "cart" && <CartPage cart={cart} removeFromCart={removeFromCart} updateQty={updateQty} />}
         {page === "dashboard" && <DashboardPage setPage={navSetPage} />}
         {page === "auth" && <AuthPage onSuccess={() => navSetPage("home")} />}
-        {page === "broadcast" && <BroadcastPage setPage={navSetPage} />}
+        {page === "broadcast" && <Suspense fallback={null}><BroadcastPage setPage={navSetPage} /></Suspense>}
         {page === "admin" && <AdminPage setPage={navSetPage} />}
         {page === "product" && selectedProductId !== null && (
           <ProductPage

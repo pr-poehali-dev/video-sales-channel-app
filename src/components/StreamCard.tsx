@@ -18,7 +18,7 @@ export default function StreamCard({ stream }: { stream: Stream }) {
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden hover:border-primary/40 transition-all group cursor-pointer">
       <div className="video-thumb">
-        <img src={stream.thumb} alt={stream.title} />
+        <img src={stream.thumb} alt={stream.title} loading="lazy" decoding="async" width={400} height={225} />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
 
         {/* Live badge */}

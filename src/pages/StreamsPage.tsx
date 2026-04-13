@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import Icon from "@/components/ui/icon";
 import { useAuth } from "@/context/AuthContext";
 import { useStore, type StoreStream } from "@/context/StoreContext";
-import StreamWatchPage from "@/pages/StreamWatchPage";
 import type { Page, CartItem } from "@/App";
+
+const StreamWatchPage = lazy(() => import("@/pages/StreamWatchPage"));
 
 interface StreamsPageProps {
   setPage: (p: Page) => void;
@@ -24,12 +25,14 @@ export default function StreamsPage({ setPage, addToCart, onProductClick }: Stre
 
   if (watching) {
     return (
-      <StreamWatchPage
-        stream={watching}
-        setPage={(p) => { setWatching(null); setPage(p); }}
-        addToCart={addToCart}
-        onProductClick={onProductClick}
-      />
+      <Suspense fallback={null}>
+        <StreamWatchPage
+          stream={watching}
+          setPage={(p) => { setWatching(null); setPage(p); }}
+          addToCart={addToCart}
+          onProductClick={onProductClick}
+        />
+      </Suspense>
     );
   }
 

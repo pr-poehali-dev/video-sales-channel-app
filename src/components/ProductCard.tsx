@@ -37,6 +37,10 @@ export default function ProductCard({ product, addToCart, onClick }: ProductCard
             src={coverImage}
             alt={product.name}
             className="w-full h-full object-cover transition-transform duration-400 group-hover:scale-105"
+            loading="lazy"
+            decoding="async"
+            width={300}
+            height={300}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">

@@ -60,6 +60,10 @@ export default function ProductPage({ productId, addToCart, onBack, onSellerClic
                 src={product.images[activeImg]}
                 alt={product.name}
                 className="w-full h-full object-cover"
+                width={800}
+                height={800}
+                decoding="async"
+                fetchPriority="high"
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
@@ -77,7 +81,7 @@ export default function ProductPage({ productId, addToCart, onBack, onSellerClic
                     activeImg === i ? "border-primary" : "border-border hover:border-primary/40"
                   }`}
                 >
-                  <img src={img} alt="" className="w-full h-full object-cover" />
+                  <img src={img} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" width={64} height={64} />
                 </button>
               ))}
             </div>

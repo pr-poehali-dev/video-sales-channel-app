@@ -117,16 +117,29 @@
 }
 
 .animate-fade-in {
-  animation: fade-in 0.4s ease forwards;
+  animation: fade-in 0.3s ease forwards;
+  will-change: opacity, transform;
 }
 .animate-scale-in {
-  animation: scale-in 0.25s ease forwards;
+  animation: scale-in 0.2s ease forwards;
+  will-change: opacity, transform;
 }
 .animate-slide-in-right {
-  animation: slide-in-right 0.3s ease forwards;
+  animation: slide-in-right 0.25s ease forwards;
+  will-change: opacity, transform;
 }
 .animate-live-pulse {
   animation: live-pulse 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 .delay-100 {
