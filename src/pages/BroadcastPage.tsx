@@ -75,10 +75,13 @@ interface BroadcastPageProps { setPage: (p: Page) => void; }
 
 export default function BroadcastPage({ setPage }: BroadcastPageProps) {
   const { user } = useAuth();
-  const { addStream, updateStream, getSellerStreams } = useStore();
+  const { addStream, updateStream, getSellerStreams, reload, loading } = useStore();
 
   const myStreams = user ? getSellerStreams(user.id) : [];
   const activeStream = myStreams.find(s => s.isLive) ?? null;
+
+  // Перезагружаем данные при входе на страницу чтобы видеть актуальные эфиры
+  useEffect(() => { reload(); }, []);
 
   const clientRef     = useRef<IAgoraRTCClient | null>(null);
   const videoTrackRef = useRef<ILocalVideoTrack | null>(null);
@@ -300,6 +303,12 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
     </div>
   );
 
+  if (loading && !isLive) return (
+    <div className="max-w-md mx-auto px-4 py-24 text-center">
+      <Icon name="Loader" size={32} className="mx-auto text-muted-foreground animate-spin" />
+    </div>
+  );
+
   if (activeStream && !isLive) return (
     <div className="max-w-md mx-auto px-4 py-24 text-center">
       <div className="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-5">
@@ -312,8 +321,10 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
         <button
           onClick={async () => {
             setStoppingActive(true);
-            try { await updateStream(activeStream.id, { isLive: false }); }
-            catch { /* ignore */ }
+            try {
+              await updateStream(activeStream.id, { isLive: false });
+              await reload();
+            } catch { /* ignore */ }
             finally { setStoppingActive(false); }
           }}
           disabled={stoppingActive}

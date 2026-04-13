@@ -54,7 +54,7 @@ async function uploadImage(file: File): Promise<string> {
 
 export default function DashboardPage({ setPage }: DashboardPageProps) {
   const { user } = useAuth();
-  const { addProduct, updateProduct, deleteProduct, deleteStream, updateStream, getSellerProducts, getSellerStreams } = useStore();
+  const { addProduct, updateProduct, deleteProduct, deleteStream, updateStream, reload, getSellerProducts, getSellerStreams } = useStore();
 
   const products = user ? getSellerProducts(user.id) : [];
   const myStreams = user ? getSellerStreams(user.id) : [];
@@ -72,6 +72,7 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
     setStoppingStream(id);
     try {
       await updateStream(id, { isLive: false });
+      await reload();
     } catch { /* ignore */ }
     finally { setStoppingStream(null); }
   };
