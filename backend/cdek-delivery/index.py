@@ -218,35 +218,37 @@ def handler(event: dict, context) -> dict:
         client_secret = body.get("client_secret", "").strip()
         if not client_id or not client_secret:
             return {"statusCode": 400, "headers": headers, "body": json.dumps({"error": "client_id and client_secret required"})}
-        try:
-            b = urllib.parse.urlencode({
-                "grant_type": "client_credentials",
-                "client_id": client_id,
-                "client_secret": client_secret,
-            }).encode("utf-8")
-            req = urllib.request.Request(
-                f"{CDEK_API}/oauth/token",
-                data=b,
-                headers={"Content-Type": "application/x-www-form-urlencoded"},
-                method="POST",
-            )
-            with urllib.request.urlopen(req, timeout=15) as resp:
-                token_data = json.loads(resp.read())
-                access_token = token_data.get("access_token", "")
-                if access_token:
-                    # Проверяем поиск городов
-                    cities = search_cities("Москва", access_token)
-                    return {"statusCode": 200, "headers": headers, "body": json.dumps({
-                        "ok": True,
-                        "cities_found": len(cities),
-                        "msg": f"Подключено! Найдено {len(cities)} городов."
-                    })}
-                return {"statusCode": 200, "headers": headers, "body": json.dumps({"ok": False, "msg": "Токен не получен"})}
-        except urllib.error.HTTPError as e:
-            raw = e.read().decode()
-            return {"statusCode": 200, "headers": headers, "body": json.dumps({"ok": False, "msg": f"Ошибка авторизации {e.code}: {raw}"})}
-        except Exception as e:
-            return {"statusCode": 200, "headers": headers, "body": json.dumps({"ok": False, "msg": str(e)})}
+        results = []
+        for token_url, params in [
+            (f"{CDEK_API}/oauth/token", {"grant_type": "client_credentials", "client_id": client_id, "client_secret": client_secret}),
+            (f"{CDEK_API}/oauth/token?parameters", {"grant_type": "client_credentials", "client_id": client_id, "client_secret": client_secret}),
+            ("https://api.cdek.ru/v2/oauth/token", {"grant_type": "client_credentials", "client_id": client_id, "client_secret": client_secret}),
+        ]:
+            try:
+                b = urllib.parse.urlencode(params).encode("utf-8")
+                req = urllib.request.Request(
+                    token_url,
+                    data=b,
+                    headers={"Content-Type": "application/x-www-form-urlencoded"},
+                    method="POST",
+                )
+                with urllib.request.urlopen(req, timeout=10) as resp:
+                    token_data = json.loads(resp.read())
+                    access_token = token_data.get("access_token", "")
+                    if access_token:
+                        cities = search_cities("Москва", access_token)
+                        return {"statusCode": 200, "headers": headers, "body": json.dumps({
+                            "ok": True,
+                            "cities_found": len(cities),
+                            "msg": f"Подключено! Найдено {len(cities)} городов. URL: {token_url}"
+                        })}
+                    results.append(f"{token_url}: токен пустой")
+            except urllib.error.HTTPError as e:
+                raw = e.read().decode()
+                results.append(f"{token_url}: {e.code} {raw[:100]}")
+            except Exception as e:
+                results.append(f"{token_url}: {str(e)[:80]}")
+        return {"statusCode": 200, "headers": headers, "body": json.dumps({"ok": False, "msg": " | ".join(results)})}
 
     try:
         token = get_token()
