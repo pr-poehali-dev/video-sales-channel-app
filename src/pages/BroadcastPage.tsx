@@ -99,6 +99,7 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
   const [status, setStatus]         = useState<"idle" | "connecting" | "live" | "error">("idle");
   const [errorMsg, setErrorMsg]     = useState("");
   const [customThumb, setCustomThumb] = useState<string | null>(null);
+  const [stoppingActive, setStoppingActive] = useState(false);
   const [thumbUploading, setThumbUploading] = useState(false);
   const thumbInputRef = useRef<HTMLInputElement>(null);
 
@@ -299,37 +300,32 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
     </div>
   );
 
-  if (activeStream && !isLive) {
-    const StopActiveStream = () => {
-      const [stopping, setStopping] = useState(false);
-      const stop = async () => {
-        setStopping(true);
-        try { await updateStream(activeStream.id, { isLive: false }); }
-        catch { /* ignore */ }
-        finally { setStopping(false); }
-      };
-      return (
-        <div className="max-w-md mx-auto px-4 py-24 text-center">
-          <div className="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-5">
-            <Icon name="Radio" size={40} className="text-red-500" />
-          </div>
-          <h2 className="font-oswald text-2xl font-semibold mb-2">Эфир уже идёт</h2>
-          <p className="text-sm text-muted-foreground mb-1">«{activeStream.title}»</p>
-          <p className="text-sm text-muted-foreground mb-6">Сначала остановите текущий эфир</p>
-          <div className="flex flex-col gap-3 max-w-xs mx-auto">
-            <button onClick={stop} disabled={stopping}
-              className="bg-red-500 text-white font-semibold px-6 py-3 rounded-xl hover:opacity-90 flex items-center justify-center gap-2 disabled:opacity-60">
-              {stopping ? <Icon name="Loader" size={16} className="animate-spin" /> : <Icon name="Square" size={16} />}
-              Остановить эфир
-            </button>
-            <button onClick={() => setPage("dashboard")}
-              className="border border-border font-semibold px-6 py-3 rounded-xl hover:bg-accent">Назад в кабинет</button>
-          </div>
-        </div>
-      );
-    };
-    return <StopActiveStream />;
-  }
+  if (activeStream && !isLive) return (
+    <div className="max-w-md mx-auto px-4 py-24 text-center">
+      <div className="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-5">
+        <Icon name="Radio" size={40} className="text-red-500" />
+      </div>
+      <h2 className="font-oswald text-2xl font-semibold mb-2">Эфир уже идёт</h2>
+      <p className="text-sm text-muted-foreground mb-1">«{activeStream.title}»</p>
+      <p className="text-sm text-muted-foreground mb-6">Сначала остановите текущий эфир</p>
+      <div className="flex flex-col gap-3 max-w-xs mx-auto">
+        <button
+          onClick={async () => {
+            setStoppingActive(true);
+            try { await updateStream(activeStream.id, { isLive: false }); }
+            catch { /* ignore */ }
+            finally { setStoppingActive(false); }
+          }}
+          disabled={stoppingActive}
+          className="bg-red-500 text-white font-semibold px-6 py-3 rounded-xl hover:opacity-90 flex items-center justify-center gap-2 disabled:opacity-60">
+          {stoppingActive ? <Icon name="Loader" size={16} className="animate-spin" /> : <Icon name="Square" size={16} />}
+          Остановить эфир
+        </button>
+        <button onClick={() => setPage("dashboard")}
+          className="border border-border font-semibold px-6 py-3 rounded-xl hover:bg-accent">Назад в кабинет</button>
+      </div>
+    </div>
+  );
 
   if (finished) return (
     <div className="max-w-md mx-auto px-4 py-24 text-center">
