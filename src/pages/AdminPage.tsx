@@ -96,16 +96,94 @@ export default function AdminPage({ setPage }: AdminPageProps) {
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 animate-fade-in">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="font-oswald text-2xl font-semibold text-foreground tracking-wide">Панель администратора</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Управление пользователями платформы</p>
+          <p className="text-sm text-muted-foreground mt-0.5">Управление платформой</p>
         </div>
         <div className="flex items-center gap-2 bg-destructive/10 text-destructive text-xs font-semibold px-3 py-1.5 rounded-full">
           <Icon name="ShieldCheck" size={13} />
           ADMIN
         </div>
       </div>
+
+      {/* Вкладки */}
+      <div className="flex gap-1 mb-6 bg-secondary rounded-xl p-1 w-fit">
+        {([["users", "Пользователи"], ["cdek", "СДЭК"]] as const).map(([key, label]) => (
+          <button key={key} onClick={() => setActiveTab(key)}
+            className={`px-4 py-2 text-sm rounded-lg font-medium transition-all ${
+              activeTab === key ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+            }`}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── ВКЛАДКА СДЭК ── */}
+      {activeTab === "cdek" && (
+        <div className="max-w-lg animate-fade-in space-y-4">
+          <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-8 h-8 rounded-lg bg-[#00AAFF]/10 flex items-center justify-center">
+                <Icon name="Truck" size={16} className="text-[#00AAFF]" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-foreground">Настройки API СДЭК</p>
+                <p className="text-xs text-muted-foreground">Ключи из личного кабинета СДЭК → Интеграция → API</p>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Account / Client ID</label>
+              <input
+                value={cdekId}
+                onChange={e => setCdekId(e.target.value)}
+                placeholder="aKDJq0vBV0kRgFKQsJY5vZ77OZfFmP9T"
+                className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground font-mono placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Secure password / Пароль</label>
+              <input
+                value={cdekSecret}
+                onChange={e => setCdekSecret(e.target.value)}
+                placeholder="IU77FF7clr1QCILuEwZZClyGrRuINu8R"
+                type="password"
+                className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground font-mono placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors"
+              />
+            </div>
+
+            {cdekResult && (
+              <div className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm ${
+                cdekResult.ok ? "bg-green-500/10 text-green-600" : "bg-destructive/10 text-destructive"
+              }`}>
+                <Icon name={cdekResult.ok ? "CheckCircle" : "AlertCircle"} size={16} />
+                {cdekResult.msg}
+              </div>
+            )}
+
+            <button
+              onClick={testCdek}
+              disabled={cdekTesting || !cdekId.trim()}
+              className="w-full bg-[#00AAFF] text-white font-semibold py-3 rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {cdekTesting
+                ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Проверяю...</>
+                : <><Icon name="Zap" size={16} /> Проверить подключение</>
+              }
+            </button>
+          </div>
+
+          <div className="bg-secondary/50 rounded-xl px-4 py-3 text-xs text-muted-foreground">
+            <Icon name="Info" size={12} className="inline mr-1.5 mb-0.5" />
+            Ключи сохраняются через платформу. Здесь можно только проверить подключение.
+          </div>
+        </div>
+      )}
+
+      {/* ── ВКЛАДКА ПОЛЬЗОВАТЕЛИ ── */}
+      {activeTab === "users" && <>
 
       {/* Статистика */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
@@ -249,6 +327,7 @@ export default function AdminPage({ setPage }: AdminPageProps) {
           </div>
         </div>
       )}
+      </>}
     </div>
   );
 }
