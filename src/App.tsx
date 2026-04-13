@@ -28,6 +28,8 @@ export interface CartItem {
   price: number;
   image: string;
   qty: number;
+  fromCityCode?: number;
+  weightG?: number;
 }
 
 function AppInner() {

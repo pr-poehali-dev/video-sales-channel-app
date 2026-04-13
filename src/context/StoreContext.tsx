@@ -32,6 +32,15 @@ export interface StoreProduct {
   sellerAvatar: string;
   createdAt: string;
   inStock: number;
+  weightG?: number;
+  lengthCm?: number;
+  widthCm?: number;
+  heightCm?: number;
+  cdekEnabled?: boolean;
+  nalogEnabled?: boolean;
+  fittingEnabled?: boolean;
+  fromCityCode?: number;
+  fromCityName?: string;
 }
 
 export interface StoreStream {

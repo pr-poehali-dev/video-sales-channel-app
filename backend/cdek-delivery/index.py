@@ -81,7 +81,7 @@ def search_cities(query: str, token: str) -> list:
         ]
 
 
-def calc_tariffs(city_code: int, weight_g: int, token: str) -> list:
+def calc_tariffs(city_code: int, weight_g: int, token: str, from_city_code: int = 0) -> list:
     tariff_codes = [136, 137, 138, 139]
     names = {
         136: "Посылка склад-склад",
@@ -89,12 +89,13 @@ def calc_tariffs(city_code: int, weight_g: int, token: str) -> list:
         138: "Посылка дверь-склад",
         139: "Посылка дверь-дверь",
     }
+    sender_code = from_city_code or FROM_CITY_CODE
     out = []
     for tariff_code in tariff_codes:
         try:
             result = cdek_request("/calculator/packages", token, {
                 "tariff_code": tariff_code,
-                "from_location": {"code": FROM_CITY_CODE},
+                "from_location": {"code": sender_code},
                 "to_location": {"code": city_code},
                 "packages": [{"weight": max(weight_g, 100), "length": 20, "width": 15, "height": 10}],
             }, "POST")
@@ -268,9 +269,10 @@ def handler(event: dict, context) -> dict:
         if action == "calc":
             city_code = int(qs.get("city_code", 0))
             weight_g = int(qs.get("weight", 500))
+            from_city = int(qs.get("from_city_code", 0))
             if not city_code:
                 return {"statusCode": 400, "headers": headers, "body": json.dumps({"error": "city_code required"})}
-            tariffs = calc_tariffs(city_code, weight_g, token)
+            tariffs = calc_tariffs(city_code, weight_g, token, from_city)
             return {"statusCode": 200, "headers": headers, "body": json.dumps(tariffs)}
 
         # ── Создание заказа в СДЭК ──

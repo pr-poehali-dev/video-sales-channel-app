@@ -210,16 +210,18 @@ def handler(event: dict, context) -> dict:
             safe_images = _clean_images(body.get("images", []))
             cur.execute("""
                 INSERT INTO products (id,name,price,category,description,images,seller_id,seller_name,seller_avatar,
-                    in_stock,weight_g,length_cm,width_cm,height_cm,cdek_enabled,nalog_enabled,fitting_enabled)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING *
+                    in_stock,weight_g,length_cm,width_cm,height_cm,cdek_enabled,nalog_enabled,fitting_enabled,
+                    from_city_code,from_city_name)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING *
             """, (pid, body["name"], body["price"], body.get("category",""),
                   body.get("description",""), safe_images,
                   body["seller_id"], body["seller_name"], body.get("seller_avatar",""),
-                  body.get("in_stock",99),
+                  body.get("in_stock",1),
                   body.get("weight_g",500), body.get("length_cm",20),
                   body.get("width_cm",15), body.get("height_cm",10),
                   body.get("cdek_enabled",True), body.get("nalog_enabled",False),
-                  body.get("fitting_enabled",False)))
+                  body.get("fitting_enabled",False),
+                  body.get("from_city_code",0), body.get("from_city_name","")))
             conn.commit()
             return ok(_fmt_product(cur.fetchone()), 201)
 
@@ -228,7 +230,8 @@ def handler(event: dict, context) -> dict:
             fields, vals = [], []
             for f in ("name","price","category","description","images","in_stock",
                       "weight_g","length_cm","width_cm","height_cm",
-                      "cdek_enabled","nalog_enabled","fitting_enabled"):
+                      "cdek_enabled","nalog_enabled","fitting_enabled",
+                      "from_city_code","from_city_name"):
                 if f in body:
                     fields.append(f"{f}=%s")
                     vals.append(body[f])
@@ -633,6 +636,8 @@ def _fmt_product(r):
         "cdekEnabled":    r.get("cdek_enabled", True),
         "nalogEnabled":   r.get("nalog_enabled", False),
         "fittingEnabled": r.get("fitting_enabled", False),
+        "fromCityCode":   r.get("from_city_code", 0),
+        "fromCityName":   r.get("from_city_name", ""),
         "createdAt":      r["created_at"].strftime("%d %B %Y") if r["created_at"] else "",
     }
 

@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import { useAuth } from "@/context/AuthContext";
 import { useStore } from "@/context/StoreContext";
@@ -19,6 +19,9 @@ const MAX_IMAGES = 5;
 const MAX_SIZE_MB = 2;
 
 const STORE_API = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c";
+const CDEK_API = "https://functions.poehali.dev/937e27f3-191a-445d-b034-61bd84ed5381";
+
+interface CdekCity { code: number; city: string; region: string; }
 
 // Сжимает до base64, потом загружает в S3, возвращает CDN URL
 async function uploadImage(file: File): Promise<string> {
@@ -79,6 +82,26 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
   const [fCdek, setFCdek] = useState(true);
   const [fNalog, setFNalog] = useState(false);
   const [fFitting, setFFitting] = useState(false);
+  // Склад отправления и количество
+  const [fInStock, setFInStock] = useState("1");
+  const [fFromCityCode, setFFromCityCode] = useState(0);
+  const [fFromCityName, setFFromCityName] = useState("");
+  const [fCityQuery, setFCityQuery] = useState("");
+  const [fCitySuggestions, setFCitySuggestions] = useState<CdekCity[]>([]);
+  const [fCityLoading, setFCityLoading] = useState(false);
+
+  useEffect(() => {
+    if (fCityQuery.length < 2) { setFCitySuggestions([]); return; }
+    if (fFromCityName && fCityQuery === fFromCityName) return;
+    const t = setTimeout(async () => {
+      setFCityLoading(true);
+      try {
+        const r = await fetch(`${CDEK_API}?action=cities&q=${encodeURIComponent(fCityQuery)}`);
+        setFCitySuggestions(await r.json());
+      } catch { setFCitySuggestions([]); } finally { setFCityLoading(false); }
+    }, 400);
+    return () => clearTimeout(t);
+  }, [fCityQuery, fFromCityName]);
 
   if (!user) {
     return (
@@ -102,6 +125,7 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
     setFName(""); setFPrice(""); setFCategory(CATEGORIES[0]); setFDesc(""); setFImages([]); setFError(null);
     setFWeightG("500"); setFLengthCm("20"); setFWidthCm("15"); setFHeightCm("10");
     setFCdek(true); setFNalog(false); setFFitting(false);
+    setFInStock("1"); setFFromCityCode(0); setFFromCityName(""); setFCityQuery(""); setFCitySuggestions([]);
   };
 
   const openAddForm = () => {
@@ -123,6 +147,14 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
     setFCdek((p as { cdekEnabled?: boolean }).cdekEnabled ?? true);
     setFNalog((p as { nalogEnabled?: boolean }).nalogEnabled ?? false);
     setFFitting((p as { fittingEnabled?: boolean }).fittingEnabled ?? false);
+    const stock = (p as { inStock?: number }).inStock ?? 1;
+    setFInStock(String(stock));
+    const cityCode = (p as { fromCityCode?: number }).fromCityCode ?? 0;
+    const cityName = (p as { fromCityName?: string }).fromCityName ?? "";
+    setFFromCityCode(cityCode);
+    setFFromCityName(cityName);
+    setFCityQuery(cityName);
+    setFCitySuggestions([]);
     setShowForm(true);
   };
 
@@ -151,6 +183,8 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
     const priceNum = Number(fPrice.replace(/\s/g, "").replace(",", "."));
     if (!fPrice.trim() || isNaN(priceNum) || priceNum <= 0) { setFError("Введите корректную цену"); return; }
 
+    if (fCdek && !fFromCityCode) { setFError("Укажите склад отправления для доставки СДЭК"); return; }
+
     const extraFields = {
       weightG: Number(fWeightG) || 500,
       lengthCm: Number(fLengthCm) || 20,
@@ -159,6 +193,9 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
       cdekEnabled: fCdek,
       nalogEnabled: fNalog,
       fittingEnabled: fFitting,
+      fromCityCode: fFromCityCode,
+      fromCityName: fFromCityName,
+      inStock: Number(fInStock) || 1,
     };
 
     if (editId) {
@@ -171,7 +208,7 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
         name: fName.trim(), price: priceNum, category: fCategory,
         description: fDesc.trim(), images: fImages,
         sellerId: user.id, sellerName: user.name, sellerAvatar: user.avatar,
-        inStock: 99, ...extraFields,
+        ...extraFields,
       });
     }
     setShowForm(false);
@@ -464,6 +501,49 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
                 <textarea value={fDesc} onChange={e => setFDesc(e.target.value)}
                   placeholder="Материал, размер, особенности..." rows={3}
                   className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors resize-none" />
+              </div>
+
+              {/* Количество и склад */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Количество, шт *</label>
+                  <input
+                    value={fInStock}
+                    onChange={e => setFInStock(e.target.value.replace(/\D/g, ""))}
+                    placeholder="1" inputMode="numeric"
+                    className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors"
+                  />
+                </div>
+                <div className="relative">
+                  <label className="text-xs text-muted-foreground mb-1 block">
+                    Город отправки {fCdek && <span className="text-destructive">*</span>}
+                  </label>
+                  <div className="relative">
+                    <input
+                      value={fCityQuery}
+                      onChange={e => { setFCityQuery(e.target.value); setFFromCityCode(0); setFFromCityName(""); }}
+                      placeholder="Например: Москва"
+                      className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors pr-8"
+                    />
+                    {fCityLoading && <Icon name="Loader" size={14} className="absolute right-3 top-3 text-muted-foreground animate-spin" />}
+                    {fFromCityCode > 0 && !fCityLoading && <Icon name="CheckCircle" size={14} className="absolute right-3 top-3 text-green-500" />}
+                  </div>
+                  {fCitySuggestions.length > 0 && (
+                    <div className="absolute z-20 top-full left-0 right-0 bg-card border border-border rounded-xl shadow-xl mt-1 overflow-hidden">
+                      {fCitySuggestions.map(c => (
+                        <button
+                          key={c.code}
+                          type="button"
+                          onClick={() => { setFFromCityCode(c.code); setFFromCityName(c.city); setFCityQuery(c.city); setFCitySuggestions([]); }}
+                          className="w-full text-left px-3 py-2.5 text-sm hover:bg-secondary transition-colors border-b border-border/50 last:border-0"
+                        >
+                          <span className="font-medium text-foreground">{c.city}</span>
+                          <span className="text-muted-foreground text-xs ml-1">{c.region}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Вес и габариты */}

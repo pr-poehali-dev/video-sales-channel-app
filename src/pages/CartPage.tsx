@@ -43,7 +43,8 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
   const goodsTotal = cart.reduce((s, c) => s + c.price * c.qty, 0);
   const deliveryCost = delivery.tariff?.price ?? null;
   const orderTotal = goodsTotal + (deliveryCost ?? 0);
-  const totalWeight = cart.reduce((s, c) => s + c.qty * 300, 0);
+  const totalWeight = cart.reduce((s, c) => s + c.qty * (c.weightG ?? 300), 0);
+  const fromCityCode = cart[0]?.fromCityCode ?? 0;
 
   const contactFilled = buyerName.trim() && buyerPhone.trim();
   const canCheckout = deliveryCost !== null && payMethod !== null && !!contactFilled;
@@ -293,6 +294,7 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
           <div className="bg-card border border-border rounded-xl p-4">
             <CdekDelivery
               weightGrams={totalWeight}
+              fromCityCode={fromCityCode}
               onSelect={(tariff, city) => setDelivery({ tariff, city })}
             />
           </div>
