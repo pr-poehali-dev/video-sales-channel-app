@@ -12,7 +12,7 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 
 
-CDEK_API = "https://api.edu.cdek.ru/v2"
+CDEK_API = "https://api.cdek.ru/v2"
 
 # Адрес отправителя (склад по умолчанию — Краснодар, код 270)
 FROM_CITY_CODE = 270
