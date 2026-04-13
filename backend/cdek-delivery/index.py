@@ -23,16 +23,22 @@ def get_conn():
     return psycopg2.connect(os.environ["DATABASE_URL"])
 
 
+CDEK_TEST_ID = "wqGwiQx0gg8mLtiEKsUinjVSICCjtTEP"
+CDEK_TEST_SECRET = "RmAmgvSgSl1yirlz9QupbzOJVqhCxcP5"
+
+
 def get_token() -> str:
-    client_id = os.environ.get("CDEK_CLIENT_ID", "wqGwiQx0gg8mLtiEKsUinjVSICCjtTEP")
-    client_secret = os.environ.get("CDEK_CLIENT_SECRET", "RmAmgvSgSl1yirlz9QupbzOJVqhCxcP5")
+    client_id = CDEK_TEST_ID
+    client_secret = CDEK_TEST_SECRET
     body = urllib.parse.urlencode({
         "grant_type": "client_credentials",
         "client_id": client_id,
         "client_secret": client_secret,
     }).encode("utf-8")
+    # Тестовый контур требует ?parameters в URL
+    token_url = f"{CDEK_API}/oauth/token?parameters"
     req = urllib.request.Request(
-        f"{CDEK_API}/oauth/token",
+        token_url,
         data=body,
         headers={"Content-Type": "application/x-www-form-urlencoded"},
         method="POST",
@@ -256,7 +262,7 @@ def handler(event: dict, context) -> dict:
         if action == "cities":
             query = qs.get("q", "").strip()
             cities = search_cities(query, token)
-            return {"statusCode": 200, "headers": headers, "body": json.dumps(cities)}
+            return {"statusCode": 200, "headers": headers, "body": json.dumps(cities, ensure_ascii=False)}
 
         # ── Расчёт тарифов ──
         if action == "calc":
@@ -337,8 +343,8 @@ def handler(event: dict, context) -> dict:
 
     except urllib.error.HTTPError as e:
         raw = e.read().decode()
-        return {"statusCode": 500, "headers": headers, "body": json.dumps({"error": f"CDEK {e.code}: {raw}"})}
+        return {"statusCode": 200, "headers": headers, "body": json.dumps({"error": f"CDEK {e.code}: {raw}"})}
     except Exception as e:
-        return {"statusCode": 500, "headers": headers, "body": json.dumps({"error": str(e)})}
+        return {"statusCode": 200, "headers": headers, "body": json.dumps({"error": str(e)})}
 
     return {"statusCode": 400, "headers": headers, "body": json.dumps({"error": "unknown action"})}
