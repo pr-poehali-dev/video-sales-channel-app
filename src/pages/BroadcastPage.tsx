@@ -127,7 +127,7 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
       streamIdRef.current = s.id;
 
       // Получаем токен
-      const tokenResp = await fetch(`${AGORA_TOKEN}?channel=${s.id}&uid=1`);
+      const tokenResp = await fetch(`${AGORA_TOKEN}?channel=${s.id}&uid=1&role=publisher`);
       const tokenData = await tokenResp.json();
 
       // Создаём клиент в режиме вещателя

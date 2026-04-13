@@ -5,7 +5,7 @@
       "method": "GET",
       "path": "/?channel=test-stream",
       "expectedStatus": 200,
-      "expectedBody": { "channel": "test-stream" },
+      "expectedBody": { "channel": "test-stream", "appId": "ae1ef37ba67b48d7927faa07e61425fb" },
       "bodyMatcher": "partial"
     },
     {

@@ -57,7 +57,7 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
         clientRef.current = client;
         await client.setClientRole("audience");
 
-        const tokenResp = await fetch(`${AGORA_TOKEN}?channel=${stream.id}&uid=0`);
+        const tokenResp = await fetch(`${AGORA_TOKEN}?channel=${stream.id}&uid=0&role=subscriber`);
         const tokenData = await tokenResp.json();
 
         await client.join(tokenData.appId, stream.id, tokenData.token, 0);
