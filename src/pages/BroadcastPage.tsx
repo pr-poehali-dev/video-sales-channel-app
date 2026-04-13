@@ -75,13 +75,24 @@ interface BroadcastPageProps { setPage: (p: Page) => void; }
 
 export default function BroadcastPage({ setPage }: BroadcastPageProps) {
   const { user } = useAuth();
-  const { addStream, updateStream, getSellerStreams, reload, loading } = useStore();
+  const { addStream, updateStream, reload } = useStore();
 
-  const myStreams = user ? getSellerStreams(user.id) : [];
-  const activeStream = myStreams.find(s => s.isLive) ?? null;
+  // Проверяем актуальный эфир с сервера при монтировании
+  const [checkedActive, setCheckedActive] = useState<{id: string; title: string} | null | "loading">("loading");
 
-  // Перезагружаем данные при входе на страницу чтобы видеть актуальные эфиры
-  useEffect(() => { reload(); }, []);
+  useEffect(() => {
+    if (!user) { setCheckedActive(null); return; }
+    reload().then(() => {
+      // После reload getSellerStreams обновится через стор — берём напрямую с сервера
+      fetch(`${API}?action=get_streams`)
+        .then(r => r.json())
+        .then((all: Array<{sellerId: string; isLive: boolean; id: string; title: string}>) => {
+          const found = all.find(s => s.sellerId === user.id && s.isLive);
+          setCheckedActive(found ?? null);
+        })
+        .catch(() => setCheckedActive(null));
+    });
+  }, [user?.id]);
 
   const clientRef     = useRef<IAgoraRTCClient | null>(null);
   const videoTrackRef = useRef<ILocalVideoTrack | null>(null);
@@ -303,27 +314,27 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
     </div>
   );
 
-  if (loading && !isLive) return (
+  if (checkedActive === "loading" && !isLive) return (
     <div className="max-w-md mx-auto px-4 py-24 text-center">
       <Icon name="Loader" size={32} className="mx-auto text-muted-foreground animate-spin" />
     </div>
   );
 
-  if (activeStream && !isLive) return (
+  if (checkedActive && !isLive) return (
     <div className="max-w-md mx-auto px-4 py-24 text-center">
       <div className="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-5">
         <Icon name="Radio" size={40} className="text-red-500" />
       </div>
       <h2 className="font-oswald text-2xl font-semibold mb-2">Эфир уже идёт</h2>
-      <p className="text-sm text-muted-foreground mb-1">«{activeStream.title}»</p>
+      <p className="text-sm text-muted-foreground mb-1">«{checkedActive.title}»</p>
       <p className="text-sm text-muted-foreground mb-6">Сначала остановите текущий эфир</p>
       <div className="flex flex-col gap-3 max-w-xs mx-auto">
         <button
           onClick={async () => {
             setStoppingActive(true);
             try {
-              await updateStream(activeStream.id, { isLive: false });
-              await reload();
+              await updateStream(checkedActive.id, { isLive: false });
+              setCheckedActive(null);
             } catch { /* ignore */ }
             finally { setStoppingActive(false); }
           }}
