@@ -6,8 +6,9 @@ import type { CartItem, Page } from "@/App";
 
 const API = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c";
 const EMOJI_REACTIONS = ["🔥", "❤️", "👏", "😮", "😂"];
-// Интервал опроса кадров — чуть реже чем вещатель шлёт
-const POLL_MS = 250;
+// Интервал опроса — чуть быстрее чем вещатель шлёт
+const POLL_MS = 120;
+const AUDIO_SAMPLE_RATE = 16000;
 
 interface Props {
   stream: StoreStream;
@@ -33,6 +34,8 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
   const chatPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const seqRef      = useRef(-1);
   const fetchingRef = useRef(false);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const audioTimeRef = useRef(0); // когда начать следующий чанк
 
   const [frameSrc, setFrameSrc]       = useState<string | null>(null);
   const [messages, setMessages]       = useState<ChatMessage[]>([]);
@@ -44,7 +47,35 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
   const [addedId, setAddedId]         = useState<string | null>(null);
   const [liveStatus, setLiveStatus]   = useState<"waiting" | "playing">("waiting");
 
-  // ── Опрос кадра ─────────────────────────────────────────────────────────────
+  // Воспроизводим base64-PCM через AudioContext (Int16, 16000 Гц, моно)
+  const playAudio = useCallback((b64: string) => {
+    try {
+      if (!audioCtxRef.current) {
+        audioCtxRef.current = new AudioContext({ sampleRate: AUDIO_SAMPLE_RATE });
+        audioTimeRef.current = audioCtxRef.current.currentTime;
+      }
+      const ctx = audioCtxRef.current;
+      const raw = atob(b64);
+      const bytes = new Uint8Array(raw.length);
+      for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+      const i16 = new Int16Array(bytes.buffer);
+      const f32 = new Float32Array(i16.length);
+      for (let i = 0; i < i16.length; i++) f32[i] = i16[i] / 32768;
+
+      const buf = ctx.createBuffer(1, f32.length, AUDIO_SAMPLE_RATE);
+      buf.copyToChannel(f32, 0);
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(ctx.destination);
+
+      // Планируем воспроизведение вплотную к предыдущему чанку
+      const startAt = Math.max(ctx.currentTime, audioTimeRef.current);
+      src.start(startAt);
+      audioTimeRef.current = startAt + buf.duration;
+    } catch { /* ignore */ }
+  }, []);
+
+  // ── Опрос кадра + аудио ───────────────────────────────────────────────────
   const fetchFrame = useCallback(async () => {
     if (fetchingRef.current) return;
     fetchingRef.current = true;
@@ -55,21 +86,26 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
         seq: String(seqRef.current),
       });
       const resp = await fetch(`${API}?${qs}`);
-      const data: { frame: string | null; seq: number } = await resp.json();
+      const data: { frame: string | null; audio: string | null; seq: number } = await resp.json();
       if (data.frame) {
         seqRef.current = data.seq;
         setFrameSrc(`data:image/jpeg;base64,${data.frame}`);
         setLiveStatus("playing");
       }
+      if (data.audio) playAudio(data.audio);
     } catch { /* ignore */ }
     finally { fetchingRef.current = false; }
-  }, [stream.id]);
+  }, [stream.id, playAudio]);
 
   useEffect(() => {
     if (!stream.isLive) return;
     fetchFrame();
     pollRef.current = setInterval(fetchFrame, POLL_MS);
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+      audioCtxRef.current?.close();
+      audioCtxRef.current = null;
+    };
   }, [stream.isLive, fetchFrame]);
 
   // ── Чат ──────────────────────────────────────────────────────────────────

@@ -5,10 +5,12 @@ import { useStore, type ChatMessage } from "@/context/StoreContext";
 import type { Page } from "@/App";
 
 const API = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c";
-// Качество JPEG: 0.5 = ~15-30 KB на кадр, достаточно для стрима
-const JPEG_QUALITY = 0.5;
-// Интервал кадров: 200мс = ~5 fps (экономия трафика и сервера)
-const FRAME_INTERVAL_MS = 200;
+// Качество JPEG: 0.35 = ~8-15 KB на кадр — быстрая передача
+const JPEG_QUALITY = 0.35;
+// Ширина кадра — уменьшаем для скорости
+const FRAME_WIDTH = 480;
+// Интервал кадров: 100мс = ~10 fps
+const FRAME_INTERVAL_MS = 100;
 type FacingMode = "user" | "environment";
 
 // ── Чат вещателя ─────────────────────────────────────────────────────────────
@@ -77,14 +79,18 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
   const { user } = useAuth();
   const { addStream, updateStream } = useStore();
 
-  const videoRef    = useRef<HTMLVideoElement>(null);
-  const canvasRef   = useRef<HTMLCanvasElement>(null);
-  const cameraRef   = useRef<MediaStream | null>(null);
-  const timerRef    = useRef<ReturnType<typeof setInterval> | null>(null);
-  const frameRef    = useRef<ReturnType<typeof setInterval> | null>(null);
-  const streamIdRef = useRef<string | null>(null);
-  const seqRef      = useRef(0);
-  const sendingRef  = useRef(false);
+  const videoRef      = useRef<HTMLVideoElement>(null);
+  const canvasRef     = useRef<HTMLCanvasElement>(null);
+  const cameraRef     = useRef<MediaStream | null>(null);
+  const timerRef      = useRef<ReturnType<typeof setInterval> | null>(null);
+  const frameRef      = useRef<ReturnType<typeof setInterval> | null>(null);
+  const streamIdRef   = useRef<string | null>(null);
+  const seqRef        = useRef(0);
+  const sendingRef    = useRef(false);
+  // Аудио
+  const audioCtxRef   = useRef<AudioContext | null>(null);
+  const processorRef  = useRef<ScriptProcessorNode | null>(null);
+  const audioBufRef   = useRef<Float32Array | null>(null);
 
   const [facingMode, setFacingMode]   = useState<FacingMode>("environment");
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -124,12 +130,32 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
       cameraRef.current?.getTracks().forEach(t => t.stop());
       if (timerRef.current) clearInterval(timerRef.current);
       if (frameRef.current) clearInterval(frameRef.current);
+      processorRef.current?.disconnect();
+      audioCtxRef.current?.close();
     };
   }, []);
 
-  // Захват кадра с canvas и отправка на сервер
+  // Запуск захвата аудио через ScriptProcessor → Float32 → base64
+  const startAudioCapture = useCallback((stream: MediaStream) => {
+    try {
+      const ctx = new AudioContext({ sampleRate: 16000 });
+      audioCtxRef.current = ctx;
+      const src = ctx.createMediaStreamSource(stream);
+      // bufferSize 4096 ~ 256мс при 16000 Гц
+      const proc = ctx.createScriptProcessor(4096, 1, 1);
+      processorRef.current = proc;
+      proc.onaudioprocess = (e) => {
+        // Сохраняем последний буфер — при следующем sendFrame возьмём его
+        audioBufRef.current = new Float32Array(e.inputBuffer.getChannelData(0));
+      };
+      src.connect(proc);
+      proc.connect(ctx.destination);
+    } catch { /* AudioContext не поддерживается */ }
+  }, []);
+
+  // Захват кадра с canvas + аудио и отправка на сервер одним запросом
   const sendFrame = useCallback(async () => {
-    if (sendingRef.current) return; // пропускаем если предыдущий ещё не отправлен
+    if (sendingRef.current) return;
     const sid = streamIdRef.current;
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -139,9 +165,12 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
     try {
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
-      canvas.width = video.videoWidth || 640;
-      canvas.height = video.videoHeight || 480;
-      // Зеркалим фронтальную камеру
+
+      // Масштабируем до FRAME_WIDTH для скорости
+      const aspect = video.videoHeight / (video.videoWidth || 1);
+      canvas.width  = FRAME_WIDTH;
+      canvas.height = Math.round(FRAME_WIDTH * aspect) || FRAME_WIDTH;
+
       if (facingMode === "user") {
         ctx.translate(canvas.width, 0);
         ctx.scale(-1, 1);
@@ -149,12 +178,25 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       if (facingMode === "user") ctx.setTransform(1, 0, 0, 1, 0, 0);
 
-      const base64 = canvas.toDataURL("image/jpeg", JPEG_QUALITY).split(",")[1];
+      const frameB64 = canvas.toDataURL("image/jpeg", JPEG_QUALITY).split(",")[1];
+
+      // Берём накопленный аудио-буфер и кодируем в base64
+      let audioB64: string | null = null;
+      const abuf = audioBufRef.current;
+      if (abuf) {
+        const i16 = new Int16Array(abuf.length);
+        for (let i = 0; i < abuf.length; i++) i16[i] = Math.max(-32768, Math.min(32767, abuf[i] * 32768));
+        const bytes = new Uint8Array(i16.buffer);
+        let bin = "";
+        for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+        audioB64 = btoa(bin);
+        audioBufRef.current = null;
+      }
 
       await fetch(`${API}?action=push_frame`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ stream_id: sid, seq: seqRef.current++, data: base64 }),
+        body: JSON.stringify({ stream_id: sid, seq: seqRef.current++, frame: frameB64, audio: audioB64 }),
       });
       fpsCountRef.current++;
     } catch { /* ignore */ }
@@ -168,11 +210,14 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
   }, []);
 
   const startBroadcast = async () => {
-    if (!title.trim() || !user) return;
+    if (!title.trim() || !user || !cameraRef.current) return;
 
     const s = await addStream({ title: title.trim(), sellerId: user.id, sellerName: user.name, sellerAvatar: user.avatar, isLive: true, viewers: 0 });
     streamIdRef.current = s.id;
     seqRef.current = 0;
+
+    // Запускаем захват аудио
+    startAudioCapture(cameraRef.current);
 
     setIsLive(true);
     setDuration(0);
@@ -183,6 +228,10 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
   const stopBroadcast = async () => {
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
     if (frameRef.current) { clearInterval(frameRef.current); frameRef.current = null; }
+    processorRef.current?.disconnect();
+    processorRef.current = null;
+    audioCtxRef.current?.close();
+    audioCtxRef.current = null;
     const dur = duration;
     setSavedDuration(dur);
     setIsLive(false);

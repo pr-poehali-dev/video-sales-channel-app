@@ -267,41 +267,60 @@ def handler(event: dict, context) -> dict:
             conn.commit()
             return ok(_fmt_review(cur.fetchone()), 201)
 
-        # ─────────── MJPEG FRAME STREAMING ───────────
-        # Вещатель шлёт jpeg-кадры, зритель получает последний кадр и показывает через <img>
+        # ─────────── MJPEG + AUDIO STREAMING ───────────
+        # Вещатель шлёт jpeg-кадры и pcm-аудио, зритель получает их через polling
         # Работает в любом браузере включая Яндекс и Safari
         if action == "push_frame":
-            stream_id = body.get("stream_id")
-            data      = body.get("data")   # base64 jpeg
-            seq       = body.get("seq", 0)
-            if not all([stream_id, data]):
-                return err("stream_id, data required")
+            stream_id  = body.get("stream_id")
+            frame_data = body.get("frame")    # base64 jpeg
+            audio_data = body.get("audio")    # base64 pcm (опционально)
+            seq        = body.get("seq", 0)
+            if not all([stream_id, frame_data]):
+                return err("stream_id, frame required")
             cur.execute(
                 """INSERT INTO stream_frames (stream_id, frame_data, seq, updated_at)
                    VALUES (%s, %s, %s, NOW())
                    ON CONFLICT (stream_id) DO UPDATE
                    SET frame_data=EXCLUDED.frame_data, seq=EXCLUDED.seq, updated_at=NOW()""",
-                (stream_id, data, int(seq))
+                (stream_id, frame_data, int(seq))
             )
+            # Аудио-чанк храним отдельно (всегда перезаписываем)
+            if audio_data:
+                cur.execute(
+                    """INSERT INTO stream_frames (stream_id, frame_data, seq, updated_at)
+                       VALUES (%s||'_audio', %s, %s, NOW())
+                       ON CONFLICT (stream_id) DO UPDATE
+                       SET frame_data=EXCLUDED.frame_data, seq=EXCLUDED.seq, updated_at=NOW()""",
+                    (stream_id, audio_data, int(seq))
+                )
             conn.commit()
             return ok({"ok": True})
 
         if action == "get_frame":
-            stream_id = qs.get("stream_id") or body.get("stream_id")
+            stream_id  = qs.get("stream_id") or body.get("stream_id")
             client_seq = int(qs.get("seq", "-1") or "-1")
             if not stream_id:
                 return err("stream_id required")
             cur.execute(
-                "SELECT frame_data, seq, updated_at FROM stream_frames WHERE stream_id=%s",
+                "SELECT frame_data, seq FROM stream_frames WHERE stream_id=%s",
                 (stream_id,)
             )
             row = cur.fetchone()
             if not row:
-                return ok({"frame": None, "seq": -1})
-            # Отдаём только если кадр новее того что уже есть у клиента
+                return ok({"frame": None, "audio": None, "seq": -1})
             if row["seq"] <= client_seq:
-                return ok({"frame": None, "seq": row["seq"]})
-            return ok({"frame": row["frame_data"], "seq": row["seq"]})
+                return ok({"frame": None, "audio": None, "seq": row["seq"]})
+            # Берём аудио для этого же seq
+            cur.execute(
+                "SELECT frame_data FROM stream_frames WHERE stream_id=%s",
+                (stream_id + "_audio",)
+            )
+            arow = cur.fetchone()
+            return ok({
+                "frame": row["frame_data"],
+                "audio": arow["frame_data"] if arow else None,
+                "seq": row["seq"]
+            })
 
         # ─────────── WEBRTC SIGNALING ───────────
         # Вещатель отправляет offer, зритель отвечает answer, оба обмениваются ICE
