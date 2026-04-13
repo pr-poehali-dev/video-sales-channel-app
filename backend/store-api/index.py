@@ -267,6 +267,39 @@ def handler(event: dict, context) -> dict:
             conn.commit()
             return ok(_fmt_review(cur.fetchone()), 201)
 
+        # ─────────── LIVE CHUNK STREAMING ───────────
+        # Вещатель шлёт base64-чанки, зритель их получает и склеивает в MediaSource
+        if action == "push_chunk":
+            stream_id = body.get("stream_id")
+            seq       = body.get("seq")
+            data      = body.get("data")  # base64
+            if not all([stream_id, seq is not None, data]):
+                return err("stream_id, seq, data required")
+            cur.execute(
+                "INSERT INTO stream_chunks (stream_id, seq, data) VALUES (%s, %s, %s)",
+                (stream_id, int(seq), data)
+            )
+            conn.commit()
+            # Удаляем старые чанки (держим последние 30 = ~2 мин буфер)
+            cur.execute(
+                "DELETE FROM stream_chunks WHERE stream_id=%s AND seq < %s",
+                (stream_id, int(seq) - 30)
+            )
+            conn.commit()
+            return ok({"ok": True})
+
+        if action == "get_chunks":
+            stream_id = qs.get("stream_id") or body.get("stream_id")
+            after_seq = int(qs.get("after_seq", "-1") or body.get("after_seq", -1))
+            if not stream_id:
+                return err("stream_id required")
+            cur.execute(
+                "SELECT seq, data FROM stream_chunks WHERE stream_id=%s AND seq > %s ORDER BY seq ASC LIMIT 10",
+                (stream_id, after_seq)
+            )
+            rows = cur.fetchall()
+            return ok([{"seq": r["seq"], "data": r["data"]} for r in rows])
+
         # ─────────── WEBRTC SIGNALING ───────────
         # Вещатель отправляет offer, зритель отвечает answer, оба обмениваются ICE
         if action == "signal_send":
