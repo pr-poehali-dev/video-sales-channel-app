@@ -1,0 +1,1 @@
+UPDATE streams SET is_live = FALSE, ended_at = NOW() WHERE is_live = TRUE AND id != 'stream_e4048c1133754d4fb05f12f8359210a3';
