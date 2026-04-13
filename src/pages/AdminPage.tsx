@@ -3,6 +3,8 @@ import Icon from "@/components/ui/icon";
 import { useAuth, type User } from "@/context/AuthContext";
 import type { Page } from "@/App";
 
+const CDEK_API = "https://functions.poehali.dev/937e27f3-191a-445d-b034-61bd84ed5381";
+
 interface AdminPageProps {
   setPage: (p: Page) => void;
 }
@@ -18,6 +20,35 @@ export default function AdminPage({ setPage }: AdminPageProps) {
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<"all" | "user">("all");
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"users" | "cdek">("users");
+
+  // СДЭК настройки
+  const [cdekId, setCdekId] = useState("aKDJq0vBV0kRgFKQsJY5vZ77OZfFmP9T");
+  const [cdekSecret, setCdekSecret] = useState("");
+  const [cdekTesting, setCdekTesting] = useState(false);
+  const [cdekResult, setCdekResult] = useState<{ ok: boolean; msg: string } | null>(null);
+
+  const testCdek = async () => {
+    setCdekTesting(true);
+    setCdekResult(null);
+    try {
+      const res = await fetch(`${CDEK_API}?action=cities&q=Москва`);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          setCdekResult({ ok: true, msg: `Подключено! Найдено ${data.length} городов по запросу "Москва"` });
+        } else {
+          setCdekResult({ ok: false, msg: "Авторизация не прошла. Проверьте Client ID и пароль." });
+        }
+      } else {
+        setCdekResult({ ok: false, msg: `Ошибка ${res.status}. Проверьте ключи.` });
+      }
+    } catch {
+      setCdekResult({ ok: false, msg: "Ошибка подключения к серверу" });
+    } finally {
+      setCdekTesting(false);
+    }
+  };
 
   if (!user || user.role !== "admin") {
     return (
