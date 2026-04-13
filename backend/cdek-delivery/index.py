@@ -1,6 +1,6 @@
 """
 СДЭК API: поиск городов, расчёт тарифов, создание заказа.
-Тестовый контур: api.edu.cdek.ru. v3
+Тестовый контур: api.edu.cdek.ru. v4
 """
 import json
 import os
