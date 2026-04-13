@@ -22,12 +22,73 @@ interface Props {
   onChatToggle: () => void;
   onReaction: (emoji: string) => void;
   canReact: boolean;
+  collapsed: boolean;
+  onToggleCollapse: () => void;
 }
 
 export default function StreamVideoPlayer({
   stream, setPage, liveStatus, errorMsg, reaction,
   messagesCount, videoElRef, onChatToggle, onReaction, canReact,
+  collapsed, onToggleCollapse,
 }: Props) {
+
+  // ── Свёрнутый режим — мини-плеер ─────────────────────────────────────────
+  if (collapsed) {
+    return (
+      <div className="relative bg-black flex-shrink-0" style={{ height: "56px" }}>
+        {/* Полоска с превью и кнопками */}
+        <div className="flex items-center h-full px-3 gap-3">
+          {/* Миниатюра */}
+          <div className="relative w-24 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-zinc-800">
+            <img
+              src={stream.thumbnail || STREAM_THUMBNAIL}
+              className="w-full h-full object-cover"
+              style={{ opacity: liveStatus === "playing" ? 0.5 : 1 }}
+            />
+            {/* Agora видео (невидимо, но активно) */}
+            <div ref={videoElRef} className="absolute inset-0 w-full h-full" style={{ opacity: 0 }} />
+            {stream.isLive && liveStatus === "playing" && (
+              <span className="absolute top-1 left-1 flex items-center gap-1 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
+                <span className="w-1 h-1 rounded-full bg-white animate-live-pulse" />LIVE
+              </span>
+            )}
+          </div>
+
+          {/* Название */}
+          <div className="flex-1 min-w-0">
+            <p className="text-white text-xs font-semibold truncate">{stream.title}</p>
+            <p className="text-white/40 text-[10px] truncate">{stream.sellerName}</p>
+          </div>
+
+          {/* Кнопки */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Чат (мобиль) */}
+            <button onClick={onChatToggle}
+              className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center relative lg:hidden">
+              <Icon name="MessageSquare" size={14} className="text-white" />
+              {messagesCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 bg-primary text-white text-[8px] w-3.5 h-3.5 rounded-full flex items-center justify-center font-bold">
+                  {messagesCount > 9 ? "9+" : messagesCount}
+                </span>
+              )}
+            </button>
+            {/* Развернуть */}
+            <button onClick={onToggleCollapse}
+              className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
+              <Icon name="Maximize2" size={14} className="text-white" />
+            </button>
+            {/* Назад */}
+            <button onClick={() => setPage("streams")}
+              className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
+              <Icon name="X" size={14} className="text-white" />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Развёрнутый режим ─────────────────────────────────────────────────────
   return (
     <div className="relative w-full bg-black lg:flex-1" style={{ aspectRatio: "16/9", maxHeight: "56vw" }}>
 
@@ -68,23 +129,36 @@ export default function StreamVideoPlayer({
           className="w-9 h-9 rounded-full bg-black/50 backdrop-blur flex items-center justify-center">
           <Icon name="ArrowLeft" size={18} className="text-white" />
         </button>
-        {stream.isLive && liveStatus === "playing" && (
-          <span className="flex items-center gap-1.5 bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full">
-            <span className="w-1.5 h-1.5 rounded-full bg-white animate-live-pulse" />LIVE
-          </span>
-        )}
-        {!stream.isLive && stream.duration && (
-          <span className="bg-black/60 text-white text-xs font-mono px-2 py-1 rounded">{fmtDuration(stream.duration)}</span>
-        )}
-        <button onClick={onChatToggle}
-          className="w-9 h-9 rounded-full bg-black/50 backdrop-blur flex items-center justify-center relative lg:hidden">
-          <Icon name="MessageSquare" size={16} className="text-white" />
-          {messagesCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 bg-primary text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
-              {messagesCount > 9 ? "9+" : messagesCount}
+
+        <div className="flex items-center gap-2">
+          {stream.isLive && liveStatus === "playing" && (
+            <span className="flex items-center gap-1.5 bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full">
+              <span className="w-1.5 h-1.5 rounded-full bg-white animate-live-pulse" />LIVE
             </span>
           )}
-        </button>
+          {!stream.isLive && stream.duration && (
+            <span className="bg-black/60 text-white text-xs font-mono px-2 py-1 rounded">{fmtDuration(stream.duration)}</span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          {/* Кнопка свернуть */}
+          <button onClick={onToggleCollapse}
+            className="w-9 h-9 rounded-full bg-black/50 backdrop-blur flex items-center justify-center"
+            title="Свернуть видео">
+            <Icon name="Minimize2" size={16} className="text-white" />
+          </button>
+          {/* Кнопка чата (мобиль) */}
+          <button onClick={onChatToggle}
+            className="w-9 h-9 rounded-full bg-black/50 backdrop-blur flex items-center justify-center relative lg:hidden">
+            <Icon name="MessageSquare" size={16} className="text-white" />
+            {messagesCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 bg-primary text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
+                {messagesCount > 9 ? "9+" : messagesCount}
+              </span>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Реакция */}

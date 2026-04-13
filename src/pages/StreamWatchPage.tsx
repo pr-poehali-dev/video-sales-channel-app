@@ -42,6 +42,7 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
   const [liveStatus, setLiveStatus] = useState<"waiting" | "playing" | "error">("waiting");
   const [errorMsg, setErrorMsg]     = useState("");
   const [reviewProduct, setReviewProduct] = useState<StoreProduct | null>(null);
+  const [videoCollapsed, setVideoCollapsed] = useState(false);
 
   // ── Agora подключение ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -132,7 +133,8 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
 
   return (
     <>
-      <div className="flex flex-col min-h-[calc(100vh-56px)] bg-black lg:flex-row">
+      <div className={`flex bg-black ${videoCollapsed ? "flex-col" : "flex-col lg:flex-row"}`}
+        style={{ minHeight: videoCollapsed ? "auto" : "calc(100vh - 56px)" }}>
         <StreamVideoPlayer
           stream={stream}
           setPage={setPage}
@@ -144,6 +146,8 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
           onChatToggle={() => setChatOpen(o => !o)}
           onReaction={sendReaction}
           canReact={!!user}
+          collapsed={videoCollapsed}
+          onToggleCollapse={() => setVideoCollapsed(v => !v)}
         />
         <StreamSidePanel
           stream={stream}
@@ -162,6 +166,7 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
           setChatOpen={setChatOpen}
           rightTab={rightTab}
           setRightTab={setRightTab}
+          videoCollapsed={videoCollapsed}
         />
       </div>
 

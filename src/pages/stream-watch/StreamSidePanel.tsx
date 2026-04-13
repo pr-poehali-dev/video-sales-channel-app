@@ -97,30 +97,54 @@ interface Props {
   setChatOpen: (v: boolean | ((prev: boolean) => boolean)) => void;
   rightTab: "chat" | "products";
   setRightTab: (v: "chat" | "products") => void;
+  videoCollapsed: boolean;
 }
 
 export default function StreamSidePanel({
   stream, messages, user, input, setInput, sendMessage, sending,
   products, addedId, handleAddToCart, onProductClick,
-  liveStatus, chatOpen, setChatOpen, rightTab, setRightTab,
+  liveStatus, chatOpen, setChatOpen, rightTab, setRightTab, videoCollapsed,
 }: Props) {
   return (
     <>
-      {/* ── ИНФО (мобильный) ────────────────────────────────────────── */}
-      <div className="lg:hidden bg-zinc-950 px-4 py-3 flex items-center gap-3">
-        <div className="flex-1 min-w-0">
-          <h2 className="text-white font-semibold text-sm truncate">{stream.title}</h2>
-          <p className="text-white/50 text-xs mt-0.5">{stream.sellerName}</p>
+      {/* ── ИНФО (мобильный, только когда видео не свёрнуто) ────────── */}
+      {!videoCollapsed && (
+        <div className="lg:hidden bg-zinc-950 px-4 py-3 flex items-center gap-3">
+          <div className="flex-1 min-w-0">
+            <h2 className="text-white font-semibold text-sm truncate">{stream.title}</h2>
+            <p className="text-white/50 text-xs mt-0.5">{stream.sellerName}</p>
+          </div>
+          {stream.isLive && liveStatus === "playing" && (
+            <span className="text-white/40 text-xs flex items-center gap-1 flex-shrink-0">
+              <Icon name="Eye" size={12} />смотрит
+            </span>
+          )}
         </div>
-        {stream.isLive && liveStatus === "playing" && (
-          <span className="text-white/40 text-xs flex items-center gap-1 flex-shrink-0">
-            <Icon name="Eye" size={12} />смотрит
-          </span>
-        )}
-      </div>
+      )}
 
-      {/* ── ЧАТ-ШТОРКА (мобильный) ──────────────────────────────────── */}
-      {chatOpen && (
+      {/* ── ВСТРОЕННЫЙ ЧАТ НА МОБИЛЕ (когда видео свёрнуто) ─────────── */}
+      {videoCollapsed && (
+        <div className="lg:hidden flex flex-col bg-zinc-950 flex-1" style={{ minHeight: "calc(100vh - 56px - 56px)" }}>
+          <div className="flex border-b border-white/10 flex-shrink-0">
+            {(["chat", "products"] as const).map(tab => (
+              <button key={tab} onClick={() => setRightTab(tab)}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-semibold border-b-2 transition-colors ${rightTab === tab ? "text-white border-primary" : "text-white/40 border-transparent"}`}>
+                <Icon name={tab === "chat" ? "MessageSquare" : "ShoppingBag"} size={13} />
+                {tab === "chat" ? `Чат (${messages.length})` : `Товары (${products.length})`}
+              </button>
+            ))}
+          </div>
+          <div className="flex-1 min-h-0 flex flex-col">
+            {rightTab === "chat"
+              ? <ChatPanel messages={messages} user={user} input={input} setInput={setInput} sendMessage={sendMessage} sending={sending} />
+              : <ProductsPanel products={products} addedId={addedId} handleAddToCart={handleAddToCart} onProductClick={onProductClick} />
+            }
+          </div>
+        </div>
+      )}
+
+      {/* ── ЧАТ-ШТОРКА (мобильный, только когда видео не свёрнуто) ──── */}
+      {chatOpen && !videoCollapsed && (
         <div className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end" onClick={() => setChatOpen(false)}>
           <div className="bg-zinc-900 rounded-t-2xl" style={{ maxHeight: "70vh" }} onClick={e => e.stopPropagation()}>
             <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mt-3 mb-1" />
@@ -144,7 +168,7 @@ export default function StreamSidePanel({
       )}
 
       {/* ── ДЕСКТОП ПАНЕЛЬ ──────────────────────────────────────────── */}
-      <div className="hidden lg:flex lg:flex-col lg:w-80 xl:w-96 bg-zinc-950 border-l border-white/10 flex-shrink-0">
+      <div className={`hidden lg:flex lg:flex-col bg-zinc-950 border-l border-white/10 flex-shrink-0 ${videoCollapsed ? "lg:flex-1" : "lg:w-80 xl:w-96"}`}>
         <div className="px-4 py-3 border-b border-white/10">
           <h2 className="text-white font-semibold text-sm">{stream.title}</h2>
           <p className="text-white/50 text-xs mt-0.5">{stream.sellerName}</p>
