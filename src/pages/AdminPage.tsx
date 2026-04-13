@@ -29,19 +29,23 @@ export default function AdminPage({ setPage }: AdminPageProps) {
   const [cdekResult, setCdekResult] = useState<{ ok: boolean; msg: string } | null>(null);
 
   const testCdek = async () => {
+    if (!cdekId.trim() || !cdekSecret.trim()) {
+      setCdekResult({ ok: false, msg: "Введите Client ID и пароль" });
+      return;
+    }
     setCdekTesting(true);
     setCdekResult(null);
     try {
-      const res = await fetch(`${CDEK_API}?action=cities&q=Москва`);
-      if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
-          setCdekResult({ ok: true, msg: `Подключено! Найдено ${data.length} городов по запросу "Москва"` });
-        } else {
-          setCdekResult({ ok: false, msg: "Авторизация не прошла. Проверьте Client ID и пароль." });
-        }
+      const res = await fetch(`${CDEK_API}?action=test_auth`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ client_id: cdekId.trim(), client_secret: cdekSecret.trim() }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setCdekResult({ ok: true, msg: data.msg || "Подключено!" });
       } else {
-        setCdekResult({ ok: false, msg: `Ошибка ${res.status}. Проверьте ключи.` });
+        setCdekResult({ ok: false, msg: data.msg || "Ошибка авторизации. Проверьте ключи." });
       }
     } catch {
       setCdekResult({ ok: false, msg: "Ошибка подключения к серверу" });
@@ -148,8 +152,7 @@ export default function AdminPage({ setPage }: AdminPageProps) {
               <input
                 value={cdekSecret}
                 onChange={e => setCdekSecret(e.target.value)}
-                placeholder="IU77FF7clr1QCILuEwZZClyGrRuINu8R"
-                type="password"
+                placeholder="Вставьте Secure password из кабинета СДЭК"
                 className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground font-mono placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors"
               />
             </div>
