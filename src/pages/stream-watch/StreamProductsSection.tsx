@@ -135,68 +135,23 @@ function ProductReviewsBlock({ product, addToCart, onClose }: {
 
 // ── StreamProductsSection ─────────────────────────────────────────────────────
 interface Props {
-  products: StoreProduct[];
+  products?: StoreProduct[];
   addToCart: (item: Omit<CartItem, "qty">) => void;
-  addedId: string | null;
-  setAddedId: (id: string | null) => void;
+  addedId?: string | null;
+  setAddedId?: (id: string | null) => void;
   reviewProduct: StoreProduct | null;
   setReviewProduct: (p: StoreProduct | null) => void;
 }
 
 export default function StreamProductsSection({
-  products, addToCart, addedId, setAddedId, reviewProduct, setReviewProduct,
+  addToCart, reviewProduct, setReviewProduct,
 }: Props) {
-  if (products.length === 0) return null;
-
+  if (!reviewProduct) return null;
   return (
-    <>
-      {/* Товары под видео */}
-      <div className="bg-background px-4 py-6">
-        <h2 className="font-semibold text-base mb-4 flex items-center gap-2">
-          <Icon name="ShoppingBag" size={16} className="text-primary" />
-          Товары продавца
-          <span className="text-xs text-muted-foreground font-normal">({products.length})</span>
-        </h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-          {products.map(p => (
-            <div key={p.id}
-              className="bg-card border border-border rounded-2xl overflow-hidden hover:border-primary/40 transition-all cursor-pointer group"
-              onClick={() => setReviewProduct(p)}
-            >
-              <div className="aspect-square bg-secondary overflow-hidden">
-                {p.images[0]
-                  ? <img src={p.images[0]} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                  : <div className="w-full h-full flex items-center justify-center"><Icon name="Package" size={24} className="text-muted-foreground opacity-30" /></div>
-                }
-              </div>
-              <div className="p-3">
-                <p className="text-sm font-semibold truncate">{p.name}</p>
-                <p className="text-primary font-bold text-sm mt-0.5">{p.price.toLocaleString("ru-RU")} ₽</p>
-                <button
-                  onClick={e => {
-                    e.stopPropagation();
-                    addToCart({ id: p.id, name: p.name, price: p.price, image: p.images[0] ?? "" });
-                    setAddedId(p.id);
-                    setTimeout(() => setAddedId(null), 1500);
-                  }}
-                  className={`mt-2 w-full py-1.5 rounded-xl text-xs font-bold transition-colors ${addedId === p.id ? "bg-green-600 text-white" : "bg-primary text-primary-foreground"}`}>
-                  {addedId === p.id ? "✓ Добавлено" : "В корзину"}
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Попап отзывов на товар */}
-      {reviewProduct && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 px-4 pb-4 sm:pb-0"
-          onClick={() => setReviewProduct(null)}>
-          <div className="w-full max-w-md" onClick={e => e.stopPropagation()}>
-            <ProductReviewsBlock product={reviewProduct} addToCart={addToCart} onClose={() => setReviewProduct(null)} />
-          </div>
-        </div>
-      )}
-    </>
+    <ProductReviewsBlock
+      product={reviewProduct}
+      addToCart={addToCart}
+      onClose={() => setReviewProduct(null)}
+    />
   );
 }
