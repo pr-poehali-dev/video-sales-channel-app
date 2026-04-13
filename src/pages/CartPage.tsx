@@ -6,6 +6,7 @@ import SbpPayment from "@/components/SbpPayment";
 import { useAuth } from "@/context/AuthContext";
 
 const STORE_API = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c";
+const CDEK_API = "https://functions.poehali.dev/937e27f3-191a-445d-b034-61bd84ed5381";
 
 interface CartPageProps {
   cart: CartItem[];
@@ -29,6 +30,7 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
   const [showSbp, setShowSbp] = useState(false);
   const [orderDone, setOrderDone] = useState(false);
   const [orderId, setOrderId] = useState<string | null>(null);
+  const [cdekTrack, setCdekTrack] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -46,33 +48,64 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
   const contactFilled = buyerName.trim() && buyerPhone.trim();
   const canCheckout = deliveryCost !== null && payMethod !== null && !!contactFilled;
 
-  const createOrder = async () => {
+  const createOrder = async (): Promise<string | null> => {
     setSubmitError(null);
     setSubmitting(true);
     try {
+      const orderPayload = {
+        buyer_id: user?.id || "",
+        buyer_name: buyerName.trim(),
+        buyer_phone: buyerPhone.trim(),
+        buyer_email: buyerEmail.trim(),
+        delivery_type: deliveryType,
+        delivery_city_code: delivery.city?.code,
+        delivery_city_name: delivery.city ? `${delivery.city.city}${delivery.city.region ? ", " + delivery.city.region : ""}` : "",
+        delivery_address: deliveryAddress.trim(),
+        delivery_tariff_code: delivery.tariff?.code,
+        delivery_tariff_name: delivery.tariff?.name || "",
+        delivery_cost: deliveryCost || 0,
+        items: cart.map(c => ({ id: c.id, name: c.name, price: c.price, qty: c.qty, image: c.image })),
+        payment_method: payMethod || "",
+        goods_total: goodsTotal,
+        order_total: orderTotal,
+      };
+
+      // 1. Сохраняем заказ в нашу БД
       const res = await fetch(`${STORE_API}?action=create_order`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          buyer_id: user?.id || "",
-          buyer_name: buyerName.trim(),
-          buyer_phone: buyerPhone.trim(),
-          buyer_email: buyerEmail.trim(),
-          delivery_type: deliveryType,
-          delivery_city_code: delivery.city?.code,
-          delivery_city_name: delivery.city ? `${delivery.city.city}${delivery.city.region ? ", " + delivery.city.region : ""}` : "",
-          delivery_address: deliveryAddress.trim(),
-          delivery_tariff_code: delivery.tariff?.code,
-          delivery_tariff_name: delivery.tariff?.name || "",
-          delivery_cost: deliveryCost || 0,
-          items: cart.map(c => ({ id: c.id, name: c.name, price: c.price, qty: c.qty, image: c.image })),
-          payment_method: payMethod || "",
-        }),
+        body: JSON.stringify(orderPayload),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Ошибка оформления заказа");
-      setOrderId(data.order_id);
-      return data.order_id as string;
+      const oid = data.order_id as string;
+      setOrderId(oid);
+
+      // 2. Создаём заказ в СДЭК (не блокируем при ошибке)
+      try {
+        const cdekRes = await fetch(`${CDEK_API}?action=create_order`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            order_id: oid,
+            ...orderPayload,
+            weight_g: totalWeight,
+            length_cm: 20,
+            width_cm: 15,
+            height_cm: 10,
+          }),
+        });
+        const cdekData = await cdekRes.json();
+        if (cdekData.track_number) {
+          setCdekTrack(cdekData.track_number);
+        } else if (cdekData.cdek_uuid) {
+          setCdekTrack(cdekData.cdek_uuid);
+        }
+      } catch {
+        // СДЭК недоступен — заказ всё равно создан в нашей системе
+      }
+
+      return oid;
     } catch (e: unknown) {
       setSubmitError(e instanceof Error ? e.message : "Ошибка оформления заказа");
       return null;
@@ -93,13 +126,45 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
 
   if (orderDone) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-24 text-center animate-scale-in">
+      <div className="max-w-lg mx-auto px-4 py-16 text-center animate-scale-in">
         <div className="w-20 h-20 rounded-full bg-green-500/15 flex items-center justify-center mx-auto mb-5">
           <Icon name="PackageCheck" size={42} className="text-green-400" />
         </div>
-        <h2 className="font-oswald text-2xl font-semibold text-foreground mb-2">Заказ оформлен!</h2>
-        {orderId && <p className="text-xs text-muted-foreground mb-1">№ {orderId}</p>}
-        <p className="text-muted-foreground text-sm">Мы передали его в обработку. Ожидайте уведомления о доставке СДЭК.</p>
+        <h2 className="font-oswald text-2xl font-semibold text-foreground mb-1">Заказ оформлен!</h2>
+        {orderId && (
+          <p className="text-xs text-muted-foreground mb-4">№ {orderId}</p>
+        )}
+
+        {cdekTrack ? (
+          <div className="bg-card border border-border rounded-2xl p-5 mb-4 text-left">
+            <div className="flex items-center gap-2 mb-3">
+              <Icon name="Truck" size={18} className="text-[#00AAFF]" />
+              <span className="text-sm font-semibold text-foreground">Доставка СДЭК</span>
+            </div>
+            <div className="bg-secondary rounded-xl px-4 py-3 mb-3">
+              <p className="text-xs text-muted-foreground mb-0.5">Трек-номер</p>
+              <p className="font-oswald text-xl font-semibold text-foreground tracking-widest">{cdekTrack}</p>
+            </div>
+            <a
+              href={`https://www.cdek.ru/ru/tracking?order_id=${cdekTrack}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 w-full bg-[#00AAFF]/10 text-[#00AAFF] font-semibold py-2.5 rounded-xl hover:bg-[#00AAFF]/20 transition-colors text-sm"
+            >
+              <Icon name="ExternalLink" size={15} />
+              Отследить на сайте СДЭК
+            </a>
+          </div>
+        ) : (
+          <div className="bg-secondary rounded-xl px-4 py-3 mb-4 text-sm text-muted-foreground">
+            <Icon name="Clock" size={14} className="inline mr-1.5 mb-0.5" />
+            Трек-номер СДЭК появится в течение нескольких минут
+          </div>
+        )}
+
+        <p className="text-muted-foreground text-sm">
+          Ожидайте SMS с уведомлением о передаче посылки в СДЭК.
+        </p>
       </div>
     );
   }

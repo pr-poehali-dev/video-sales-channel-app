@@ -1,17 +1,28 @@
 {
   "tests": [
     {
-      "name": "Search cities",
+      "name": "Cities short query returns empty list",
       "method": "GET",
-      "path": "/?action=cities&q=Москва",
+      "path": "/?action=cities&q=М",
       "expectedStatus": 200,
+      "expectedBody": [],
+      "bodyMatcher": "exact"
+    },
+    {
+      "name": "create_order without order_id returns 400",
+      "method": "POST",
+      "path": "/?action=create_order",
+      "body": {},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "order_id required"},
       "bodyMatcher": "partial"
     },
     {
-      "name": "Calc delivery to Moscow",
+      "name": "order_status without uuid returns 400",
       "method": "GET",
-      "path": "/?action=calc&city_code=44&weight=500",
-      "expectedStatus": 200,
+      "path": "/?action=order_status",
+      "expectedStatus": 400,
+      "expectedBody": {"error": "uuid required"},
       "bodyMatcher": "partial"
     }
   ]

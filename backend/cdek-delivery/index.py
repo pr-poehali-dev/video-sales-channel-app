@@ -1,14 +1,26 @@
 """
-Расчёт стоимости доставки СДЭК до выбранного города покупателя.
-Поддерживает: получение токена, поиск городов, расчёт тарифов.
+СДЭК API: поиск городов, расчёт тарифов, создание заказа.
+Тестовый контур: api.edu.cdek.ru
 """
 import json
 import os
+import uuid
 import urllib.request
 import urllib.parse
+import urllib.error
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
 
 CDEK_API = "https://api.edu.cdek.ru/v2"
+
+# Адрес отправителя (склад по умолчанию — Краснодар, код 270)
+FROM_CITY_CODE = 270
+FROM_ADDRESS = "Краснодар, ул. Красная, 1"
+
+
+def get_conn():
+    return psycopg2.connect(os.environ["DATABASE_URL"])
 
 
 def get_token() -> str:
@@ -27,6 +39,21 @@ def get_token() -> str:
     )
     with urllib.request.urlopen(req, timeout=15) as resp:
         return json.loads(resp.read())["access_token"]
+
+
+def cdek_request(path: str, token: str, payload: dict = None, method: str = "GET") -> dict:
+    data = json.dumps(payload).encode() if payload else None
+    req = urllib.request.Request(
+        f"{CDEK_API}{path}",
+        data=data,
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+        },
+        method=method,
+    )
+    with urllib.request.urlopen(req, timeout=20) as resp:
+        return json.loads(resp.read())
 
 
 def search_cities(query: str, token: str) -> list:
@@ -59,38 +86,105 @@ def calc_tariffs(city_code: int, weight_g: int, token: str) -> list:
     out = []
     for tariff_code in tariff_codes:
         try:
-            payload = json.dumps({
+            result = cdek_request("/calculator/packages", token, {
                 "tariff_code": tariff_code,
-                "from_location": {"code": 270},
+                "from_location": {"code": FROM_CITY_CODE},
                 "to_location": {"code": city_code},
                 "packages": [{"weight": max(weight_g, 100), "length": 20, "width": 15, "height": 10}],
-            }).encode()
-            req = urllib.request.Request(
-                f"{CDEK_API}/calculator/packages",
-                data=payload,
-                headers={
-                    "Authorization": f"Bearer {token}",
-                    "Content-Type": "application/json",
-                },
-                method="POST",
-            )
-            with urllib.request.urlopen(req, timeout=10) as resp:
-                result = json.loads(resp.read())
-                price = result.get("total_sum") or result.get("delivery_sum")
-                if price:
-                    out.append({
-                        "code": tariff_code,
-                        "name": names.get(tariff_code, f"Тариф {tariff_code}"),
-                        "price": int(price),
-                        "days_min": result.get("period_min", 1),
-                        "days_max": result.get("period_max", 7),
-                    })
+            }, "POST")
+            price = result.get("total_sum") or result.get("delivery_sum")
+            if price:
+                out.append({
+                    "code": tariff_code,
+                    "name": names.get(tariff_code, f"Тариф {tariff_code}"),
+                    "price": int(price),
+                    "days_min": result.get("period_min", 1),
+                    "days_max": result.get("period_max", 7),
+                })
         except Exception:
             continue
     return sorted(out, key=lambda x: x["price"])
 
 
+def create_cdek_order(order: dict, token: str) -> dict:
+    """
+    Создаёт заказ в СДЭК.
+    order: {
+      order_id, buyer_name, buyer_phone, buyer_email,
+      delivery_type (cdek_pvz|cdek_courier),
+      delivery_city_code, delivery_address, cdek_pvz_code,
+      delivery_tariff_code, delivery_cost,
+      goods_total, order_total, weight_g, length_cm, width_cm, height_cm,
+      try_on_enabled, nalog_enabled, items
+    }
+    """
+    is_pvz = order.get("delivery_type") == "cdek_pvz"
+    tariff_code = order.get("delivery_tariff_code") or (136 if is_pvz else 137)
+
+    # Услуги
+    services = []
+    if order.get("nalog_enabled"):
+        services.append({"code": "NALOG_OBRABOTKA"})  # Наложенный платёж
+    if order.get("try_on_enabled"):
+        services.append({"code": "PRIMERCA_CHASTIC"})  # Частичная примерка
+
+    # Данные получателя
+    phone = order.get("buyer_phone", "").replace(" ", "").replace("-", "")
+    if not phone.startswith("+"):
+        phone = "+" + phone.lstrip("8").lstrip("+")
+
+    # Место доставки
+    delivery_point = {}
+    if is_pvz and order.get("cdek_pvz_code"):
+        delivery_point = {"delivery_point": order["cdek_pvz_code"]}
+    else:
+        delivery_point = {
+            "to_location": {
+                "code": order.get("delivery_city_code"),
+                "address": order.get("delivery_address", ""),
+            }
+        }
+
+    payload = {
+        "number": order.get("order_id", str(uuid.uuid4().hex[:12])),
+        "tariff_code": tariff_code,
+        "from_location": {
+            "code": FROM_CITY_CODE,
+            "address": FROM_ADDRESS,
+        },
+        **delivery_point,
+        "recipient": {
+            "name": order.get("buyer_name", ""),
+            "phones": [{"number": phone}],
+            **({"email": order["buyer_email"]} if order.get("buyer_email") else {}),
+        },
+        "packages": [{
+            "number": "1",
+            "weight": max(order.get("weight_g", 500), 100),
+            "length": order.get("length_cm", 20),
+            "width": order.get("width_cm", 15),
+            "height": order.get("height_cm", 10),
+            "items": [
+                {
+                    "name": item.get("name", "Товар")[:255],
+                    "ware_key": item.get("id", str(i)),
+                    "payment": {"value": float(item.get("price", 0)) if order.get("nalog_enabled") else 0},
+                    "cost": float(item.get("price", 0)),
+                    "weight": max(order.get("weight_g", 500), 100),
+                    "amount": int(item.get("qty", 1)),
+                }
+                for i, item in enumerate(order.get("items", []))
+            ],
+        }],
+        **({"services": services} if services else {}),
+    }
+
+    result = cdek_request("/orders", token, payload, "POST")
+    return result
+
+
 def handler(event: dict, context) -> dict:
+    """Обработчик запросов СДЭК: города, расчёт, создание заказа."""
     headers = {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
@@ -101,50 +195,112 @@ def handler(event: dict, context) -> dict:
     if event.get("httpMethod") == "OPTIONS":
         return {"statusCode": 200, "headers": headers, "body": ""}
 
-    params = event.get("queryStringParameters") or {}
-    action = params.get("action", "cities")
-
-    if action == "debug_token":
-        client_id = os.environ.get("CDEK_CLIENT_ID", "EMscd6r9JnFiQ3bLoyjJY6eM78JrJceI")
-        client_secret = os.environ.get("CDEK_CLIENT_SECRET", "PjLZkKBHEiLK3YsjtNrt3TGNG0ahs3kG")
-        body = urllib.parse.urlencode({
-            "grant_type": "client_credentials",
-            "client_id": client_id,
-            "client_secret": client_secret,
-        }).encode("utf-8")
-        token_url = f"{CDEK_API}/oauth/token?parameters"
-        req = urllib.request.Request(
-            token_url,
-            data=body,
-            headers={"Content-Type": "application/x-www-form-urlencoded"},
-            method="POST",
-        )
+    qs = event.get("queryStringParameters") or {}
+    action = qs.get("action", "cities")
+    body = {}
+    if event.get("body"):
         try:
-            with urllib.request.urlopen(req, timeout=15) as resp:
-                raw = resp.read()
-                return {"statusCode": 200, "headers": headers, "body": json.dumps({"ok": True, "raw": raw.decode(), "url": token_url})}
-        except urllib.error.HTTPError as e:
-            raw = e.read().decode()
-            return {"statusCode": 200, "headers": headers, "body": json.dumps({"status": e.code, "reason": e.reason, "body": raw, "url": token_url, "client_id": client_id})}
+            body = json.loads(event["body"])
+        except Exception:
+            pass
+
+    # Быстрые проверки без получения токена
+    if action == "create_order" and not body.get("order_id"):
+        return {"statusCode": 400, "headers": headers, "body": json.dumps({"error": "order_id required"})}
+    if action == "order_status" and not (qs.get("uuid") or body.get("uuid")):
+        return {"statusCode": 400, "headers": headers, "body": json.dumps({"error": "uuid required"})}
+    if action == "cities" and len(qs.get("q", "").strip()) < 2:
+        return {"statusCode": 200, "headers": headers, "body": json.dumps([])}
 
     try:
         token = get_token()
 
+        # ── Поиск городов ──
         if action == "cities":
-            query = params.get("q", "").strip()
-            if len(query) < 2:
-                return {"statusCode": 200, "headers": headers, "body": json.dumps([])}
+            query = qs.get("q", "").strip()
             cities = search_cities(query, token)
             return {"statusCode": 200, "headers": headers, "body": json.dumps(cities)}
 
+        # ── Расчёт тарифов ──
         if action == "calc":
-            city_code = int(params.get("city_code", 0))
-            weight_g = int(params.get("weight", 500))
+            city_code = int(qs.get("city_code", 0))
+            weight_g = int(qs.get("weight", 500))
             if not city_code:
                 return {"statusCode": 400, "headers": headers, "body": json.dumps({"error": "city_code required"})}
             tariffs = calc_tariffs(city_code, weight_g, token)
             return {"statusCode": 200, "headers": headers, "body": json.dumps(tariffs)}
 
+        # ── Создание заказа в СДЭК ──
+        if action == "create_order":
+            order_id = body.get("order_id")
+            if not order_id:
+                return {"statusCode": 400, "headers": headers, "body": json.dumps({"error": "order_id required"})}
+
+            result = create_cdek_order(body, token)
+
+            # Извлекаем UUID и трек-номер из ответа СДЭК
+            entity = result.get("entity") or {}
+            requests_list = result.get("requests") or []
+            cdek_uuid = entity.get("uuid", "")
+            track_number = ""
+
+            # Трек-номер может прийти сразу или потребует запроса статуса
+            if cdek_uuid:
+                try:
+                    order_info = cdek_request(f"/orders/{cdek_uuid}", token)
+                    track_number = order_info.get("entity", {}).get("cdek_number", "")
+                except Exception:
+                    pass
+
+            # Сохраняем в БД
+            if cdek_uuid or track_number:
+                conn = get_conn()
+                cur = conn.cursor()
+                cur.execute(
+                    """UPDATE orders SET cdek_order_uuid=%s, cdek_track_number=%s
+                       WHERE id=%s""",
+                    (cdek_uuid, track_number, order_id)
+                )
+                conn.commit()
+                cur.close()
+                conn.close()
+
+            # Ошибки от СДЭК
+            errors = []
+            for req in requests_list:
+                for e in (req.get("errors") or []):
+                    errors.append(e.get("message", ""))
+
+            return {
+                "statusCode": 200,
+                "headers": headers,
+                "body": json.dumps({
+                    "ok": True,
+                    "cdek_uuid": cdek_uuid,
+                    "track_number": track_number,
+                    "errors": errors,
+                    "raw": result,
+                }, ensure_ascii=False),
+            }
+
+        # ── Статус заказа по UUID ──
+        if action == "order_status":
+            cdek_uuid = qs.get("uuid") or body.get("uuid")
+            info = cdek_request(f"/orders/{cdek_uuid}", token)
+            entity = info.get("entity", {})
+            return {
+                "statusCode": 200,
+                "headers": headers,
+                "body": json.dumps({
+                    "cdek_number": entity.get("cdek_number", ""),
+                    "status": (entity.get("statuses") or [{}])[0].get("name", ""),
+                    "track_url": f"https://www.cdek.ru/ru/tracking?order_id={entity.get('cdek_number', '')}",
+                }, ensure_ascii=False),
+            }
+
+    except urllib.error.HTTPError as e:
+        raw = e.read().decode()
+        return {"statusCode": 500, "headers": headers, "body": json.dumps({"error": f"CDEK {e.code}: {raw}"})}
     except Exception as e:
         return {"statusCode": 500, "headers": headers, "body": json.dumps({"error": str(e)})}
 
