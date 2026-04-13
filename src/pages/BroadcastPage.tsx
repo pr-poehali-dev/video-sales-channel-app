@@ -199,14 +199,18 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
       // Получаем токен
       const tokenResp = await fetch(`${AGORA_TOKEN}?channel=${s.id}&uid=1&role=publisher`);
       const tokenData = await tokenResp.json();
+      if (tokenData.error) throw new Error("Токен: " + tokenData.error);
 
       // Создаём клиент в режиме вещателя
       const client = AgoraRTC.createClient({ mode: "live", codec: CODEC });
       clientRef.current = client;
       await client.setClientRole("host");
 
-      // Подключаемся к каналу
-      await client.join(tokenData.appId, s.id, tokenData.token, 1);
+      // Подключаемся к каналу (таймаут 15 сек)
+      await Promise.race([
+        client.join(tokenData.appId, s.id, tokenData.token, 1),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Таймаут подключения к Agora (15с). Проверьте App Certificate в консоли agora.io")), 15000)),
+      ]);
 
       // Публикуем треки
       if (audioTrackRef.current && videoTrackRef.current) {
@@ -446,6 +450,11 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
               </button>
             </div>
           )}
+          {errorMsg && (
+            <div className="mb-3 bg-black/80 border border-red-500/50 rounded-xl px-4 py-2.5 text-xs text-red-400 text-center">
+              {errorMsg}
+            </div>
+          )}
           <div className="flex items-center justify-center gap-4">
             <button onClick={toggleMute}
               className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${isMuted ? "bg-red-600" : "bg-black/60 backdrop-blur border border-white/20"}`}>
@@ -458,11 +467,13 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
                 <Icon name="Square" size={16} />Завершить
               </button>
             ) : (
-              <button onClick={startBroadcast}
-                disabled={!title.trim() || status === "connecting" || status === "error"}
+              <button onClick={status === "error" ? () => { setStatus("idle"); setErrorMsg(""); } : startBroadcast}
+                disabled={!title.trim() || status === "connecting"}
                 className="flex items-center gap-2 bg-red-500 hover:bg-red-600 disabled:opacity-40 text-white font-bold px-8 py-3.5 rounded-full text-sm shadow-lg transition-colors">
                 {status === "connecting"
                   ? <><Icon name="Loader" size={16} className="animate-spin" />Подключение...</>
+                  : status === "error"
+                  ? <><Icon name="RefreshCw" size={16} />Повторить</>
                   : <><span className="w-2.5 h-2.5 rounded-full bg-white" />Начать эфир</>
                 }
               </button>
