@@ -21,11 +21,12 @@ interface QuickProductModalProps {
   sellerId: string;
   sellerName: string;
   sellerAvatar: string;
+  defaultWarehouse?: { cityCode: number; cityName: string; name: string } | null;
   onClose: () => void;
   onSaved: () => void;
 }
 
-function QuickProductModal({ imageDataUrl, sellerId, sellerName, sellerAvatar, onClose, onSaved }: QuickProductModalProps) {
+function QuickProductModal({ imageDataUrl, sellerId, sellerName, sellerAvatar, defaultWarehouse, onClose, onSaved }: QuickProductModalProps) {
   const { addProduct } = useStore();
   const [name, setName]       = useState("");
   const [price, setPrice]     = useState("");
@@ -62,7 +63,10 @@ function QuickProductModal({ imageDataUrl, sellerId, sellerName, sellerAvatar, o
         sellerName,
         sellerAvatar,
         inStock: parseInt(stock) || 0,
-      });
+        cdekEnabled: !!defaultWarehouse,
+        fromCityCode: defaultWarehouse?.cityCode ?? 0,
+        fromCityName: defaultWarehouse?.cityName ?? "",
+      } as never);
       onSaved();
     } catch { /* ignore */ }
     finally { setSaving(false); }
@@ -122,6 +126,19 @@ function QuickProductModal({ imageDataUrl, sellerId, sellerName, sellerAvatar, o
             </div>
           </div>
         </div>
+
+        {defaultWarehouse ? (
+          <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-3 py-2 mb-3">
+            <Icon name="Warehouse" size={13} className="text-white/40 flex-shrink-0" />
+            <span className="text-[11px] text-white/50">Склад:</span>
+            <span className="text-[11px] text-white/80 font-medium truncate">{defaultWarehouse.name} · {defaultWarehouse.cityName}</span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 bg-yellow-500/10 border border-yellow-500/20 rounded-xl px-3 py-2 mb-3">
+            <Icon name="AlertTriangle" size={13} className="text-yellow-400 flex-shrink-0" />
+            <span className="text-[11px] text-yellow-400">Склад не задан — доставка СДЭК не будет рассчитана</span>
+          </div>
+        )}
 
         {!imgUrl && (
           <p className="text-[11px] text-white/30 text-center mb-3">Загружаю фото...</p>
@@ -196,6 +213,18 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
 
   // Фото-товар
   const [quickProductImg, setQuickProductImg] = useState<string | null>(null);
+  const [defaultWarehouse, setDefaultWarehouse] = useState<{ cityCode: number; cityName: string; name: string } | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    fetch(`${API}?action=get_warehouses&seller_id=${user.id}`)
+      .then(r => r.json())
+      .then((list: Array<{ cityCode: number; cityName: string; name: string; isDefault: boolean }>) => {
+        const def = list.find(w => w.isDefault) ?? list[0] ?? null;
+        setDefaultWarehouse(def);
+      })
+      .catch(() => {});
+  }, [user?.id]);
 
   const refreshChat = useCallback(async () => {
     if (!streamIdRef.current) return;
@@ -709,6 +738,7 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
           sellerId={user.id}
           sellerName={user.name}
           sellerAvatar={user.avatar}
+          defaultWarehouse={defaultWarehouse}
           onClose={() => setQuickProductImg(null)}
           onSaved={() => setQuickProductImg(null)}
         />

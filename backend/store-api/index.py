@@ -74,6 +74,18 @@ def err(msg, status=400):
     return {"statusCode": status, "headers": {**CORS, "Content-Type": "application/json"},
             "body": json.dumps({"error": msg}, ensure_ascii=False)}
 
+def _fmt_warehouse(r) -> dict:
+    return {
+        "id": r["id"],
+        "sellerId": r["seller_id"],
+        "name": r["name"],
+        "cityCode": r["city_code"],
+        "cityName": r["city_name"],
+        "address": r["address"],
+        "isDefault": r["is_default"],
+        "createdAt": str(r["created_at"]),
+    }
+
 def handler(event: dict, context) -> dict:
     if event.get("httpMethod") == "OPTIONS":
         return {"statusCode": 200, "headers": CORS, "body": ""}
@@ -632,6 +644,69 @@ def handler(event: dict, context) -> dict:
             if stream_id:
                 cur.execute("DELETE FROM webrtc_signals WHERE stream_id=%s", (stream_id,))
                 conn.commit()
+            return ok({"ok": True})
+
+        # ─────────── WAREHOUSES ───────────
+        if action == "get_warehouses":
+            seller_id = qs.get("seller_id") or body.get("seller_id")
+            if not seller_id:
+                return err("seller_id required")
+            cur.execute("SELECT * FROM warehouses WHERE seller_id=%s ORDER BY is_default DESC, created_at ASC", (seller_id,))
+            rows = cur.fetchall()
+            return ok([_fmt_warehouse(r) for r in rows])
+
+        if action == "add_warehouse":
+            seller_id = body.get("seller_id")
+            name = body.get("name", "").strip()
+            city_code = body.get("city_code")
+            city_name = body.get("city_name", "").strip()
+            address = body.get("address", "").strip()
+            if not all([seller_id, name, city_code, city_name]):
+                return err("seller_id, name, city_code, city_name required")
+            wid = f"wh_{uuid.uuid4().hex}"
+            cur.execute("SELECT COUNT(*) as cnt FROM warehouses WHERE seller_id=%s", (seller_id,))
+            is_first = cur.fetchone()["cnt"] == 0
+            cur.execute("""
+                INSERT INTO warehouses (id, seller_id, name, city_code, city_name, address, is_default)
+                VALUES (%s,%s,%s,%s,%s,%s,%s) RETURNING *
+            """, (wid, seller_id, name, int(city_code), city_name, address, is_first))
+            conn.commit()
+            return ok(_fmt_warehouse(cur.fetchone()), 201)
+
+        if action == "update_warehouse":
+            wid = body.get("id")
+            if not wid:
+                return err("id required")
+            fields, vals = [], []
+            for f in ("name", "address"):
+                if f in body:
+                    fields.append(f"{f}=%s")
+                    vals.append(body[f])
+            if not fields:
+                return err("nothing to update")
+            vals.append(wid)
+            cur.execute(f"UPDATE warehouses SET {', '.join(fields)} WHERE id=%s RETURNING *", vals)
+            conn.commit()
+            row = cur.fetchone()
+            return ok(_fmt_warehouse(row)) if row else err("not found", 404)
+
+        if action == "set_default_warehouse":
+            wid = body.get("id")
+            seller_id = body.get("seller_id")
+            if not wid or not seller_id:
+                return err("id and seller_id required")
+            cur.execute("UPDATE warehouses SET is_default=FALSE WHERE seller_id=%s", (seller_id,))
+            cur.execute("UPDATE warehouses SET is_default=TRUE WHERE id=%s AND seller_id=%s RETURNING *", (wid, seller_id))
+            conn.commit()
+            row = cur.fetchone()
+            return ok(_fmt_warehouse(row)) if row else err("not found", 404)
+
+        if action == "delete_warehouse":
+            wid = body.get("id") or qs.get("id")
+            if not wid:
+                return err("id required")
+            cur.execute("DELETE FROM warehouses WHERE id=%s", (wid,))
+            conn.commit()
             return ok({"ok": True})
 
         return err("unknown action", 404)
