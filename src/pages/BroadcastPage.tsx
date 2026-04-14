@@ -667,7 +667,7 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
           </div>
 
           {/* Нижние кнопки управления */}
-          <div className="flex items-center justify-center gap-3 px-4" style={{ paddingBottom: "calc(56px + 1.25rem + env(safe-area-inset-bottom, 0px))" }}>
+          <div className="flex flex-col items-center gap-2 px-4" style={{ paddingBottom: "calc(56px + 1.25rem + env(safe-area-inset-bottom, 0px))" }}>
             {/* Скрыть чат */}
             <button
               onClick={() => setChatVisible(v => !v)}
@@ -677,29 +677,32 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
               {chatVisible ? "Скрыть чат" : "Чат"}
             </button>
 
-            {/* Микрофон */}
-            <button onClick={toggleMute}
-              className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${isMuted ? "bg-red-600" : "bg-black/60 backdrop-blur border border-white/20"}`}>
-              <Icon name={isMuted ? "MicOff" : "Mic"} size={18} className="text-white" />
-            </button>
+            {/* Основные кнопки */}
+            <div className="flex items-center justify-center gap-3 w-full">
+              {/* Микрофон */}
+              <button onClick={toggleMute}
+                className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${isMuted ? "bg-red-600" : "bg-black/60 backdrop-blur border border-white/20"}`}>
+                <Icon name={isMuted ? "MicOff" : "Mic"} size={18} className="text-white" />
+              </button>
 
-            {/* Завершить */}
-            <button onClick={stopBroadcast}
-              className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-3 rounded-full text-sm shadow-lg transition-colors">
-              <Icon name="Square" size={15} />Завершить
-            </button>
+              {/* Завершить */}
+              <button onClick={stopBroadcast}
+                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-3 rounded-full text-sm shadow-lg transition-colors">
+                <Icon name="Square" size={15} />Завершить
+              </button>
 
-            {/* Камера вкл/выкл */}
-            <button onClick={toggleCamera}
-              className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${isCamOff ? "bg-red-600" : "bg-black/60 backdrop-blur border border-white/20"}`}>
-              <Icon name={isCamOff ? "VideoOff" : "Video"} size={18} className="text-white" />
-            </button>
+              {/* Камера вкл/выкл */}
+              <button onClick={toggleCamera}
+                className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${isCamOff ? "bg-red-600" : "bg-black/60 backdrop-blur border border-white/20"}`}>
+                <Icon name={isCamOff ? "VideoOff" : "Video"} size={18} className="text-white" />
+              </button>
 
-            {/* Перевернуть камеру */}
-            <button onClick={flipCamera} disabled={isCamOff}
-              className="w-12 h-12 rounded-full bg-black/60 backdrop-blur border border-white/20 flex items-center justify-center disabled:opacity-30 transition-colors">
-              <Icon name="RefreshCw" size={18} className="text-white" />
-            </button>
+              {/* Перевернуть камеру */}
+              <button onClick={flipCamera} disabled={isCamOff}
+                className="w-12 h-12 rounded-full bg-black/60 backdrop-blur border border-white/20 flex items-center justify-center disabled:opacity-30 transition-colors">
+                <Icon name="RefreshCw" size={18} className="text-white" />
+              </button>
+            </div>
           </div>
         </div>
       )}
