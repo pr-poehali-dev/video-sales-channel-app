@@ -101,7 +101,9 @@ export default function DashboardProductsTab({ warehouses }: Props) {
 
   const startRecording = () => {
     if (!camStreamRef.current || camRecording) return;
-    const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp8")
+    const mimeType = MediaRecorder.isTypeSupported("video/mp4")
+      ? "video/mp4"
+      : MediaRecorder.isTypeSupported("video/webm;codecs=vp8")
       ? "video/webm;codecs=vp8"
       : MediaRecorder.isTypeSupported("video/webm")
       ? "video/webm"

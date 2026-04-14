@@ -65,7 +65,7 @@ export default function ProductPage({ productId, addToCart, onBack, onSellerClic
                 src={videoUrl}
                 autoPlay
                 loop
-                muted={false}
+                muted
                 playsInline
                 controls
                 className="w-full h-full object-cover"

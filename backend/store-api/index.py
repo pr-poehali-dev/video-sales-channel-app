@@ -134,10 +134,21 @@ def handler(event: dict, context) -> dict:
             header, encoded = data_url.split(",", 1)
             mime = header.split(";")[0].replace("data:", "")
             ext = mime.split("/")[1].split("+")[0]
+            # mp4 — явно задаём правильный MIME для Safari
+            if ext in ("mp4", "quicktime"):
+                mime = "video/mp4"
+                ext = "mp4"
             video_bytes = base64.b64decode(encoded)
-            key = f"streams/{uuid.uuid4().hex}.{ext}"
+            folder = body.get("folder", "products")
+            key = f"{folder}/{uuid.uuid4().hex}.{ext}"
             s3 = get_s3()
-            s3.put_object(Bucket="files", Key=key, Body=video_bytes, ContentType=mime)
+            s3.put_object(
+                Bucket="files",
+                Key=key,
+                Body=video_bytes,
+                ContentType=mime,
+                ContentDisposition="inline",
+            )
             cdn_url = f"{CDN_BASE}/{key}"
             stream_id = body.get("stream_id")
             if stream_id:
@@ -278,7 +289,7 @@ def handler(event: dict, context) -> dict:
             for f in ("name","price","category","description","images","in_stock",
                       "weight_g","length_cm","width_cm","height_cm",
                       "cdek_enabled","nalog_enabled","fitting_enabled",
-                      "from_city_code","from_city_name"):
+                      "from_city_code","from_city_name","video_url"):
                 if f in body:
                     fields.append(f"{f}=%s")
                     vals.append(body[f])
