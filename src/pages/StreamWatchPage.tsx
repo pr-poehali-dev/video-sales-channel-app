@@ -105,9 +105,9 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
   };
 
   return (
-    <div className="bg-background">
+    <div className="bg-background overflow-x-hidden">
       {/* ── ВИДЕО ───────────────────────────────────────────────────── */}
-      <div className="relative bg-black w-full" style={{ aspectRatio: "16/9" }}>
+      <div className="relative bg-black w-full overflow-hidden" style={{ aspectRatio: "16/9" }}>
         {/* Превью / заглушка */}
         {liveStatus !== "playing" && (
           <img
