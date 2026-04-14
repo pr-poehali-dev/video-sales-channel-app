@@ -38,7 +38,7 @@ export default function NavBar({ page, setPage, cartCount }: NavBarProps) {
             onClick={() => setPage("home")}
             className="font-oswald text-xl font-semibold tracking-wider text-foreground hover:text-primary transition-colors flex items-center gap-1"
           >
-            <span className="text-primary">ЮГА</span><span>ЗИН</span>
+            <span className="text-primary">БАЗАР</span>
             <span className="text-[10px] font-normal text-muted-foreground">.рф</span>
           </button>
 

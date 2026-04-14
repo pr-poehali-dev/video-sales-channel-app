@@ -49,13 +49,13 @@ export default function AuthPage({ onSuccess }: AuthPageProps) {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="font-oswald text-3xl font-semibold text-foreground tracking-wider mb-2">
-            <span className="text-primary">ЮГА</span>ЗИН
+            <span className="text-primary">БАЗАР</span>.РФ
           </div>
           <h1 className="text-xl font-semibold text-foreground mt-4">
             {mode === "login" ? "Войти в аккаунт" : "Создать аккаунт"}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {mode === "login" ? "Рады видеть вас снова" : "Покупайте и продавайте в прямом эфире"}
+            {mode === "login" ? "Рады видеть вас снова" : "Живой торг — без посредников"}
           </p>
         </div>
 
