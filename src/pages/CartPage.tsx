@@ -26,6 +26,7 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
   const { user } = useAuth();
   const [delivery, setDelivery] = useState<SelectedDelivery>({ tariff: null, city: null });
   const [deliveryType, setDeliveryType] = useState<DeliveryType>("cdek_pvz");
+  const [cdekPvzCode, setCdekPvzCode] = useState<string | undefined>(undefined);
   const [payMethod, setPayMethod] = useState<PaymentMethod>(null);
   const [showSbp, setShowSbp] = useState(false);
   const [orderDone, setOrderDone] = useState(false);
@@ -66,6 +67,7 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
         delivery_tariff_code: delivery.tariff?.code,
         delivery_tariff_name: delivery.tariff?.name || "",
         delivery_cost: deliveryCost || 0,
+        cdek_pvz_code: cdekPvzCode || "",
         items: cart.map(c => ({ id: c.id, name: c.name, price: c.price, qty: c.qty, image: c.image })),
         payment_method: payMethod || "",
         goods_total: goodsTotal,
@@ -284,7 +286,11 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
               weightGrams={totalWeight}
               fromCityCode={fromCityCode}
               sellerId={sellerIdForDelivery}
-              onSelect={(tariff, city) => setDelivery({ tariff, city })}
+              onSelect={(tariff, city, pvzCode) => {
+                setDelivery({ tariff, city });
+                setCdekPvzCode(pvzCode);
+                setDeliveryType(tariff?.code === 136 ? "cdek_pvz" : "cdek_courier");
+              }}
             />
           </div>
 

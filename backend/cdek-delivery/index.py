@@ -355,6 +355,31 @@ def handler(event: dict, context) -> dict:
                 }, ensure_ascii=False),
             }
 
+        # ── Список ПВЗ по городу ──
+        if action == "get_pvz":
+            city_code = qs.get("city_code") or body.get("city_code")
+            if not city_code:
+                return {"statusCode": 400, "headers": headers, "body": json.dumps({"error": "city_code required"})}
+            params = f"city_code={city_code}&type=PVZ&take_only=true&is_handout=true&size=100"
+            data = cdek_request(f"/deliverypoints?{params}", token)
+            points = []
+            items = data if isinstance(data, list) else data.get("items", [])
+            for p in items:
+                loc = p.get("location", {})
+                if not loc.get("latitude") or not loc.get("longitude"):
+                    continue
+                points.append({
+                    "code": p.get("code", ""),
+                    "name": p.get("name", ""),
+                    "address": loc.get("address_full", loc.get("address", "")),
+                    "work_time": p.get("work_time", ""),
+                    "lat": float(loc["latitude"]),
+                    "lon": float(loc["longitude"]),
+                    "type": p.get("type", "PVZ"),
+                    "phones": [ph.get("number", "") for ph in (p.get("phones") or [])],
+                })
+            return {"statusCode": 200, "headers": headers, "body": json.dumps(points, ensure_ascii=False)}
+
         # ── Статус заказа по UUID ──
         if action == "order_status":
             cdek_uuid = qs.get("uuid") or body.get("uuid")

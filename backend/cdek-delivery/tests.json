@@ -24,6 +24,14 @@
       "expectedStatus": 400,
       "expectedBody": {"error": "uuid required"},
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "get_pvz without city_code returns 400",
+      "method": "GET",
+      "path": "/?action=get_pvz",
+      "expectedStatus": 400,
+      "expectedBody": {"error": "city_code required"},
+      "bodyMatcher": "partial"
     }
   ]
 }
