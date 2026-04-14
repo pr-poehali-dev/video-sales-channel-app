@@ -10,60 +10,130 @@ const API = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c"
 
 AgoraRTC.setLogLevel(3);
 
-// Safari требует h264, остальные поддерживают vp8
 const CODEC = (() => {
   const ua = navigator.userAgent.toLowerCase();
   return ua.includes("safari") && !ua.includes("chrome") ? "h264" : "vp8";
 })();
 
-// ── Чат вещателя ──────────────────────────────────────────────────────────────
-function LiveChat({ streamId }: { streamId: string }) {
-  const { user } = useAuth();
-  const { addChatMessage, getStreamMessages } = useStore();
-  const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const endRef = useRef<HTMLDivElement>(null);
+// ── Модалка быстрого добавления товара ────────────────────────────────────────
+interface QuickProductModalProps {
+  imageDataUrl: string;
+  sellerId: string;
+  sellerName: string;
+  sellerAvatar: string;
+  onClose: () => void;
+  onSaved: () => void;
+}
 
-  const refresh = useCallback(async () => {
-    try { setMessages(await getStreamMessages(streamId)); } catch { /* ignore */ }
-  }, [streamId, getStreamMessages]);
+function QuickProductModal({ imageDataUrl, sellerId, sellerName, sellerAvatar, onClose, onSaved }: QuickProductModalProps) {
+  const { addProduct } = useStore();
+  const [name, setName]       = useState("");
+  const [price, setPrice]     = useState("");
+  const [stock, setStock]     = useState("10");
+  const [saving, setSaving]   = useState(false);
+  const [imgUrl, setImgUrl]   = useState<string | null>(null);
 
-  useEffect(() => { refresh(); const t = setInterval(refresh, 3000); return () => clearInterval(t); }, [refresh]);
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages.length]);
+  // Загружаем фото в S3 сразу при открытии
+  useEffect(() => {
+    (async () => {
+      try {
+        const resp = await fetch(`${API}?action=upload_image`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ data_url: imageDataUrl }),
+        });
+        const data = await resp.json();
+        if (data.url) setImgUrl(data.url);
+      } catch { /* ignore */ }
+    })();
+  }, [imageDataUrl]);
 
-  const send = async () => {
-    if (!input.trim() || !user) return;
-    const msg = await addChatMessage({ streamId, userId: user.id, userName: user.name.split(" ")[0], userAvatar: user.avatar, text: input.trim() });
-    setMessages(prev => [...prev, msg]);
-    setInput("");
+  const save = async () => {
+    if (!name.trim() || !price || saving) return;
+    setSaving(true);
+    try {
+      await addProduct({
+        name: name.trim(),
+        price: parseFloat(price),
+        category: "Разное",
+        description: "",
+        images: imgUrl ? [imgUrl] : [],
+        sellerId,
+        sellerName,
+        sellerAvatar,
+        inStock: parseInt(stock) || 0,
+      });
+      onSaved();
+    } catch { /* ignore */ }
+    finally { setSaving(false); }
   };
 
   return (
-    <div className="flex flex-col h-full min-h-0">
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-white/10 flex-shrink-0">
-        <Icon name="MessageSquare" size={13} className="text-white/60" />
-        <span className="text-xs font-semibold text-white/70">Чат зрителей</span>
-        <span className="ml-auto text-[10px] text-white/40">{messages.length}</span>
-      </div>
-      <div className="flex-1 overflow-y-auto px-3 py-2 space-y-1.5 min-h-0">
-        {messages.length === 0
-          ? <p className="text-[11px] text-white/30 text-center pt-6">Пока тихо...</p>
-          : messages.map(m => (
-            <div key={m.id} className="flex items-start gap-1.5">
-              <div className="w-5 h-5 rounded-full bg-primary/30 text-white text-[9px] font-bold flex items-center justify-center flex-shrink-0">{m.userAvatar}</div>
-              <p className="text-[11px] text-white/80 leading-snug"><span className="text-primary/80 font-semibold">{m.userName} </span>{m.text}</p>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70" onClick={onClose}>
+      <div
+        className="w-full max-w-lg bg-zinc-900 rounded-t-2xl p-4 pb-8"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <p className="font-semibold text-white text-sm">Быстрый товар из эфира</p>
+          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-full bg-white/10">
+            <Icon name="X" size={14} className="text-white" />
+          </button>
+        </div>
+
+        <div className="flex gap-3 mb-4">
+          {/* Фото */}
+          <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-white/10">
+            <img src={imageDataUrl} className="w-full h-full object-cover" />
+          </div>
+          {/* Поля */}
+          <div className="flex-1 flex flex-col gap-2">
+            <input
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="Название товара..."
+              className="bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/30 outline-none focus:border-primary/60 w-full"
+              style={{ fontSize: 16 }}
+              autoFocus
+            />
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <input
+                  value={price}
+                  onChange={e => setPrice(e.target.value.replace(/[^0-9.]/g, ""))}
+                  placeholder="Цена"
+                  type="number"
+                  className="bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/30 outline-none focus:border-primary/60 w-full pr-6"
+                  style={{ fontSize: 16 }}
+                />
+                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/40 text-xs">₽</span>
+              </div>
+              <div className="relative w-20">
+                <input
+                  value={stock}
+                  onChange={e => setStock(e.target.value.replace(/[^0-9]/g, ""))}
+                  placeholder="Кол-во"
+                  type="number"
+                  className="bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/30 outline-none focus:border-primary/60 w-full pr-5"
+                  style={{ fontSize: 16 }}
+                />
+                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-white/40 text-[10px]">шт</span>
+              </div>
             </div>
-          ))}
-        <div ref={endRef} />
-      </div>
-      <div className="px-2 py-2 border-t border-white/10 flex gap-1.5 flex-shrink-0">
-        <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === "Enter" && send()}
-          placeholder="Ответить..." maxLength={200}
-          className="flex-1 bg-white/10 border border-white/20 rounded-xl px-2.5 py-2 text-[11px] text-white placeholder:text-white/30 outline-none focus:border-primary/50"
-        />
-        <button onClick={send} disabled={!input.trim()}
-          className="w-8 h-8 rounded-xl bg-primary text-white flex items-center justify-center disabled:opacity-40">
-          <Icon name="Send" size={12} />
+          </div>
+        </div>
+
+        {!imgUrl && (
+          <p className="text-[11px] text-white/30 text-center mb-3">Загружаю фото...</p>
+        )}
+
+        <button
+          onClick={save}
+          disabled={!name.trim() || !price || saving}
+          className="w-full bg-primary text-primary-foreground font-bold py-3 rounded-xl text-sm disabled:opacity-40 flex items-center justify-center gap-2"
+        >
+          {saving ? <Icon name="Loader" size={15} className="animate-spin" /> : <Icon name="Plus" size={15} />}
+          {saving ? "Сохраняю..." : "Добавить в магазин"}
         </button>
       </div>
     </div>
@@ -77,13 +147,11 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
   const { user } = useAuth();
   const { addStream, updateStream, reload } = useStore();
 
-  // Проверяем актуальный эфир с сервера при монтировании
   const [checkedActive, setCheckedActive] = useState<{id: string; title: string} | null | "loading">("loading");
 
   useEffect(() => {
     if (!user) { setCheckedActive(null); return; }
     reload().then(() => {
-      // После reload getSellerStreams обновится через стор — берём напрямую с сервера
       fetch(`${API}?action=get_streams`)
         .then(r => r.json())
         .then((all: Array<{sellerId: string; isLive: boolean; id: string; title: string}>) => {
@@ -94,51 +162,93 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
     });
   }, [user?.id]);
 
-  const clientRef     = useRef<IAgoraRTCClient | null>(null);
-  const videoTrackRef = useRef<ILocalVideoTrack | null>(null);
-  const audioTrackRef = useRef<ILocalAudioTrack | null>(null);
+  const clientRef      = useRef<IAgoraRTCClient | null>(null);
+  const videoTrackRef  = useRef<ILocalVideoTrack | null>(null);
+  const audioTrackRef  = useRef<ILocalAudioTrack | null>(null);
   const nativeVideoRef = useRef<HTMLVideoElement | null>(null);
-  const timerRef      = useRef<ReturnType<typeof setInterval> | null>(null);
-  const streamIdRef   = useRef<string | null>(null);
-  const facingModeRef = useRef<"user" | "environment">("user");
+  const timerRef       = useRef<ReturnType<typeof setInterval> | null>(null);
+  const streamIdRef    = useRef<string | null>(null);
+  const facingModeRef  = useRef<"user" | "environment">("user");
+  const thumbInputRef  = useRef<HTMLInputElement>(null);
 
-  const [title, setTitle]           = useState("");
-  const [isLive, setIsLive]         = useState(false);
-  const [isMuted, setIsMuted]       = useState(false);
-  const [isCamOff, setIsCamOff]     = useState(false);
-  const [isFront, setIsFront]       = useState(true);
-  const [duration, setDuration]     = useState(0);
-  const [finished, setFinished]     = useState(false);
+  const [title, setTitle]             = useState("");
+  const [isLive, setIsLive]           = useState(false);
+  const [isMuted, setIsMuted]         = useState(false);
+  const [isCamOff, setIsCamOff]       = useState(false);
+  const [isFront, setIsFront]         = useState(true);
+  const [duration, setDuration]       = useState(0);
+  const [finished, setFinished]       = useState(false);
   const [savedDuration, setSavedDuration] = useState(0);
-  const [status, setStatus]         = useState<"idle" | "connecting" | "live" | "error">("idle");
-  const [errorMsg, setErrorMsg]     = useState("");
+  const [status, setStatus]           = useState<"idle" | "connecting" | "live" | "error">("idle");
+  const [errorMsg, setErrorMsg]       = useState("");
   const [customThumb, setCustomThumb] = useState<string | null>(null);
   const [stoppingActive, setStoppingActive] = useState(false);
   const [thumbUploading, setThumbUploading] = useState(false);
-  const thumbInputRef = useRef<HTMLInputElement>(null);
 
-  // Подключаем MediaStream напрямую к нативному <video> — единственный способ на iOS
+  // Чат
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput]       = useState("");
+  const [chatVisible, setChatVisible]   = useState(true);
+  const [chatSending, setChatSending]   = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+  const chatPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const { addChatMessage, getStreamMessages } = useStore();
+
+  // Фото-товар
+  const [quickProductImg, setQuickProductImg] = useState<string | null>(null);
+
+  const refreshChat = useCallback(async () => {
+    if (!streamIdRef.current) return;
+    try { setChatMessages(await getStreamMessages(streamIdRef.current)); } catch { /* ignore */ }
+  }, [getStreamMessages]);
+
+  useEffect(() => {
+    if (isLive) {
+      refreshChat();
+      chatPollRef.current = setInterval(refreshChat, 3000);
+    }
+    return () => { if (chatPollRef.current) clearInterval(chatPollRef.current); };
+  }, [isLive, refreshChat]);
+
+  useEffect(() => {
+    if (chatVisible) chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatMessages.length, chatVisible]);
+
+  const sendChat = async () => {
+    if (!chatInput.trim() || !user || chatSending || !streamIdRef.current) return;
+    setChatSending(true);
+    try {
+      const msg = await addChatMessage({
+        streamId: streamIdRef.current,
+        userId: user.id,
+        userName: user.name.split(" ")[0],
+        userAvatar: user.avatar,
+        text: chatInput.trim(),
+      });
+      setChatMessages(prev => [...prev, msg]);
+      setChatInput("");
+    } catch { /* ignore */ }
+    finally { setChatSending(false); }
+  };
+
   const attachStream = useCallback((track: ILocalVideoTrack | null) => {
     const vid = nativeVideoRef.current;
     if (!vid || !track) return;
     try {
       const ms = new MediaStream([track.getMediaStreamTrack()]);
       vid.srcObject = ms;
-      vid.play().catch(() => {/* iOS требует жест пользователя */});
+      vid.play().catch(() => {});
     } catch { /* ignore */ }
   }, []);
 
-  // Если трек уже готов, но video-элемент появился позже — подключаем
   useEffect(() => {
     if (videoTrackRef.current) attachStream(videoTrackRef.current);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Инициализируем превью камеры при загрузке
   useEffect(() => {
     let videoTrack: ILocalVideoTrack | null = null;
     let audioTrack: ILocalAudioTrack | null = null;
-
     (async () => {
       try {
         [audioTrack, videoTrack] = await AgoraRTC.createMicrophoneAndCameraTracks(
@@ -156,11 +266,7 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
         setStatus("error");
       }
     })();
-
-    return () => {
-      videoTrack?.stop(); videoTrack?.close();
-      audioTrack?.stop(); audioTrack?.close();
-    };
+    return () => { videoTrack?.stop(); videoTrack?.close(); audioTrack?.stop(); audioTrack?.close(); };
   }, []);
 
   const handleThumbFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -170,7 +276,6 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
     reader.onload = async (ev) => {
       const dataUrl = ev.target?.result as string;
       setCustomThumb(dataUrl);
-      // Если эфир уже идёт — сразу загружаем
       if (streamIdRef.current) {
         setThumbUploading(true);
         try {
@@ -186,14 +291,24 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
     reader.readAsDataURL(file);
   };
 
+  // Делаем скриншот с видео для быстрого товара
+  const capturePhoto = () => {
+    const vid = nativeVideoRef.current;
+    if (!vid) return;
+    const canvas = document.createElement("canvas");
+    canvas.width = vid.videoWidth || 640;
+    canvas.height = vid.videoHeight || 360;
+    canvas.getContext("2d")?.drawImage(vid, 0, 0, canvas.width, canvas.height);
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+    setQuickProductImg(dataUrl);
+  };
+
   const startBroadcast = async () => {
     if (!title.trim() || !user) return;
     setStatus("connecting");
     setErrorMsg("");
-
     let createdStreamId: string | null = null;
     try {
-      // Закрываем все активные эфиры этого продавца перед стартом
       try {
         const allResp = await fetch(`${API}?action=get_streams`);
         const allStreams: Array<{sellerId: string; isLive: boolean; id: string}> = await allResp.json();
@@ -207,28 +322,23 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
         }
       } catch { /* ignore */ }
 
-      // Создаём эфир в БД
       const s = await addStream({ title: title.trim(), sellerId: user.id, sellerName: user.name, sellerAvatar: user.avatar, isLive: true, viewers: 0 });
       createdStreamId = s.id;
       streamIdRef.current = s.id;
 
-      // Получаем токен
       const tokenResp = await fetch(`${AGORA_TOKEN}?channel=${s.id}&uid=1&role=publisher`);
       const tokenData = await tokenResp.json();
       if (tokenData.error) throw new Error("Токен: " + tokenData.error);
 
-      // Создаём клиент в режиме вещателя
       const client = AgoraRTC.createClient({ mode: "live", codec: CODEC });
       clientRef.current = client;
       await client.setClientRole("host");
 
-      // Подключаемся к каналу (таймаут 30 сек)
       await Promise.race([
         client.join(tokenData.appId, s.id, tokenData.token, 1),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("Не удалось подключиться к серверу видео (таймаут 30с). Проверьте интернет-соединение и попробуйте ещё раз.")), 30000)),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Таймаут подключения 30с")), 30000)),
       ]);
 
-      // Публикуем треки
       if (audioTrackRef.current && videoTrackRef.current) {
         await client.publish([audioTrackRef.current, videoTrackRef.current]);
       }
@@ -238,7 +348,6 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
       setDuration(0);
       timerRef.current = setInterval(() => setDuration(d => d + 1), 1000);
 
-      // Превью: если загружено вручную — используем его, иначе скриншот с камеры
       setTimeout(async () => {
         try {
           let dataUrl = customThumb;
@@ -262,7 +371,6 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
       const err = e as Error;
       setErrorMsg("Ошибка подключения: " + err.message);
       setStatus("error");
-      // Завершаем стрим в БД если он был создан
       if (createdStreamId) {
         streamIdRef.current = null;
         try {
@@ -278,17 +386,13 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
 
   const stopBroadcast = async () => {
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+    if (chatPollRef.current) { clearInterval(chatPollRef.current); chatPollRef.current = null; }
     const dur = duration;
     setSavedDuration(dur);
-
-    try {
-      await clientRef.current?.leave();
-    } catch { /* ignore */ }
+    try { await clientRef.current?.leave(); } catch { /* ignore */ }
     clientRef.current = null;
-
     const sid = streamIdRef.current;
     if (sid) await updateStream(sid, { isLive: false, duration_sec: dur } as never);
-
     setIsLive(false);
     setStatus("idle");
     setFinished(true);
@@ -310,11 +414,8 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
     const newFacing = facingModeRef.current === "user" ? "environment" : "user";
     facingModeRef.current = newFacing;
     setIsFront(newFacing === "user");
-
-    // Останавливаем старый трек
     const oldTrack = videoTrackRef.current;
     if (oldTrack) { oldTrack.stop(); oldTrack.close(); }
-
     try {
       const newTrack = await AgoraRTC.createCameraVideoTrack({
         encoderConfig: { width: 640, height: 360, frameRate: 15, bitrateMax: 600 },
@@ -322,19 +423,17 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
         facingMode: newFacing,
       });
       videoTrackRef.current = newTrack;
-
-      // Если в эфире — меняем трек на лету
       if (clientRef.current && isLive) {
         await clientRef.current.unpublish([oldTrack!]);
         await clientRef.current.publish([newTrack]);
       }
-
       attachStream(newTrack);
     } catch { /* игнор */ }
   };
 
   const fmt = (s: number) => `${String(Math.floor(s / 60)).padStart(2,"0")}:${String(s % 60).padStart(2,"0")}`;
 
+  // ── Экраны-заглушки ──────────────────────────────────────────────────────────
   if (!user) return (
     <div className="max-w-md mx-auto px-4 py-24 text-center">
       <Icon name="Video" size={36} className="mx-auto mb-4 text-muted-foreground opacity-40" />
@@ -362,10 +461,8 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
         <button
           onClick={async () => {
             setStoppingActive(true);
-            try {
-              await updateStream(checkedActive.id, { isLive: false });
-              setCheckedActive(null);
-            } catch { /* ignore */ }
+            try { await updateStream(checkedActive.id, { isLive: false }); setCheckedActive(null); }
+            catch { /* ignore */ }
             finally { setStoppingActive(false); }
           }}
           disabled={stoppingActive}
@@ -388,7 +485,7 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
       <p className="text-sm text-muted-foreground mb-1">«{title}»</p>
       <p className="text-sm text-muted-foreground mb-6">Длительность: {fmt(savedDuration)}</p>
       <div className="flex flex-col gap-3 max-w-xs mx-auto">
-        <button onClick={() => { setFinished(false); setTitle(""); setDuration(0); streamIdRef.current = null; setStatus("idle"); }}
+        <button onClick={() => { setFinished(false); setTitle(""); setDuration(0); streamIdRef.current = null; setStatus("idle"); setChatMessages([]); }}
           className="bg-primary text-primary-foreground font-semibold px-6 py-3 rounded-xl hover:opacity-90">Новый эфир</button>
         <button onClick={() => setPage("dashboard")}
           className="border border-border font-semibold px-6 py-3 rounded-xl hover:bg-accent">Кабинет</button>
@@ -397,113 +494,194 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
   );
 
   return (
-    <div className="min-h-[calc(100vh-56px)] bg-black flex flex-col lg:flex-row">
+    <div className="relative bg-black" style={{ height: "calc(100dvh - 56px)" }}>
 
-      {/* Видео-превью */}
-      <div className="relative flex-1 bg-black" style={{ minHeight: "56vw", maxHeight: "70vh" }}>
+      {/* ── ВИДЕО на весь экран ── */}
+      <video
+        ref={nativeVideoRef}
+        autoPlay
+        playsInline
+        muted
+        className="absolute inset-0 w-full h-full object-cover"
+        style={{ background: "#000" }}
+      />
 
-        {/* Нативный <video> — единственный способ показать превью на iOS */}
-        <video
-          ref={nativeVideoRef}
-          autoPlay
-          playsInline
-          muted
-          className="w-full h-full object-cover"
-          style={{ background: "#000" }}
-        />
-
-        {status === "error" && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/90 p-6 text-center z-10">
-            <div>
-              <Icon name="VideoOff" size={36} className="mx-auto mb-3 text-red-400" />
-              <p className="text-sm text-white/80 mb-4">{errorMsg}</p>
-            </div>
+      {/* Ошибка камеры */}
+      {status === "error" && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/90 p-6 text-center z-10">
+          <div>
+            <Icon name="VideoOff" size={36} className="mx-auto mb-3 text-red-400" />
+            <p className="text-sm text-white/80 mb-4">{errorMsg}</p>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Шапка */}
-        <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 pt-4 z-10">
-          <button onClick={() => setPage("streams")} className="w-9 h-9 rounded-full bg-black/50 backdrop-blur flex items-center justify-center">
-            <Icon name="ArrowLeft" size={18} className="text-white" />
-          </button>
+      {/* ── ШАПКА ── */}
+      <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-3 pt-3 z-20"
+        style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.6), transparent)" }}>
+        <button onClick={() => setPage("streams")}
+          className="w-9 h-9 rounded-full bg-black/40 backdrop-blur flex items-center justify-center">
+          <Icon name="ArrowLeft" size={18} className="text-white" />
+        </button>
+
+        <div className="flex items-center gap-2">
           {isLive && (
-            <div className="flex items-center gap-2">
+            <>
               <span className="flex items-center gap-1.5 bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full">
                 <span className="w-1.5 h-1.5 rounded-full bg-white animate-live-pulse" />LIVE
               </span>
               <span className="bg-black/60 text-white text-xs font-mono px-2 py-1 rounded-lg">{fmt(duration)}</span>
-            </div>
+            </>
           )}
           {status === "connecting" && (
             <div className="flex items-center gap-1.5 bg-black/60 text-white/70 text-xs px-3 py-1.5 rounded-full">
               <Icon name="Loader" size={12} className="animate-spin" />Подключение...
             </div>
           )}
-          <div className="w-9 h-9" />
         </div>
 
-        {/* Нижние кнопки */}
-        <div className="absolute bottom-0 left-0 right-0 px-4 pb-5 z-10">
-          {!isLive && (
-            <div className="mb-3 flex flex-col gap-2">
-              <input value={title} onChange={e => setTitle(e.target.value)} maxLength={80}
-                placeholder="Название эфира..."
-                className="w-full bg-black/60 backdrop-blur border border-white/20 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-white/40 outline-none focus:border-primary/60"
+        {/* Кнопка фото-товара (только в эфире) */}
+        {isLive && (
+          <button
+            onClick={capturePhoto}
+            className="w-9 h-9 rounded-full bg-primary flex items-center justify-center shadow-lg"
+            title="Сфотографировать и добавить товар"
+          >
+            <Icon name="Camera" size={17} className="text-primary-foreground" />
+          </button>
+        )}
+        {!isLive && <div className="w-9 h-9" />}
+      </div>
+
+      {/* ── ЧАТ ПОВЕРХ ВИДЕО (только в эфире) ── */}
+      {isLive && (
+        <div className="absolute bottom-0 left-0 right-0 z-20"
+          style={{ background: "linear-gradient(to top, rgba(0,0,0,0.75) 60%, transparent)" }}>
+
+          {/* Сообщения */}
+          {chatVisible && (
+            <div className="px-3 pt-3 pb-1 space-y-1.5 overflow-y-auto" style={{ maxHeight: 150 }}>
+              {chatMessages.length === 0
+                ? <p className="text-[11px] text-white/30 text-center">Пока тихо...</p>
+                : chatMessages.map(m => (
+                  <div key={m.id} className="flex items-start gap-1.5">
+                    <div className="w-5 h-5 rounded-full bg-white/20 text-white text-[9px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
+                      {m.userAvatar}
+                    </div>
+                    <p className="text-xs text-white leading-snug">
+                      <span className="font-bold text-primary/90">{m.userName} </span>
+                      <span className="text-white/80">{m.text}</span>
+                    </p>
+                  </div>
+                ))
+              }
+              <div ref={chatEndRef} />
+            </div>
+          )}
+
+          {/* Ввод сообщения */}
+          <div className="px-3 pt-1 pb-2">
+            <div className="flex gap-2 items-center">
+              <input
+                value={chatInput}
+                onChange={e => setChatInput(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && sendChat()}
+                placeholder="Написать в чат..."
+                maxLength={200}
+                className="flex-1 bg-black/50 backdrop-blur border border-white/20 rounded-full px-4 py-2 text-white placeholder:text-white/40 outline-none focus:border-white/40"
+                style={{ fontSize: 16 }}
               />
-              {/* Загрузка превью */}
-              <input ref={thumbInputRef} type="file" accept="image/*" className="hidden" onChange={handleThumbFile} />
-              <button
-                onClick={() => thumbInputRef.current?.click()}
-                className="flex items-center gap-2 bg-black/60 backdrop-blur border border-white/20 rounded-xl px-4 py-2 text-xs text-white/70 hover:text-white hover:border-white/40 transition-colors w-full"
-              >
-                {customThumb
-                  ? <><img src={customThumb} className="w-5 h-5 rounded object-cover flex-shrink-0" /><span className="truncate">Превью загружено — нажми чтобы сменить</span></>
-                  : <><Icon name="Image" size={14} className="flex-shrink-0" /><span>Загрузить превью (необязательно)</span></>
-                }
+              <button onClick={sendChat} disabled={!chatInput.trim() || chatSending}
+                className="w-9 h-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center disabled:opacity-40 flex-shrink-0">
+                {chatSending ? <Icon name="Loader" size={14} className="animate-spin" /> : <Icon name="Send" size={14} />}
               </button>
             </div>
-          )}
-          {isLive && (
-            <div className="mb-3 flex justify-end">
-              <input ref={thumbInputRef} type="file" accept="image/*" className="hidden" onChange={handleThumbFile} />
-              <button
-                onClick={() => thumbInputRef.current?.click()}
-                disabled={thumbUploading}
-                className="flex items-center gap-1.5 bg-black/60 backdrop-blur border border-white/20 rounded-xl px-3 py-1.5 text-xs text-white/60 hover:text-white transition-colors disabled:opacity-40"
-              >
-                <Icon name={thumbUploading ? "Loader" : "Image"} size={12} className={thumbUploading ? "animate-spin" : ""} />
-                {thumbUploading ? "Загружаю..." : customThumb ? "Сменить превью" : "Добавить превью"}
-              </button>
-            </div>
-          )}
+          </div>
+
+          {/* Нижние кнопки управления */}
+          <div className="flex items-center justify-center gap-3 px-4 pb-5">
+            {/* Скрыть чат */}
+            <button
+              onClick={() => setChatVisible(v => !v)}
+              className="flex items-center gap-1.5 bg-black/50 backdrop-blur text-white text-xs px-3 py-1.5 rounded-full"
+            >
+              <Icon name={chatVisible ? "MessageCircleOff" : "MessageCircle"} size={13} />
+              {chatVisible ? "Скрыть чат" : "Чат"}
+            </button>
+
+            {/* Микрофон */}
+            <button onClick={toggleMute}
+              className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${isMuted ? "bg-red-600" : "bg-black/60 backdrop-blur border border-white/20"}`}>
+              <Icon name={isMuted ? "MicOff" : "Mic"} size={18} className="text-white" />
+            </button>
+
+            {/* Завершить */}
+            <button onClick={stopBroadcast}
+              className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-3 rounded-full text-sm shadow-lg transition-colors">
+              <Icon name="Square" size={15} />Завершить
+            </button>
+
+            {/* Камера вкл/выкл */}
+            <button onClick={toggleCamera}
+              className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${isCamOff ? "bg-red-600" : "bg-black/60 backdrop-blur border border-white/20"}`}>
+              <Icon name={isCamOff ? "VideoOff" : "Video"} size={18} className="text-white" />
+            </button>
+
+            {/* Перевернуть камеру */}
+            <button onClick={flipCamera} disabled={isCamOff}
+              className="w-12 h-12 rounded-full bg-black/60 backdrop-blur border border-white/20 flex items-center justify-center disabled:opacity-30 transition-colors">
+              <Icon name="RefreshCw" size={18} className="text-white" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── НЕ В ЭФИРЕ: форма запуска ── */}
+      {!isLive && (
+        <div className="absolute bottom-0 left-0 right-0 z-20 px-4 pb-8"
+          style={{ background: "linear-gradient(to top, rgba(0,0,0,0.85) 70%, transparent)" }}>
+
+          <div className="flex flex-col gap-2 mb-4">
+            <input value={title} onChange={e => setTitle(e.target.value)} maxLength={80}
+              placeholder="Название эфира..."
+              className="w-full bg-black/60 backdrop-blur border border-white/20 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-white/40 outline-none focus:border-primary/60"
+              style={{ fontSize: 16 }}
+            />
+            <input ref={thumbInputRef} type="file" accept="image/*" className="hidden" onChange={handleThumbFile} />
+            <button
+              onClick={() => thumbInputRef.current?.click()}
+              className="flex items-center gap-2 bg-black/60 backdrop-blur border border-white/20 rounded-xl px-4 py-2 text-xs text-white/70 hover:text-white hover:border-white/40 transition-colors w-full"
+            >
+              {customThumb
+                ? <><img src={customThumb} className="w-5 h-5 rounded object-cover flex-shrink-0" /><span className="truncate">Превью загружено — нажми чтобы сменить</span></>
+                : <><Icon name="Image" size={14} className="flex-shrink-0" /><span>Загрузить превью (необязательно)</span></>
+              }
+            </button>
+          </div>
+
           {errorMsg && (
             <div className="mb-3 bg-black/80 border border-red-500/50 rounded-xl px-4 py-2.5 text-xs text-red-400 text-center">
               {errorMsg}
             </div>
           )}
+
           <div className="flex items-center justify-center gap-4">
             <button onClick={toggleMute}
               className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${isMuted ? "bg-red-600" : "bg-black/60 backdrop-blur border border-white/20"}`}>
               <Icon name={isMuted ? "MicOff" : "Mic"} size={18} className="text-white" />
             </button>
 
-            {isLive ? (
-              <button onClick={stopBroadcast}
-                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-bold px-8 py-3.5 rounded-full text-sm shadow-lg transition-colors">
-                <Icon name="Square" size={16} />Завершить
-              </button>
-            ) : (
-              <button onClick={status === "error" ? () => { setStatus("idle"); setErrorMsg(""); } : startBroadcast}
-                disabled={!title.trim() || status === "connecting"}
-                className="flex items-center gap-2 bg-red-500 hover:bg-red-600 disabled:opacity-40 text-white font-bold px-8 py-3.5 rounded-full text-sm shadow-lg transition-colors">
-                {status === "connecting"
-                  ? <><Icon name="Loader" size={16} className="animate-spin" />Подключение...</>
-                  : status === "error"
-                  ? <><Icon name="RefreshCw" size={16} />Повторить</>
-                  : <><span className="w-2.5 h-2.5 rounded-full bg-white" />Начать эфир</>
-                }
-              </button>
-            )}
+            <button
+              onClick={status === "error" ? () => { setStatus("idle"); setErrorMsg(""); } : startBroadcast}
+              disabled={!title.trim() || status === "connecting"}
+              className="flex items-center gap-2 bg-red-500 hover:bg-red-600 disabled:opacity-40 text-white font-bold px-8 py-3.5 rounded-full text-sm shadow-lg transition-colors">
+              {status === "connecting"
+                ? <><Icon name="Loader" size={16} className="animate-spin" />Подключение...</>
+                : status === "error"
+                ? <><Icon name="RefreshCw" size={16} />Повторить</>
+                : <><span className="w-2.5 h-2.5 rounded-full bg-white" />Начать эфир</>
+              }
+            </button>
 
             <button onClick={toggleCamera}
               className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${isCamOff ? "bg-red-600" : "bg-black/60 backdrop-blur border border-white/20"}`}>
@@ -511,29 +689,24 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
             </button>
 
             <button onClick={flipCamera} disabled={isCamOff}
-              className="w-12 h-12 rounded-full bg-black/60 backdrop-blur border border-white/20 flex items-center justify-center disabled:opacity-30 transition-colors"
-              title={isFront ? "Переключить на основную" : "Переключить на фронтальную"}>
+              className="w-12 h-12 rounded-full bg-black/60 backdrop-blur border border-white/20 flex items-center justify-center disabled:opacity-30 transition-colors">
               <Icon name="RefreshCw" size={18} className="text-white" />
             </button>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Боковая панель */}
-      <div className="lg:w-80 xl:w-96 bg-zinc-950 border-l border-white/10 flex flex-col"
-        style={{ minHeight: isLive ? "220px" : "auto" }}>
-        {isLive && streamIdRef.current
-          ? <LiveChat streamId={streamIdRef.current} />
-          : (
-            <div className="p-4">
-              <div className="p-3 rounded-xl bg-white/5 flex items-start gap-2.5">
-                <Icon name="Zap" size={14} className="text-primary mt-0.5 flex-shrink-0" />
-                <p className="text-[11px] text-white/50">Agora — профессиональный стриминг. Задержка &lt;1 сек, HD-качество, звук без заиканий.</p>
-              </div>
-            </div>
-          )
-        }
-      </div>
+      {/* ── Модалка быстрого товара ── */}
+      {quickProductImg && user && (
+        <QuickProductModal
+          imageDataUrl={quickProductImg}
+          sellerId={user.id}
+          sellerName={user.name}
+          sellerAvatar={user.avatar}
+          onClose={() => setQuickProductImg(null)}
+          onSaved={() => setQuickProductImg(null)}
+        />
+      )}
     </div>
   );
 }
