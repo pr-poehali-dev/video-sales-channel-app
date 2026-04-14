@@ -40,6 +40,7 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
   const [errorMsg, setErrorMsg]     = useState("");
   const [addedId, setAddedId]       = useState<string | null>(null);
   const [reviewProduct, setReviewProduct] = useState<StoreProduct | null>(null);
+  const [chatVisible, setChatVisible] = useState(true);
 
   // ── Agora подключение ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -105,118 +106,131 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
   };
 
   return (
-    <div className="bg-background">
+    <div className="bg-black">
 
-      {/* ── ВИДЕО (sticky, прилипает под NavBar) ──────────────────────── */}
-      <div className="sticky top-14 z-20 bg-black w-full" style={{ aspectRatio: "16/9" }}>
+      {/* ── ВИДЕО — на весь экран (за вычетом NavBar) ─────────────────── */}
+      <div className="relative w-full bg-black" style={{ height: "calc(100dvh - 56px)" }}>
+
+        {/* Превью / заглушка */}
         {liveStatus !== "playing" && (
           <img src={stream.thumbnail || STREAM_THUMBNAIL}
             className="absolute inset-0 w-full h-full object-cover" />
         )}
+
+        {/* Agora видео */}
         <div ref={videoElRef} className="absolute inset-0 w-full h-full"
           style={{ opacity: liveStatus === "playing" ? 1 : 0 }} />
+
+        {/* Подключение */}
         {stream.isLive && liveStatus === "waiting" && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-            <Icon name="Loader" size={28} className="text-white animate-spin" />
+          <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+            <Icon name="Loader" size={32} className="text-white animate-spin" />
           </div>
         )}
+
+        {/* Завершён */}
         {!stream.isLive && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/60">
             <div className="text-center">
-              <Icon name="PlayCircle" size={36} className="text-white/60 mx-auto mb-1" />
+              <Icon name="PlayCircle" size={40} className="text-white/50 mx-auto mb-2" />
               <p className="text-white/60 text-sm">Эфир завершён</p>
             </div>
           </div>
         )}
-        <button onClick={() => setPage("streams")}
-          className="absolute top-3 left-3 w-8 h-8 rounded-full bg-black/50 backdrop-blur flex items-center justify-center z-10">
-          <Icon name="ArrowLeft" size={16} className="text-white" />
-        </button>
-        {stream.isLive && (
-          <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full z-10">
-            <span className="w-1.5 h-1.5 rounded-full bg-white animate-live-pulse" />
-            LIVE
-          </div>
-        )}
+
+        {/* Ошибка */}
         {liveStatus === "error" && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/80 p-4 z-10">
-            <p className="text-red-400 text-xs text-center">{errorMsg}</p>
+          <div className="absolute inset-0 flex items-center justify-center bg-black/80 p-6">
+            <p className="text-red-400 text-sm text-center">{errorMsg}</p>
           </div>
         )}
-      </div>
 
-      {/* ── ИНФО ──────────────────────────────────────────────────────── */}
-      <div className="px-4 py-3 border-b border-border bg-background">
-        <h1 className="font-semibold text-base text-foreground leading-tight">{stream.title}</h1>
-        <div className="flex items-center gap-2 mt-1">
-          <div className="w-5 h-5 rounded-full bg-primary/20 text-primary text-[9px] font-bold flex items-center justify-center flex-shrink-0">
-            {stream.sellerAvatar}
+        {/* ── ВЕРХНЯЯ ПАНЕЛЬ: назад + инфо + LIVE ── */}
+        <div className="absolute top-0 left-0 right-0 z-20 flex items-center gap-3 px-3 pt-3 pb-6"
+          style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.6), transparent)" }}>
+          <button onClick={() => setPage("streams")}
+            className="w-9 h-9 rounded-full bg-black/40 backdrop-blur flex items-center justify-center flex-shrink-0">
+            <Icon name="ArrowLeft" size={18} className="text-white" />
+          </button>
+          <div className="flex-1 min-w-0">
+            <p className="text-white font-semibold text-sm truncate leading-tight">{stream.title}</p>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="text-white/70 text-xs">{stream.sellerName}</span>
+              <span className="flex items-center gap-1 text-white/60 text-xs ml-2">
+                <Icon name="Eye" size={11} />{stream.viewers}
+              </span>
+            </div>
           </div>
-          <span className="text-sm text-muted-foreground">{stream.sellerName}</span>
-          <span className="ml-auto flex items-center gap-1 text-xs text-muted-foreground">
-            <Icon name="Eye" size={12} />{stream.viewers}
-          </span>
-        </div>
-      </div>
-
-      {/* ── ЧАТ ───────────────────────────────────────────────────────── */}
-      <div className="bg-background border-b border-border">
-        <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border">
-          <Icon name="MessageCircle" size={14} className="text-muted-foreground" />
-          <span className="font-semibold text-sm">Чат</span>
-          <span className="text-xs text-muted-foreground">{messages.length}</span>
-        </div>
-
-        {/* Сообщения — фиксированная высота, скролл внутри */}
-        <div className="px-4 py-3 space-y-3 overflow-y-auto" style={{ height: 220 }}>
-          {messages.length === 0 ? (
-            <p className="text-center text-muted-foreground text-xs py-4">Сообщений пока нет</p>
-          ) : (
-            messages.map(m => (
-              <div key={m.id} className="flex items-start gap-2.5">
-                <div className="w-6 h-6 rounded-full bg-primary/10 text-primary text-[9px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
-                  {m.userAvatar}
-                </div>
-                <div>
-                  <span className="text-xs font-semibold text-foreground">{m.userName}</span>
-                  <span className="text-xs text-muted-foreground"> · {m.sentAt}</span>
-                  <p className="text-sm text-foreground mt-0.5 leading-snug">{m.text}</p>
-                </div>
-              </div>
-            ))
+          {stream.isLive && (
+            <div className="flex items-center gap-1.5 bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full flex-shrink-0">
+              <span className="w-1.5 h-1.5 rounded-full bg-white animate-live-pulse" />
+              LIVE
+            </div>
           )}
-          <div ref={chatEndRef} />
         </div>
 
-        {/* Ввод — всегда виден */}
-        <div className="px-4 py-3 border-t border-border flex gap-2 items-center">
-          {user ? (
-            <>
-              <input
-                value={input}
-                onChange={e => setInput(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && sendMessage()}
-                placeholder="Написать в чат..."
-                maxLength={200}
-                className="flex-1 bg-secondary border border-border rounded-full px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50"
-              />
-              <button onClick={sendMessage} disabled={!input.trim() || sending}
-                className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center disabled:opacity-40 flex-shrink-0">
-                {sending
-                  ? <Icon name="Loader" size={15} className="animate-spin" />
-                  : <Icon name="Send" size={15} />}
-              </button>
-            </>
-          ) : (
-            <button onClick={() => setPage("auth")}
-              className="flex-1 text-center text-sm text-muted-foreground py-2.5 border border-border rounded-full hover:bg-secondary transition-colors">
-              Войдите чтобы написать
+        {/* ── ЧАТ ПОВЕРХ ВИДЕО (правый нижний угол) ── */}
+        <div className="absolute bottom-0 left-0 right-0 z-20">
+
+          {/* Кнопка скрыть/показать чат */}
+          <div className="flex justify-end px-3 pb-2">
+            <button
+              onClick={() => setChatVisible(v => !v)}
+              className="flex items-center gap-1.5 bg-black/50 backdrop-blur text-white text-xs px-3 py-1.5 rounded-full"
+            >
+              <Icon name={chatVisible ? "MessageCircleOff" : "MessageCircle"} size={13} />
+              {chatVisible ? "Скрыть чат" : "Показать чат"}
             </button>
+          </div>
+
+          {/* Сообщения */}
+          {chatVisible && (
+            <div className="px-3 pb-2 space-y-1.5 overflow-y-auto" style={{ maxHeight: 220 }}>
+              {messages.map(m => (
+                <div key={m.id} className="flex items-start gap-2">
+                  <div className="w-5 h-5 rounded-full bg-white/20 text-white text-[9px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
+                    {m.userAvatar}
+                  </div>
+                  <p className="text-xs text-white leading-snug">
+                    <span className="font-bold text-white/90">{m.userName} </span>
+                    <span className="text-white/80">{m.text}</span>
+                  </p>
+                </div>
+              ))}
+              <div ref={chatEndRef} />
+            </div>
           )}
+
+          {/* Ввод сообщения */}
+          <div className="px-3 pb-4 pt-1">
+            {user ? (
+              <div className="flex gap-2 items-center">
+                <input
+                  value={input}
+                  onChange={e => setInput(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && sendMessage()}
+                  placeholder="Написать в чат..."
+                  maxLength={200}
+                  className="flex-1 bg-black/50 backdrop-blur border border-white/20 rounded-full px-4 py-2.5 text-sm text-white placeholder:text-white/40 outline-none focus:border-white/40"
+                />
+                <button onClick={sendMessage} disabled={!input.trim() || sending}
+                  className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center disabled:opacity-40 flex-shrink-0">
+                  {sending
+                    ? <Icon name="Loader" size={15} className="animate-spin" />
+                    : <Icon name="Send" size={15} />}
+                </button>
+              </div>
+            ) : (
+              <button onClick={() => setPage("auth")}
+                className="w-full text-center text-sm text-white/70 py-2.5 border border-white/20 rounded-full bg-black/40 backdrop-blur">
+                Войдите чтобы написать
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* ── ТОВАРЫ ────────────────────────────────────────────────────── */}
+      {/* ── ТОВАРЫ — скроллятся под видео ─────────────────────────────── */}
       {sellerProducts.length > 0 && (
         <div className="px-4 py-5 bg-background pb-24">
           <h2 className="font-semibold text-base mb-4 flex items-center gap-2">
