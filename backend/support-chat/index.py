@@ -4,9 +4,35 @@ Support Chat API — чат поддержки между пользовател
 import json
 import os
 import uuid
+import smtplib
+from email.mime.text import MIMEText
 from datetime import datetime, timezone
 import psycopg2
 from psycopg2.extras import RealDictCursor
+
+NOTIFY_TO = "denittt@yandex.ru"
+NOTIFY_FROM = "denittt@yandex.ru"
+
+def send_email_notify(user_name: str, text: str, chat_id: str):
+    password = os.environ.get("NOTIFY_EMAIL_PASSWORD", "")
+    if not password:
+        return
+    try:
+        msg = MIMEText(
+            f"Новое сообщение в чате поддержки\n\n"
+            f"От: {user_name}\n"
+            f"Сообщение: {text}\n\n"
+            f"Chat ID: {chat_id}",
+            "plain", "utf-8"
+        )
+        msg["Subject"] = f"💬 Новое сообщение от {user_name}"
+        msg["From"] = NOTIFY_FROM
+        msg["To"] = NOTIFY_TO
+        with smtplib.SMTP_SSL("smtp.yandex.ru", 465, timeout=10) as smtp:
+            smtp.login(NOTIFY_FROM, password)
+            smtp.sendmail(NOTIFY_FROM, NOTIFY_TO, msg.as_string())
+    except Exception as e:
+        print(f"[email] notify failed: {e}")
 
 CORS = {
     "Access-Control-Allow-Origin": "*",
@@ -136,7 +162,13 @@ def handler(event: dict, context) -> dict:
                 """, (text[:100], chat_id))
 
             conn.commit()
-            return ok(fmt_msg(cur.fetchone()), 201)
+            saved = cur.fetchone()
+
+            # Уведомление на почту при сообщении от пользователя
+            if sender_role == "user":
+                send_email_notify(sender_name or "Пользователь", text, chat_id)
+
+            return ok(fmt_msg(saved), 201)
 
         # Получить все чаты (для админа)
         if action == "get_all_chats":
