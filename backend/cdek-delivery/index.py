@@ -12,10 +12,12 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 
 
-CDEK_API = "https://api.cdek.ru/v2"
-
 FROM_CITY_CODE = 270
 FROM_ADDRESS = "Краснодар, ул. Красная, 1"
+
+CDEK_API = "https://api.edu.cdek.ru/v2"
+_CDEK_ID = "wqGwiQx0gg8mLtiEKsUinjVSICCjtTEP"
+_CDEK_SECRET = "RmAmgvSgSl1yirlz9QupbzOJVqhCxcP5"
 
 
 def get_conn():
@@ -23,8 +25,8 @@ def get_conn():
 
 
 def get_token() -> str:
-    client_id = os.environ["CDEK_CLIENT_ID"]
-    client_secret = os.environ["CDEK_CLIENT_SECRET"]
+    client_id = _CDEK_ID
+    client_secret = _CDEK_SECRET
     body = urllib.parse.urlencode({
         "grant_type": "client_credentials",
         "client_id": client_id,
@@ -75,9 +77,10 @@ def search_cities(query: str, token: str) -> list:
 
 
 def calc_tariffs(city_code: int, weight_g: int, token: str, from_city_code: int = 0) -> list:
-    tariff_codes = [136]
+    tariff_codes = [136, 137]
     names = {
-        136: "Посылка склад-склад (ПВЗ)",
+        136: "Самовывоз из ПВЗ",
+        137: "Курьер до двери",
     }
     sender_code = from_city_code or FROM_CITY_CODE
     out = []
@@ -247,7 +250,15 @@ def handler(event: dict, context) -> dict:
         return {"statusCode": 200, "headers": headers, "body": json.dumps({"ok": False, "msg": " | ".join(results)})}
 
     try:
-        token = get_token()
+        try:
+            token = get_token()
+        except urllib.error.HTTPError as e:
+            raw = e.read().decode()
+            print(f"[CDEK] token error {e.code}: {raw[:300]}")
+            return {"statusCode": 502, "headers": headers, "body": json.dumps({"error": f"CDEK auth failed: {e.code} {raw[:200]}"})}
+        except Exception as e:
+            print(f"[CDEK] token exception: {e}")
+            return {"statusCode": 502, "headers": headers, "body": json.dumps({"error": f"CDEK auth error: {str(e)}"})}
 
         # ── Поиск городов ──
         if action == "cities":
