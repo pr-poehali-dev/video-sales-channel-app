@@ -41,6 +41,7 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
   const [addedId, setAddedId]       = useState<string | null>(null);
   const [reviewProduct, setReviewProduct] = useState<StoreProduct | null>(null);
   const [chatVisible, setChatVisible] = useState(true);
+  const productsRef = useRef<HTMLDivElement>(null);
 
   // ── Agora подключение ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -172,14 +173,23 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
         {/* ── ЧАТ ПОВЕРХ ВИДЕО (правый нижний угол) ── */}
         <div className="absolute bottom-0 left-0 right-0 z-20">
 
-          {/* Кнопка скрыть/показать чат */}
-          <div className="flex justify-end px-3 pb-2">
+          {/* Кнопки: товары + скрыть чат */}
+          <div className="flex items-center justify-end gap-2 px-3 pb-2">
+            {sellerProducts.length > 0 && (
+              <button
+                onClick={() => productsRef.current?.scrollIntoView({ behavior: "smooth" })}
+                className="flex items-center gap-1.5 bg-primary text-primary-foreground text-xs font-semibold px-3 py-1.5 rounded-full"
+              >
+                <Icon name="ShoppingBag" size={13} />
+                Товары ({sellerProducts.length})
+              </button>
+            )}
             <button
               onClick={() => setChatVisible(v => !v)}
               className="flex items-center gap-1.5 bg-black/50 backdrop-blur text-white text-xs px-3 py-1.5 rounded-full"
             >
               <Icon name={chatVisible ? "MessageCircleOff" : "MessageCircle"} size={13} />
-              {chatVisible ? "Скрыть чат" : "Показать чат"}
+              {chatVisible ? "Скрыть чат" : "Чат"}
             </button>
           </div>
 
@@ -232,7 +242,7 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
 
       {/* ── ТОВАРЫ — скроллятся под видео ─────────────────────────────── */}
       {sellerProducts.length > 0 && (
-        <div className="px-4 py-5 bg-background pb-24">
+        <div ref={productsRef} className="px-4 py-5 bg-background pb-24">
           <h2 className="font-semibold text-base mb-4 flex items-center gap-2">
             <Icon name="ShoppingBag" size={16} className="text-primary" />
             Товары продавца
