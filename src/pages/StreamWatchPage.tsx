@@ -209,7 +209,7 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
         {!pipMode && <div className="absolute bottom-0 left-0 right-0 z-20">
 
           {/* Кнопки: товары + скрыть чат */}
-          <div className="flex items-center justify-end gap-2 px-3 pb-2">
+          <div className="flex items-center justify-center gap-2 px-3 pb-2">
             {sellerProducts.length > 0 && (
               <button
                 onClick={handleProductsClick}
