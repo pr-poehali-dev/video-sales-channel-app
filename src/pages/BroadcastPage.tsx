@@ -454,21 +454,26 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
       <div className="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-5">
         <Icon name="Radio" size={40} className="text-red-500" />
       </div>
-      <h2 className="font-oswald text-2xl font-semibold mb-2">Эфир уже идёт</h2>
+      <h2 className="font-oswald text-2xl font-semibold mb-2">Эфир идёт прямо сейчас</h2>
       <p className="text-sm text-muted-foreground mb-1">«{checkedActive.title}»</p>
-      <p className="text-sm text-muted-foreground mb-6">Сначала остановите текущий эфир</p>
+      <p className="text-sm text-muted-foreground mb-6">Нажмите «Завершить эфир» чтобы остановить</p>
       <div className="flex flex-col gap-3 max-w-xs mx-auto">
         <button
           onClick={async () => {
             setStoppingActive(true);
-            try { await updateStream(checkedActive.id, { isLive: false }); setCheckedActive(null); }
+            try {
+              await updateStream(checkedActive.id, { isLive: false });
+              setCheckedActive(null);
+              setFinished(true);
+              setTitle(checkedActive.title);
+            }
             catch { /* ignore */ }
             finally { setStoppingActive(false); }
           }}
           disabled={stoppingActive}
           className="bg-red-500 text-white font-semibold px-6 py-3 rounded-xl hover:opacity-90 flex items-center justify-center gap-2 disabled:opacity-60">
           {stoppingActive ? <Icon name="Loader" size={16} className="animate-spin" /> : <Icon name="Square" size={16} />}
-          Остановить эфир
+          Завершить эфир
         </button>
         <button onClick={() => setPage("dashboard")}
           className="border border-border font-semibold px-6 py-3 rounded-xl hover:bg-accent">Назад в кабинет</button>
@@ -540,15 +545,24 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
           )}
         </div>
 
-        {/* Кнопка фото-товара (только в эфире) */}
+        {/* Кнопки справа (только в эфире) */}
         {isLive && (
-          <button
-            onClick={capturePhoto}
-            className="w-9 h-9 rounded-full bg-primary flex items-center justify-center shadow-lg"
-            title="Сфотографировать и добавить товар"
-          >
-            <Icon name="Camera" size={17} className="text-primary-foreground" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={capturePhoto}
+              className="w-9 h-9 rounded-full bg-primary flex items-center justify-center shadow-lg"
+              title="Сфотографировать и добавить товар"
+            >
+              <Icon name="Camera" size={17} className="text-primary-foreground" />
+            </button>
+            <button
+              onClick={stopBroadcast}
+              className="flex items-center gap-1.5 bg-red-600 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg"
+            >
+              <Icon name="Square" size={11} />
+              Стоп
+            </button>
+          </div>
         )}
         {!isLive && <div className="w-9 h-9" />}
       </div>
