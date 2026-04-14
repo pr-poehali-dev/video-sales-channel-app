@@ -117,8 +117,11 @@ export default function CdekDelivery({ weightGrams, fromCityCode = 0, sellerId =
     onSelect(t, selectedCity, undefined);
   };
 
-  // Тариф ПВЗ — код 136
-  const isPvzTariff = (t: Tariff) => t.code === 136;
+  // Тариф ПВЗ — код 136/138/366 или содержит ПВЗ/самовывоз в названии
+  const isPvzTariff = (t: Tariff) =>
+    [136, 138, 366, 234, 136].includes(t.code) ||
+    t.name.toLowerCase().includes("пвз") ||
+    t.name.toLowerCase().includes("самовывоз");
 
   return (
     <>
