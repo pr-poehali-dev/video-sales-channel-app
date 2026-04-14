@@ -510,8 +510,37 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
       </div>
       <h2 className="font-oswald text-2xl font-semibold mb-2">Эфир идёт прямо сейчас</h2>
       <p className="text-sm text-muted-foreground mb-1">«{checkedActive.title}»</p>
-      <p className="text-sm text-muted-foreground mb-6">Нажмите «Завершить эфир» чтобы остановить</p>
+      <p className="text-sm text-muted-foreground mb-6">Нажмите «Вернуться в эфир» чтобы продолжить управление</p>
       <div className="flex flex-col gap-3 max-w-xs mx-auto">
+        <button
+          onClick={async () => {
+            if (!user) return;
+            setStatus("connecting");
+            setTitle(checkedActive.title);
+            streamIdRef.current = checkedActive.id;
+            try {
+              const tokenResp = await fetch(`${AGORA_TOKEN}?channel=${checkedActive.id}&uid=1&role=publisher`);
+              const tokenData = await tokenResp.json();
+              const client = AgoraRTC.createClient({ mode: "live", codec: CODEC });
+              clientRef.current = client;
+              await client.setClientRole("host");
+              await client.join(tokenData.appId, checkedActive.id, tokenData.token, 1);
+              if (audioTrackRef.current && videoTrackRef.current) {
+                await client.publish([audioTrackRef.current, videoTrackRef.current]);
+              }
+              setCheckedActive(null);
+              setIsLive(true);
+              setStatus("live");
+              timerRef.current = setInterval(() => setDuration(d => d + 1), 1000);
+            } catch (e: unknown) {
+              setStatus("error");
+              setErrorMsg((e as Error).message);
+            }
+          }}
+          className="bg-primary text-primary-foreground font-semibold px-6 py-3 rounded-xl hover:opacity-90 flex items-center justify-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-white animate-live-pulse" />
+          Вернуться в эфир
+        </button>
         <button
           onClick={async () => {
             setStoppingActive(true);
@@ -525,7 +554,7 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
             finally { setStoppingActive(false); }
           }}
           disabled={stoppingActive}
-          className="bg-red-500 text-white font-semibold px-6 py-3 rounded-xl hover:opacity-90 flex items-center justify-center gap-2 disabled:opacity-60">
+          className="border border-red-500/40 text-red-500 font-semibold px-6 py-3 rounded-xl hover:bg-red-500/10 flex items-center justify-center gap-2 disabled:opacity-60">
           {stoppingActive ? <Icon name="Loader" size={16} className="animate-spin" /> : <Icon name="Square" size={16} />}
           Завершить эфир
         </button>
