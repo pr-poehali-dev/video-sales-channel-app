@@ -41,6 +41,7 @@ export interface StoreProduct {
   fittingEnabled?: boolean;
   fromCityCode?: number;
   fromCityName?: string;
+  videoUrl?: string;
 }
 
 export interface StoreStream {
@@ -157,6 +158,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       fitting_enabled: (data as { fittingEnabled?: boolean }).fittingEnabled,
       from_city_code: (data as { fromCityCode?: number }).fromCityCode,
       from_city_name: (data as { fromCityName?: string }).fromCityName,
+      video_url: data.videoUrl ?? "",
     });
     setProducts(prev => [p, ...prev]);
     return p;
@@ -181,6 +183,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ...(d.fittingEnabled !== undefined && { fitting_enabled: d.fittingEnabled }),
       ...(d.fromCityCode !== undefined && { from_city_code: d.fromCityCode }),
       ...(d.fromCityName !== undefined && { from_city_name: d.fromCityName }),
+      ...(d.videoUrl !== undefined && { video_url: d.videoUrl }),
     });
     setProducts(prev => prev.map(p => p.id === id ? updated : p));
   }, []);

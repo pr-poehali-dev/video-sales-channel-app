@@ -27,7 +27,7 @@ export default function ProductPage({ productId, addToCart, onBack, onSellerClic
     );
   }
 
-  const videoUrl = (product as { videoUrl?: string }).videoUrl ?? null;
+  const videoUrl = product.videoUrl ?? null;
 
   const sellerProducts = getSellerProducts(product.sellerId)
     .filter(p => p.id !== product.id)
