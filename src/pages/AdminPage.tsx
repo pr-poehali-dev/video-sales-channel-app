@@ -5,7 +5,6 @@ import { useStore } from "@/context/StoreContext";
 import type { Page } from "@/App";
 
 const SUPPORT_API = "https://functions.poehali.dev/0a8bbc48-f71c-4a23-b48e-cd0a9392789f";
-const STORE_API = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c";
 
 interface SupportChat {
   id: string; userId: string; userName: string; userAvatar: string;
@@ -234,11 +233,7 @@ function StreamsTab({ setPage }: { setPage: (p: Page) => void }) {
   const handleStop = async (id: string) => {
     setStopping(id);
     try {
-      await fetch(`${STORE_API}?action=update_stream`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, isLive: false }),
-      });
+      await updateStream(id, { isLive: false } as never);
       await reload();
     } catch { /* ignore */ }
     finally { setStopping(null); }
