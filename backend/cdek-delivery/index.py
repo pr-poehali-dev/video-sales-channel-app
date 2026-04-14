@@ -360,24 +360,34 @@ def handler(event: dict, context) -> dict:
             city_code = qs.get("city_code") or body.get("city_code")
             if not city_code:
                 return {"statusCode": 400, "headers": headers, "body": json.dumps({"error": "city_code required"})}
-            params = f"city_code={city_code}&type=PVZ&take_only=true&is_handout=true&size=100"
+            # Пробуем разные наборы параметров для совместимости edu/prod
+            params = f"city_code={city_code}&size=100"
             data = cdek_request(f"/deliverypoints?{params}", token)
+            print(f"[PVZ] raw type={type(data).__name__}, keys={list(data.keys()) if isinstance(data, dict) else 'list'}, len={len(data) if isinstance(data, list) else '-'}")
             points = []
-            items = data if isinstance(data, list) else data.get("items", [])
+            # API может вернуть список напрямую или обёрнутый
+            items = data if isinstance(data, list) else (data.get("items") or data.get("data") or [])
             for p in items:
                 loc = p.get("location", {})
-                if not loc.get("latitude") or not loc.get("longitude"):
+                lat = loc.get("latitude")
+                lon = loc.get("longitude")
+                if not lat or not lon:
+                    continue
+                # Фильтруем только ПВЗ и постаматы (не курьерские склады)
+                ptype = p.get("type", "")
+                if ptype not in ("PVZ", "POSTAMAT", ""):
                     continue
                 points.append({
                     "code": p.get("code", ""),
                     "name": p.get("name", ""),
                     "address": loc.get("address_full", loc.get("address", "")),
                     "work_time": p.get("work_time", ""),
-                    "lat": float(loc["latitude"]),
-                    "lon": float(loc["longitude"]),
-                    "type": p.get("type", "PVZ"),
+                    "lat": float(lat),
+                    "lon": float(lon),
+                    "type": ptype,
                     "phones": [ph.get("number", "") for ph in (p.get("phones") or [])],
                 })
+            print(f"[PVZ] city={city_code} found={len(points)}")
             return {"statusCode": 200, "headers": headers, "body": json.dumps(points, ensure_ascii=False)}
 
         # ── Статус заказа по UUID ──

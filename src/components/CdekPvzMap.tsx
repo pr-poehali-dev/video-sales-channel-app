@@ -23,13 +23,14 @@ interface CdekPvzMapProps {
 export default function CdekPvzMap({ cityCode, cityName, onSelect, onClose }: CdekPvzMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const leafletMap = useRef<import("leaflet").Map | null>(null);
+  const markersRef = useRef<import("leaflet").Marker[]>([]);
   const [points, setPoints] = useState<PvzPoint[]>([]);
   const [selected, setSelected] = useState<PvzPoint | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const markersRef = useRef<import("leaflet").Marker[]>([]);
+  const [viewMode, setViewMode] = useState<"map" | "list">("map");
 
-  // Загружаем CSS Leaflet один раз
+  // CSS Leaflet
   useEffect(() => {
     if (!document.getElementById("leaflet-css")) {
       const link = document.createElement("link");
@@ -44,25 +45,25 @@ export default function CdekPvzMap({ cityCode, cityName, onSelect, onClose }: Cd
   useEffect(() => {
     setLoading(true);
     setError("");
+    setPoints([]);
     fetch(`${CDEK_URL}?action=get_pvz&city_code=${cityCode}`)
       .then(r => r.json())
       .then(data => {
         if (Array.isArray(data) && data.length > 0) {
           setPoints(data);
         } else {
-          setError("ПВЗ в этом городе не найдены");
+          setError("ПВЗ в этом городе не найдены через API. Попробуйте выбрать из списка ниже.");
         }
       })
       .catch(() => setError("Ошибка загрузки ПВЗ"))
       .finally(() => setLoading(false));
   }, [cityCode]);
 
-  // Инициализируем карту после загрузки точек
+  // Инициализируем карту
   useEffect(() => {
-    if (loading || points.length === 0 || !mapRef.current) return;
+    if (loading || points.length === 0 || !mapRef.current || viewMode !== "map") return;
 
     import("leaflet").then(L => {
-      // Фиксим иконку маркера Leaflet (webpack/vite issue)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       delete (L.Icon.Default.prototype as any)._getIconUrl;
       L.Icon.Default.mergeOptions({
@@ -71,11 +72,7 @@ export default function CdekPvzMap({ cityCode, cityName, onSelect, onClose }: Cd
         shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
       });
 
-      // Уничтожаем старую карту если была
-      if (leafletMap.current) {
-        leafletMap.current.remove();
-        leafletMap.current = null;
-      }
+      if (leafletMap.current) { leafletMap.current.remove(); leafletMap.current = null; }
 
       const centerLat = points.reduce((s, p) => s + p.lat, 0) / points.length;
       const centerLon = points.reduce((s, p) => s + p.lon, 0) / points.length;
@@ -84,52 +81,40 @@ export default function CdekPvzMap({ cityCode, cityName, onSelect, onClose }: Cd
       leafletMap.current = map;
 
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: "© OpenStreetMap",
-        maxZoom: 19,
+        attribution: "© OpenStreetMap", maxZoom: 19,
       }).addTo(map);
 
-      // Иконка выбранная (синяя)
-      const selectedIcon = L.divIcon({
-        html: `<div style="width:28px;height:28px;background:#CC1B1B;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.4)"></div>`,
-        iconSize: [28, 28],
-        iconAnchor: [14, 28],
-        className: "",
-      });
-
-      const defaultIcon = L.divIcon({
-        html: `<div style="width:22px;height:22px;background:#00AAFF;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3)"></div>`,
-        iconSize: [22, 22],
-        iconAnchor: [11, 22],
+      const makeIcon = (active: boolean) => L.divIcon({
+        html: `<div style="width:${active ? 28 : 22}px;height:${active ? 28 : 22}px;background:${active ? "#CC1B1B" : "#00AAFF"};border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:${active ? 3 : 2}px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.4)"></div>`,
+        iconSize: [active ? 28 : 22, active ? 28 : 22],
+        iconAnchor: [active ? 14 : 11, active ? 28 : 22],
         className: "",
       });
 
       markersRef.current = [];
-
-      points.forEach(p => {
-        const marker = L.marker([p.lat, p.lon], { icon: defaultIcon })
+      points.forEach((p, idx) => {
+        const marker = L.marker([p.lat, p.lon], { icon: makeIcon(false) })
           .addTo(map)
           .on("click", () => {
             setSelected(p);
-            // Обновляем все иконки
-            markersRef.current.forEach((m, i) => {
-              m.setIcon(points[i].code === p.code ? selectedIcon : defaultIcon);
-            });
+            markersRef.current.forEach((m, i) => m.setIcon(makeIcon(i === idx)));
             map.panTo([p.lat, p.lon]);
           });
-
         marker.bindTooltip(p.name, { permanent: false, direction: "top" });
         markersRef.current.push(marker);
       });
     });
 
     return () => {
-      if (leafletMap.current) {
-        leafletMap.current.remove();
-        leafletMap.current = null;
-      }
+      if (leafletMap.current) { leafletMap.current.remove(); leafletMap.current = null; }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, points.length]);
+  }, [loading, points.length, viewMode]);
+
+  const handleSelect = (pvz: PvzPoint) => {
+    onSelect(pvz);
+    onClose();
+  };
 
   return (
     <div className="fixed inset-0 z-[70] flex flex-col bg-background">
@@ -143,72 +128,111 @@ export default function CdekPvzMap({ cityCode, cityName, onSelect, onClose }: Cd
           <p className="text-xs text-muted-foreground truncate">{cityName}</p>
         </div>
         {points.length > 0 && (
-          <span className="text-xs text-muted-foreground bg-secondary px-2 py-1 rounded-full flex-shrink-0">
-            {points.length} ПВЗ
-          </span>
-        )}
-      </div>
-
-      {/* Карта */}
-      <div className="flex-1 relative overflow-hidden">
-        {loading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-background z-10">
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-10 h-10 border-3 border-primary/30 border-t-primary rounded-full animate-spin" />
-              <p className="text-sm text-muted-foreground">Загружаем пункты СДЭК...</p>
-            </div>
-          </div>
-        )}
-        {error && (
-          <div className="absolute inset-0 flex items-center justify-center bg-background z-10 px-8">
-            <div className="text-center">
-              <Icon name="MapPin" size={40} className="mx-auto mb-3 text-muted-foreground opacity-30" />
-              <p className="text-sm text-muted-foreground">{error}</p>
-              <button onClick={onClose} className="mt-4 text-primary text-sm hover:underline">Назад</button>
-            </div>
-          </div>
-        )}
-        <div ref={mapRef} className="w-full h-full" />
-      </div>
-
-      {/* Нижняя панель с выбранным ПВЗ */}
-      <div
-        className="flex-shrink-0 border-t border-border bg-card transition-all duration-300"
-        style={{ maxHeight: selected ? "220px" : "0px", overflow: "hidden" }}
-      >
-        {selected && (
-          <div className="p-4">
-            <div className="flex items-start gap-3 mb-3">
-              <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <Icon name="MapPin" size={16} className="text-primary" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-foreground line-clamp-1">{selected.name}</p>
-                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{selected.address}</p>
-                {selected.work_time && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    <Icon name="Clock" size={11} className="inline mr-1" />
-                    {selected.work_time}
-                  </p>
-                )}
-              </div>
-            </div>
-            <button
-              onClick={() => { onSelect(selected); onClose(); }}
-              className="w-full bg-primary text-primary-foreground font-semibold py-3 rounded-xl text-sm hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
-            >
-              <Icon name="Check" size={16} />
-              Выбрать этот пункт
+          <div className="flex items-center gap-1 bg-secondary rounded-lg p-1 flex-shrink-0">
+            <button onClick={() => setViewMode("map")} className={`px-2 py-1 rounded text-xs font-medium transition-colors ${viewMode === "map" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"}`}>
+              Карта
+            </button>
+            <button onClick={() => setViewMode("list")} className={`px-2 py-1 rounded text-xs font-medium transition-colors ${viewMode === "list" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"}`}>
+              Список
             </button>
           </div>
         )}
       </div>
 
-      {/* Подсказка если ничего не выбрано */}
-      {!selected && !loading && !error && points.length > 0 && (
+      {/* Контент */}
+      <div className="flex-1 overflow-hidden relative">
+
+        {loading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-background z-10">
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-10 h-10 border-[3px] border-primary/30 border-t-primary rounded-full animate-spin" />
+              <p className="text-sm text-muted-foreground">Загружаем пункты СДЭК...</p>
+            </div>
+          </div>
+        )}
+
+        {/* Ошибка — показываем ручной ввод */}
+        {!loading && error && (
+          <div className="h-full flex flex-col items-center justify-center px-6 gap-4">
+            <div className="w-16 h-16 rounded-2xl bg-secondary flex items-center justify-center">
+              <Icon name="MapPin" size={28} className="text-muted-foreground opacity-40" />
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-medium text-foreground mb-1">Пункты не найдены</p>
+              <p className="text-xs text-muted-foreground">{error}</p>
+            </div>
+            <button onClick={onClose} className="text-primary text-sm hover:underline">
+              Назад
+            </button>
+          </div>
+        )}
+
+        {/* Карта */}
+        {!loading && points.length > 0 && viewMode === "map" && (
+          <div ref={mapRef} className="w-full h-full" />
+        )}
+
+        {/* Список */}
+        {!loading && points.length > 0 && viewMode === "list" && (
+          <div className="h-full overflow-y-auto">
+            {points.map(p => (
+              <button
+                key={p.code}
+                onClick={() => handleSelect(p)}
+                className={`w-full flex items-start gap-3 px-4 py-4 border-b border-border text-left hover:bg-secondary transition-colors ${selected?.code === p.code ? "bg-primary/5" : ""}`}
+              >
+                <div className="w-8 h-8 rounded-lg bg-[#00AAFF]/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <Icon name="MapPin" size={15} className="text-[#00AAFF]" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-foreground line-clamp-1">{p.name}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{p.address}</p>
+                  {p.work_time && (
+                    <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                      <Icon name="Clock" size={10} />
+                      {p.work_time}
+                    </p>
+                  )}
+                </div>
+                <Icon name="ChevronRight" size={16} className="text-muted-foreground flex-shrink-0 mt-1" />
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Нижняя панель — выбранный ПВЗ (только для карты) */}
+      {selected && viewMode === "map" && (
+        <div className="flex-shrink-0 border-t border-border bg-card p-4">
+          <div className="flex items-start gap-3 mb-3">
+            <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <Icon name="MapPin" size={16} className="text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-foreground line-clamp-1">{selected.name}</p>
+              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{selected.address}</p>
+              {selected.work_time && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  <Icon name="Clock" size={11} className="inline mr-1" />
+                  {selected.work_time}
+                </p>
+              )}
+            </div>
+          </div>
+          <button
+            onClick={() => handleSelect(selected)}
+            className="w-full bg-primary text-primary-foreground font-semibold py-3 rounded-xl text-sm hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+          >
+            <Icon name="Check" size={16} />
+            Выбрать этот пункт
+          </button>
+        </div>
+      )}
+
+      {!selected && !loading && !error && points.length > 0 && viewMode === "map" && (
         <div className="flex-shrink-0 px-4 py-3 border-t border-border bg-card">
           <p className="text-xs text-muted-foreground text-center">
-            Нажмите на метку на карте, чтобы выбрать пункт выдачи
+            Нажмите на метку, чтобы выбрать пункт • или переключитесь в <button onClick={() => setViewMode("list")} className="text-primary underline">список</button>
           </p>
         </div>
       )}
