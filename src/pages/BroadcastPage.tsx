@@ -31,6 +31,10 @@ function QuickProductModal({ imageDataUrl, sellerId, sellerName, sellerAvatar, d
   const [name, setName]       = useState("");
   const [price, setPrice]     = useState("");
   const [stock, setStock]     = useState("10");
+  const [weightG, setWeightG] = useState("500");
+  const [lengthCm, setLengthCm] = useState("20");
+  const [widthCm, setWidthCm]   = useState("15");
+  const [heightCm, setHeightCm] = useState("10");
   const [saving, setSaving]   = useState(false);
   const [imgUrl, setImgUrl]   = useState<string | null>(null);
 
@@ -63,6 +67,10 @@ function QuickProductModal({ imageDataUrl, sellerId, sellerName, sellerAvatar, d
         sellerName,
         sellerAvatar,
         inStock: parseInt(stock) || 0,
+        weightG: parseInt(weightG) || 500,
+        lengthCm: parseInt(lengthCm) || 20,
+        widthCm: parseInt(widthCm) || 15,
+        heightCm: parseInt(heightCm) || 10,
         cdekEnabled: !!defaultWarehouse,
         fromCityCode: defaultWarehouse?.cityCode ?? 0,
         fromCityName: defaultWarehouse?.cityName ?? "",
@@ -139,6 +147,30 @@ function QuickProductModal({ imageDataUrl, sellerId, sellerName, sellerAvatar, d
             <span className="text-[11px] text-yellow-400">Склад не задан — доставка СДЭК не будет рассчитана</span>
           </div>
         )}
+
+        {/* Вес и габариты */}
+        <div className="mb-3">
+          <p className="text-[11px] text-white/40 mb-2">Вес и габариты (для доставки)</p>
+          <div className="grid grid-cols-4 gap-1.5">
+            {[
+              { label: "Вес, г", val: weightG, set: setWeightG },
+              { label: "Дл., см", val: lengthCm, set: setLengthCm },
+              { label: "Шир., см", val: widthCm, set: setWidthCm },
+              { label: "Выс., см", val: heightCm, set: setHeightCm },
+            ].map(({ label, val, set }) => (
+              <div key={label}>
+                <p className="text-[9px] text-white/30 mb-1 text-center">{label}</p>
+                <input
+                  value={val}
+                  onChange={e => set(e.target.value.replace(/\D/g, ""))}
+                  inputMode="numeric"
+                  className="w-full bg-white/10 border border-white/10 rounded-xl px-2 py-2 text-sm text-white text-center outline-none focus:border-primary/50 transition-colors"
+                  style={{ fontSize: 15 }}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
 
         {!imgUrl && (
           <p className="text-[11px] text-white/30 text-center mb-3">Загружаю фото...</p>
