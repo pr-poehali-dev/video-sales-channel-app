@@ -41,6 +41,7 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
   const [addedId, setAddedId]       = useState<string | null>(null);
   const [reviewProduct, setReviewProduct] = useState<StoreProduct | null>(null);
   const [chatVisible, setChatVisible] = useState(true);
+  const [pipMode, setPipMode] = useState(false);
   const productsRef = useRef<HTMLDivElement>(null);
 
   // ── Agora подключение ─────────────────────────────────────────────────────
@@ -106,11 +107,25 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
     finally { setSending(false); }
   };
 
+  const handleProductsClick = () => {
+    setPipMode(true);
+    setChatVisible(false);
+    setTimeout(() => productsRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+  };
+
   return (
     <div className="bg-black">
 
-      {/* ── ВИДЕО — на весь экран (за вычетом NavBar) ─────────────────── */}
-      <div className="relative w-full bg-black" style={{ height: "calc(100dvh - 56px)" }}>
+      {/* ── ВИДЕО — полный экран ИЛИ pip-миниатюра ────────────────────── */}
+      {/* Контейнер всегда в DOM — Agora играет в videoElRef */}
+      <div
+        className={pipMode
+          ? "fixed z-40 bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/10 transition-all duration-300"
+          : "relative w-full bg-black transition-all duration-300"}
+        style={pipMode
+          ? { bottom: 80, right: 12, width: 148, aspectRatio: "9/16" }
+          : { height: "calc(100dvh - 56px)" }}
+      >
 
         {/* Превью / заглушка */}
         {liveStatus !== "playing" && (
@@ -146,38 +161,58 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
           </div>
         )}
 
-        {/* ── ВЕРХНЯЯ ПАНЕЛЬ: назад + инфо + LIVE ── */}
-        <div className="absolute top-0 left-0 right-0 z-20 flex items-center gap-3 px-3 pt-3 pb-6"
-          style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.6), transparent)" }}>
-          <button onClick={() => setPage("streams")}
-            className="w-9 h-9 rounded-full bg-black/40 backdrop-blur flex items-center justify-center flex-shrink-0">
-            <Icon name="ArrowLeft" size={18} className="text-white" />
-          </button>
-          <div className="flex-1 min-w-0">
-            <p className="text-white font-semibold text-sm truncate leading-tight">{stream.title}</p>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <span className="text-white/70 text-xs">{stream.sellerName}</span>
-              <span className="flex items-center gap-1 text-white/60 text-xs ml-2">
-                <Icon name="Eye" size={11} />{stream.viewers}
-              </span>
+        {/* ── ВЕРХНЯЯ ПАНЕЛЬ (только полный экран) ── */}
+        {!pipMode && (
+          <div className="absolute top-0 left-0 right-0 z-20 flex items-center gap-3 px-3 pt-3 pb-6"
+            style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.6), transparent)" }}>
+            <button onClick={() => setPage("streams")}
+              className="w-9 h-9 rounded-full bg-black/40 backdrop-blur flex items-center justify-center flex-shrink-0">
+              <Icon name="ArrowLeft" size={18} className="text-white" />
+            </button>
+            <div className="flex-1 min-w-0">
+              <p className="text-white font-semibold text-sm truncate leading-tight">{stream.title}</p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="text-white/70 text-xs">{stream.sellerName}</span>
+                <span className="flex items-center gap-1 text-white/60 text-xs ml-2">
+                  <Icon name="Eye" size={11} />{stream.viewers}
+                </span>
+              </div>
             </div>
+            {stream.isLive && (
+              <div className="flex items-center gap-1.5 bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full flex-shrink-0">
+                <span className="w-1.5 h-1.5 rounded-full bg-white animate-live-pulse" />
+                LIVE
+              </div>
+            )}
           </div>
-          {stream.isLive && (
-            <div className="flex items-center gap-1.5 bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full flex-shrink-0">
-              <span className="w-1.5 h-1.5 rounded-full bg-white animate-live-pulse" />
-              LIVE
-            </div>
-          )}
-        </div>
+        )}
 
-        {/* ── ЧАТ ПОВЕРХ ВИДЕО (правый нижний угол) ── */}
-        <div className="absolute bottom-0 left-0 right-0 z-20">
+        {/* ── PIP: кнопка развернуть + LIVE бейдж ── */}
+        {pipMode && (
+          <>
+            <button
+              onClick={() => { setPipMode(false); setChatVisible(true); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+              className="absolute top-1.5 right-1.5 z-10 w-6 h-6 rounded-full bg-black/60 flex items-center justify-center"
+            >
+              <Icon name="Maximize2" size={11} className="text-white" />
+            </button>
+            {stream.isLive && (
+              <div className="absolute bottom-1.5 left-1.5 z-10 flex items-center gap-1 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                <span className="w-1 h-1 rounded-full bg-white animate-live-pulse" />
+                LIVE
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ── ЧАТ ПОВЕРХ ВИДЕО (только полный экран) ── */}
+        {!pipMode && <div className="absolute bottom-0 left-0 right-0 z-20">
 
           {/* Кнопки: товары + скрыть чат */}
           <div className="flex items-center justify-end gap-2 px-3 pb-2">
             {sellerProducts.length > 0 && (
               <button
-                onClick={() => productsRef.current?.scrollIntoView({ behavior: "smooth" })}
+                onClick={handleProductsClick}
                 className="flex items-center gap-1.5 bg-primary text-primary-foreground text-xs font-semibold px-3 py-1.5 rounded-full"
               >
                 <Icon name="ShoppingBag" size={13} />
@@ -237,8 +272,8 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
               </button>
             )}
           </div>
-        </div>
-      </div>
+        </div>}{/* end !pipMode chat */}
+      </div>{/* end pip/fullscreen wrapper */}
 
       {/* ── ТОВАРЫ — скроллятся под видео ─────────────────────────────── */}
       {sellerProducts.length > 0 && (
