@@ -257,8 +257,8 @@ def handler(event: dict, context) -> dict:
             cur.execute("""
                 INSERT INTO products (id,name,price,category,description,images,seller_id,seller_name,seller_avatar,
                     in_stock,weight_g,length_cm,width_cm,height_cm,cdek_enabled,nalog_enabled,fitting_enabled,
-                    from_city_code,from_city_name)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING *
+                    from_city_code,from_city_name,video_url)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING *
             """, (pid, body["name"], body["price"], body.get("category",""),
                   body.get("description",""), safe_images,
                   body["seller_id"], body["seller_name"], body.get("seller_avatar",""),
@@ -267,7 +267,8 @@ def handler(event: dict, context) -> dict:
                   body.get("width_cm",15), body.get("height_cm",10),
                   body.get("cdek_enabled",True), body.get("nalog_enabled",False),
                   body.get("fitting_enabled",False),
-                  body.get("from_city_code",0), body.get("from_city_name","")))
+                  body.get("from_city_code",0), body.get("from_city_name",""),
+                  body.get("video_url","")))
             conn.commit()
             return ok(_fmt_product(cur.fetchone()), 201)
 
@@ -796,6 +797,7 @@ def _fmt_product(r):
         "fittingEnabled": r.get("fitting_enabled", False),
         "fromCityCode":   r.get("from_city_code", 0),
         "fromCityName":   r.get("from_city_name", ""),
+        "videoUrl":       r.get("video_url", "") or "",
         "createdAt":      r["created_at"].strftime("%d %B %Y") if r["created_at"] else "",
     }
 

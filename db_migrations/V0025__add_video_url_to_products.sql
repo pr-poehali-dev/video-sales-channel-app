@@ -1,0 +1,1 @@
+ALTER TABLE t_p63706319_video_sales_channel_.products ADD COLUMN IF NOT EXISTS video_url text NOT NULL DEFAULT '';
