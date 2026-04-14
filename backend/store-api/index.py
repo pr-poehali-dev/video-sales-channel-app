@@ -314,6 +314,10 @@ def handler(event: dict, context) -> dict:
             return ok([_fmt_stream(r) for r in rows])
 
         if action == "add_stream":
+            cur.execute(
+                "UPDATE streams SET is_live=FALSE, ended_at=NOW() WHERE seller_id=%s AND is_live=TRUE",
+                (body["seller_id"],)
+            )
             sid = f"stream_{uuid.uuid4().hex}"
             cur.execute("""
                 INSERT INTO streams (id,title,seller_id,seller_name,seller_avatar,is_live,viewers)
