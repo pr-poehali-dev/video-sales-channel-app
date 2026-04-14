@@ -194,8 +194,16 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
           <div className="space-y-3">
             {cart.map(item => (
               <div key={item.id} className="bg-card border border-border rounded-xl p-4 flex gap-4 items-center animate-fade-in">
-                <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
-                  <img src={item.image} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
+                <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-secondary">
+                  {item.videoUrl ? (
+                    <video src={item.videoUrl} autoPlay loop muted playsInline className="w-full h-full object-cover" />
+                  ) : item.image ? (
+                    <img src={item.image} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-muted-foreground opacity-30">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+                    </div>
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-foreground line-clamp-2">{item.name}</p>

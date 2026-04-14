@@ -33,6 +33,7 @@ export interface CartItem {
   qty: number;
   fromCityCode?: number;
   weightG?: number;
+  videoUrl?: string;
 }
 
 function AppInner() {

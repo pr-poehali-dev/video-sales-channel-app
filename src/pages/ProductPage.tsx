@@ -39,8 +39,9 @@ export default function ProductPage({ productId, addToCart, onBack, onSellerClic
       name: product.name,
       price: product.price,
       image: product.images[0] ?? "",
-      fromCityCode: (product as { fromCityCode?: number }).fromCityCode ?? 0,
-      weightG: (product as { weightG?: number }).weightG ?? 500,
+      fromCityCode: product.fromCityCode ?? 0,
+      weightG: product.weightG ?? 500,
+      videoUrl: product.videoUrl,
     });
     setAdded(true);
     setTimeout(() => setAdded(false), 1800);

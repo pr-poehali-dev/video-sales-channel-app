@@ -25,6 +25,7 @@ export default function ProductCard({ product, addToCart, onClick }: ProductCard
       image: coverImage ?? "",
       fromCityCode: product.fromCityCode ?? 0,
       weightG: product.weightG ?? 500,
+      videoUrl: product.videoUrl,
     });
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
