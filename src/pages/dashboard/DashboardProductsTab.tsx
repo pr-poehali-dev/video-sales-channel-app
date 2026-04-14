@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Icon from "@/components/ui/icon";
 import { useAuth } from "@/context/AuthContext";
 import { useStore } from "@/context/StoreContext";
@@ -47,6 +47,17 @@ export default function DashboardProductsTab({ warehouses }: Props) {
   const [fCitySuggestions, setFCitySuggestions] = useState<CdekCity[]>([]);
   const [fCityLoading, setFCityLoading] = useState(false);
 
+  // Видео-товар
+  const [fVideoUrl, setFVideoUrl] = useState<string | null>(null);
+  const [fVideoBlobUrl, setFVideoBlobUrl] = useState<string | null>(null);
+  const [camOpen, setCamOpen] = useState(false);
+  const [camRecording, setCamRecording] = useState(false);
+  const [camCountdown, setCamCountdown] = useState(0);
+  const [camUploading, setCamUploading] = useState(false);
+  const camVideoRef = useRef<HTMLVideoElement>(null);
+  const camStreamRef = useRef<MediaStream | null>(null);
+  const camRecorderRef = useRef<MediaRecorder | null>(null);
+
   useEffect(() => {
     if (fCityQuery.length < 2) { setFCitySuggestions([]); return; }
     if (fFromCityName && fCityQuery === fFromCityName) return;
@@ -60,11 +71,89 @@ export default function DashboardProductsTab({ warehouses }: Props) {
     return () => clearTimeout(t);
   }, [fCityQuery, fFromCityName]);
 
+  const stopCamStream = useCallback(() => {
+    camStreamRef.current?.getTracks().forEach(t => t.stop());
+    camStreamRef.current = null;
+  }, []);
+
+  const openCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
+      camStreamRef.current = stream;
+      setCamOpen(true);
+      setTimeout(() => {
+        if (camVideoRef.current) {
+          camVideoRef.current.srcObject = stream;
+          camVideoRef.current.play().catch(() => {});
+        }
+      }, 50);
+    } catch {
+      alert("Нет доступа к камере. Разрешите в настройках браузера.");
+    }
+  };
+
+  const closeCamera = useCallback(() => {
+    stopCamStream();
+    setCamOpen(false);
+    setCamRecording(false);
+    setCamCountdown(0);
+  }, [stopCamStream]);
+
+  const startRecording = () => {
+    if (!camStreamRef.current || camRecording) return;
+    const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp8")
+      ? "video/webm;codecs=vp8"
+      : MediaRecorder.isTypeSupported("video/webm")
+      ? "video/webm"
+      : "video/mp4";
+    const recorder = new MediaRecorder(camStreamRef.current, { mimeType });
+    camRecorderRef.current = recorder;
+    const chunks: Blob[] = [];
+    recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+    recorder.onstop = async () => {
+      stopCamStream();
+      setCamOpen(false);
+      setCamRecording(false);
+      setCamCountdown(0);
+      const blob = new Blob(chunks, { type: mimeType });
+      const blobUrl = URL.createObjectURL(blob);
+      setFVideoBlobUrl(blobUrl);
+      // Загружаем на сервер
+      setCamUploading(true);
+      try {
+        const reader = new FileReader();
+        reader.onload = async (ev) => {
+          const dataUrl = ev.target?.result as string;
+          const resp = await fetch(`${STORE_API}?action=upload_video`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ data_url: dataUrl }),
+          });
+          const data = await resp.json();
+          if (data.url) setFVideoUrl(data.url);
+        };
+        reader.readAsDataURL(blob);
+      } catch { /* ignore */ }
+      finally { setCamUploading(false); }
+    };
+    setCamRecording(true);
+    setCamCountdown(5);
+    recorder.start();
+    let rem = 5;
+    const tick = setInterval(() => {
+      rem -= 1;
+      setCamCountdown(rem);
+      if (rem <= 0) { clearInterval(tick); recorder.stop(); }
+    }, 1000);
+  };
+
   const resetForm = () => {
     setFName(""); setFPrice(""); setFCategory(CATEGORIES[0]); setFDesc(""); setFImages([]); setFError(null);
     setFWeightG("500"); setFLengthCm("20"); setFWidthCm("15"); setFHeightCm("10");
     setFCdek(true); setFNalog(false); setFFitting(false);
     setFInStock("1"); setFFromCityCode(0); setFFromCityName(""); setFCityQuery(""); setFCitySuggestions([]);
+    setFVideoUrl(null);
+    if (fVideoBlobUrl) { URL.revokeObjectURL(fVideoBlobUrl); setFVideoBlobUrl(null); }
   };
 
   const openAddForm = () => {
@@ -100,6 +189,8 @@ export default function DashboardProductsTab({ warehouses }: Props) {
     setFFromCityName(cityName);
     setFCityQuery(cityName);
     setFCitySuggestions([]);
+    setFVideoUrl((p as { videoUrl?: string }).videoUrl ?? null);
+    setFVideoBlobUrl(null);
     setShowForm(true);
   };
 
@@ -126,16 +217,17 @@ export default function DashboardProductsTab({ warehouses }: Props) {
     if (editId) {
       updateProduct(editId, {
         name: fName.trim(), price: priceNum, category: fCategory,
-        description: fDesc.trim(), images: fImages, ...extraFields,
-      });
+        description: fDesc.trim(), images: fImages, videoUrl: fVideoUrl ?? "", ...extraFields,
+      } as never);
     } else {
       addProduct({
         name: fName.trim(), price: priceNum, category: fCategory,
-        description: fDesc.trim(), images: fImages,
+        description: fDesc.trim(), images: fImages, videoUrl: fVideoUrl ?? "",
         sellerId: user!.id, sellerName: user!.name, sellerAvatar: user!.avatar,
         ...extraFields,
-      });
+      } as never);
     }
+    if (fVideoBlobUrl) URL.revokeObjectURL(fVideoBlobUrl);
     setShowForm(false);
   };
 
@@ -223,6 +315,52 @@ export default function DashboardProductsTab({ warehouses }: Props) {
               </button>
             </div>
             <div className="p-5 space-y-4">
+
+              {/* Видео товара */}
+              <div>
+                <label className="text-xs text-muted-foreground mb-2 block">Видео товара</label>
+                {fVideoBlobUrl || fVideoUrl ? (
+                  <div className="relative aspect-video rounded-xl overflow-hidden bg-black border border-orange-500/40">
+                    <video
+                      src={fVideoBlobUrl ?? fVideoUrl ?? ""}
+                      autoPlay loop muted playsInline
+                      className="w-full h-full object-cover"
+                    />
+                    {camUploading && (
+                      <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center gap-2">
+                        <Icon name="Loader" size={20} className="text-white animate-spin" />
+                        <span className="text-white text-xs">Загружаю видео...</span>
+                      </div>
+                    )}
+                    {!camUploading && (
+                      <div className="absolute top-2 right-2 flex gap-2">
+                        {fVideoUrl && (
+                          <span className="bg-green-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">Загружено</span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => { if (fVideoBlobUrl) URL.revokeObjectURL(fVideoBlobUrl); setFVideoBlobUrl(null); setFVideoUrl(null); }}
+                          className="w-6 h-6 bg-black/60 rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+                        >
+                          <Icon name="X" size={12} className="text-white" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={openCamera}
+                    className="w-full aspect-video rounded-xl border-2 border-dashed border-border hover:border-orange-500/50 bg-secondary flex flex-col items-center justify-center gap-2 transition-colors group"
+                  >
+                    <div className="w-12 h-12 rounded-full bg-orange-500/10 group-hover:bg-orange-500/20 flex items-center justify-center transition-colors">
+                      <Icon name="Video" size={22} className="text-orange-500" />
+                    </div>
+                    <span className="text-sm font-medium text-foreground">Снять видео товара</span>
+                    <span className="text-xs text-muted-foreground">5 секунд с камеры</span>
+                  </button>
+                )}
+              </div>
 
               {/* Название */}
               <div>
@@ -381,6 +519,59 @@ export default function DashboardProductsTab({ warehouses }: Props) {
               <button onClick={() => handleDelete(confirmDelete)}
                 className="flex-1 bg-destructive text-white font-semibold py-2.5 rounded-xl hover:opacity-90 text-sm">
                 Удалить
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Камера для съёмки видео-товара ── */}
+      {camOpen && (
+        <div className="fixed inset-0 z-[60] bg-black flex flex-col">
+          {/* Видео с камеры */}
+          <video
+            ref={camVideoRef}
+            autoPlay
+            muted
+            playsInline
+            className="flex-1 w-full object-cover"
+          />
+
+          {/* Оверлей управления */}
+          <div className="absolute inset-0 flex flex-col justify-between p-6 pointer-events-none">
+            {/* Верх */}
+            <div className="flex items-center justify-between pointer-events-auto">
+              <button onClick={closeCamera} className="w-10 h-10 rounded-full bg-black/60 flex items-center justify-center">
+                <Icon name="X" size={18} className="text-white" />
+              </button>
+              <span className="text-white text-sm font-medium bg-black/60 px-3 py-1.5 rounded-full">
+                Снимите товар 5 секунд
+              </span>
+              <div className="w-10" />
+            </div>
+
+            {/* Центр — обратный отсчёт */}
+            {camRecording && (
+              <div className="flex items-center justify-center">
+                <div className="w-24 h-24 rounded-full bg-red-500/20 border-4 border-red-500 flex items-center justify-center">
+                  <span className="text-white font-bold text-4xl font-oswald">{camCountdown}</span>
+                </div>
+              </div>
+            )}
+            {!camRecording && <div />}
+
+            {/* Низ — кнопка записи */}
+            <div className="flex items-center justify-center pointer-events-auto pb-4">
+              <button
+                onClick={startRecording}
+                disabled={camRecording}
+                className="w-20 h-20 rounded-full border-4 border-white flex items-center justify-center disabled:opacity-60 transition-transform active:scale-95"
+              >
+                {camRecording ? (
+                  <div className="w-10 h-10 rounded-sm bg-red-500 animate-pulse" />
+                ) : (
+                  <div className="w-14 h-14 rounded-full bg-red-500" />
+                )}
               </button>
             </div>
           </div>
