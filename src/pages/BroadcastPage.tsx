@@ -191,9 +191,25 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
     setStatus("connecting");
     setErrorMsg("");
 
+    let createdStreamId: string | null = null;
     try {
+      // Закрываем все активные эфиры этого продавца перед стартом
+      try {
+        const allResp = await fetch(`${API}?action=get_streams`);
+        const allStreams: Array<{sellerId: string; isLive: boolean; id: string}> = await allResp.json();
+        const active = allStreams.filter(s => s.sellerId === user.id && s.isLive);
+        for (const st of active) {
+          await fetch(`${API}?action=update_stream`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: st.id, isLive: false }),
+          });
+        }
+      } catch { /* ignore */ }
+
       // Создаём эфир в БД
       const s = await addStream({ title: title.trim(), sellerId: user.id, sellerName: user.name, sellerAvatar: user.avatar, isLive: true, viewers: 0 });
+      createdStreamId = s.id;
       streamIdRef.current = s.id;
 
       // Получаем токен
@@ -206,10 +222,10 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
       clientRef.current = client;
       await client.setClientRole("host");
 
-      // Подключаемся к каналу (таймаут 15 сек)
+      // Подключаемся к каналу (таймаут 30 сек)
       await Promise.race([
         client.join(tokenData.appId, s.id, tokenData.token, 1),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("Таймаут подключения к Agora (15с). Проверьте App Certificate в консоли agora.io")), 15000)),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Не удалось подключиться к серверу видео (таймаут 30с). Проверьте интернет-соединение и попробуйте ещё раз.")), 30000)),
       ]);
 
       // Публикуем треки
@@ -246,7 +262,17 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
       const err = e as Error;
       setErrorMsg("Ошибка подключения: " + err.message);
       setStatus("error");
-      streamIdRef.current = null;
+      // Завершаем стрим в БД если он был создан
+      if (createdStreamId) {
+        streamIdRef.current = null;
+        try {
+          await fetch(`${API}?action=update_stream`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: createdStreamId, isLive: false }),
+          });
+        } catch { /* ignore */ }
+      }
     }
   };
 
