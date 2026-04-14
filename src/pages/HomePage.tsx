@@ -21,33 +21,49 @@ export default function HomePage({ setPage, addToCart, onProductClick }: HomePag
     <div className="max-w-7xl mx-auto px-4 py-10 space-y-14 animate-fade-in">
 
       {/* Hero */}
-      <section className="text-center py-10">
-        <div className="inline-flex items-center gap-2 bg-primary/10 text-primary text-xs font-semibold px-3 py-1.5 rounded-full mb-6">
-          <span className="w-1.5 h-1.5 rounded-full bg-primary animate-live-pulse inline-block" />
-          Живые покупки онлайн
-        </div>
-        <h1 className="font-oswald text-4xl md:text-5xl font-semibold text-foreground tracking-wide mb-4 leading-tight">
-          Покупай у живых людей<br />
-          <span className="text-primary">прямо в эфире</span>
-        </h1>
-        <p className="text-muted-foreground text-base max-w-xl mx-auto mb-8">
-          Смотри прямые трансляции, задавай вопросы продавцам и покупай уникальные товары не выходя из дома.
-        </p>
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-          <button
-            onClick={() => setPage("streams")}
-            className="flex items-center gap-2 bg-primary text-primary-foreground font-semibold px-6 py-3 rounded-xl hover:opacity-90 transition-opacity"
-          >
-            <Icon name="Radio" size={16} />
-            Смотреть эфиры
-          </button>
-          <button
-            onClick={() => setPage("catalog")}
-            className="flex items-center gap-2 border border-border text-foreground font-semibold px-6 py-3 rounded-xl hover:bg-secondary transition-colors"
-          >
-            <Icon name="ShoppingBag" size={16} />
-            Каталог товаров
-          </button>
+      <section className="rounded-3xl overflow-hidden relative">
+        <div className="relative min-h-[420px] md:min-h-[480px] flex items-center">
+          {/* Фоновая картинка */}
+          <img
+            src="https://cdn.poehali.dev/projects/a4bacfcf-1dfc-4307-b19f-4266aaeae1d7/files/5b3374fe-6838-4c67-b550-089de67a7b0b.jpg"
+            alt="БАЗАР.РФ — разнообразие товаров"
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+          {/* Затемнение */}
+          <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-black/20" />
+
+          {/* Контент */}
+          <div className="relative z-10 px-8 py-12 md:px-14 max-w-2xl">
+            <div className="inline-flex items-center gap-2 bg-primary/90 text-white text-xs font-semibold px-3 py-1.5 rounded-full mb-5">
+              <span className="w-1.5 h-1.5 rounded-full bg-white animate-live-pulse inline-block" />
+              Живые покупки онлайн
+            </div>
+            <h1 className="font-oswald text-4xl md:text-6xl font-semibold text-white tracking-wide mb-3 leading-tight">
+              БАЗАР.РФ
+            </h1>
+            <p className="font-oswald text-xl md:text-2xl text-white/80 tracking-wide mb-2">
+              Живой торг — без посредников
+            </p>
+            <p className="text-white/60 text-sm md:text-base mb-8 max-w-md leading-relaxed">
+              Смотри прямые трансляции, торгуйся с продавцами и покупай уникальные товары прямо из эфира.
+            </p>
+            <div className="flex flex-col sm:flex-row items-start gap-3">
+              <button
+                onClick={() => setPage("streams")}
+                className="flex items-center gap-2 bg-primary text-white font-semibold px-6 py-3 rounded-xl hover:opacity-90 transition-opacity"
+              >
+                <Icon name="Radio" size={16} />
+                Смотреть эфиры
+              </button>
+              <button
+                onClick={() => setPage("catalog")}
+                className="flex items-center gap-2 bg-white/15 backdrop-blur text-white font-semibold px-6 py-3 rounded-xl hover:bg-white/25 transition-colors border border-white/20"
+              >
+                <Icon name="ShoppingBag" size={16} />
+                Каталог товаров
+              </button>
+            </div>
+          </div>
         </div>
       </section>
 
