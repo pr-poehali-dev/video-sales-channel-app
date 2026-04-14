@@ -311,14 +311,10 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
     try {
       try {
         const allResp = await fetch(`${API}?action=get_streams`);
-        const allStreams: Array<{sellerId: string; isLive: boolean; id: string}> = await allResp.json();
-        const active = allStreams.filter(s => s.sellerId === user.id && s.isLive);
+        const allStreams: Array<{seller_id: string; is_live: boolean; id: string}> = await allResp.json();
+        const active = allStreams.filter(s => s.seller_id === user.id && s.is_live);
         for (const st of active) {
-          await fetch(`${API}?action=update_stream`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id: st.id, isLive: false }),
-          });
+          await updateStream(st.id, { isLive: false } as never);
         }
       } catch { /* ignore */ }
 
@@ -374,11 +370,7 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
       if (createdStreamId) {
         streamIdRef.current = null;
         try {
-          await fetch(`${API}?action=update_stream`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id: createdStreamId, isLive: false }),
-          });
+          await updateStream(createdStreamId, { isLive: false } as never);
         } catch { /* ignore */ }
       }
     }
