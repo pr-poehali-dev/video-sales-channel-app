@@ -172,8 +172,12 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
   };
 
   useEffect(() => {
+    if (user) loadWarehouses(user.id);
+  }, [user?.id]);
+
+  useEffect(() => {
     if (user && tab === "Склады") loadWarehouses(user.id);
-  }, [tab, user]);
+  }, [tab]);
 
   const handleAddWarehouse = async () => {
     setWhError(null);
@@ -239,6 +243,12 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
   const openAddForm = () => {
     setEditId(null);
     resetForm();
+    const def = warehouses.find(w => w.isDefault) ?? warehouses[0] ?? null;
+    if (def) {
+      setFFromCityCode(def.cityCode);
+      setFFromCityName(def.cityName);
+      setFCityQuery(def.cityName);
+    }
     setShowForm(true);
   };
 
