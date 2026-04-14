@@ -276,6 +276,13 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
     if (chatVisible) chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages.length, chatVisible]);
 
+  // Очищаем таймер при размонтировании
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, []);
+
   const sendChat = async () => {
     if (!chatInput.trim() || !user || chatSending || !streamIdRef.current) return;
     setChatSending(true);
@@ -446,6 +453,7 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
     try { await clientRef.current?.leave(); } catch { /* ignore */ }
     clientRef.current = null;
     const sid = streamIdRef.current;
+    streamIdRef.current = null;
     if (sid) await updateStream(sid, { isLive: false, duration_sec: dur } as never);
     setIsLive(false);
     setStatus("idle");
@@ -469,8 +477,13 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
     facingModeRef.current = newFacing;
     setIsFront(newFacing === "user");
     const oldTrack = videoTrackRef.current;
-    if (oldTrack) { oldTrack.stop(); oldTrack.close(); }
     try {
+      // Сначала unpublish, потом закрываем старый трек
+      if (clientRef.current && isLive && oldTrack) {
+        try { await clientRef.current.unpublish([oldTrack]); } catch { /* ignore */ }
+      }
+      if (oldTrack) { oldTrack.stop(); oldTrack.close(); }
+      videoTrackRef.current = null;
       const newTrack = await AgoraRTC.createCameraVideoTrack({
         encoderConfig: { width: 640, height: 360, frameRate: 15, bitrateMax: 600 },
         optimizationMode: "motion",
@@ -478,7 +491,6 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
       });
       videoTrackRef.current = newTrack;
       if (clientRef.current && isLive) {
-        await clientRef.current.unpublish([oldTrack!]);
         await clientRef.current.publish([newTrack]);
       }
       attachStream(newTrack);
@@ -519,15 +531,23 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
             setTitle(checkedActive.title);
             streamIdRef.current = checkedActive.id;
             try {
+              // Если треки ещё не инициализированы — создаём их заново
+              if (!audioTrackRef.current || !videoTrackRef.current) {
+                const [at, vt] = await AgoraRTC.createMicrophoneAndCameraTracks(
+                  { encoderConfig: "speech_standard" },
+                  { encoderConfig: { width: 640, height: 360, frameRate: 15, bitrateMax: 600 }, optimizationMode: "motion", facingMode: facingModeRef.current }
+                );
+                audioTrackRef.current = at;
+                videoTrackRef.current = vt;
+                attachStream(vt);
+              }
               const tokenResp = await fetch(`${AGORA_TOKEN}?channel=${checkedActive.id}&uid=1&role=publisher`);
               const tokenData = await tokenResp.json();
               const client = AgoraRTC.createClient({ mode: "live", codec: CODEC });
               clientRef.current = client;
               await client.setClientRole("host");
               await client.join(tokenData.appId, checkedActive.id, tokenData.token, 1);
-              if (audioTrackRef.current && videoTrackRef.current) {
-                await client.publish([audioTrackRef.current, videoTrackRef.current]);
-              }
+              await client.publish([audioTrackRef.current!, videoTrackRef.current!]);
               setCheckedActive(null);
               setIsLive(true);
               setStatus("live");
