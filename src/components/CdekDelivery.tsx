@@ -32,7 +32,7 @@ interface CdekDeliveryProps {
   weightGrams: number;
   fromCityCode?: number;
   sellerId?: string;
-  onSelect: (tariff: Tariff | null, city: City | null, pvzCode?: string) => void;
+  onSelect: (tariff: Tariff | null, city: City | null, pvzCode?: string, pvzAddress?: string) => void;
 }
 
 export default function CdekDelivery({ weightGrams, fromCityCode = 0, sellerId = "", onSelect }: CdekDeliveryProps) {
@@ -263,7 +263,7 @@ export default function CdekDelivery({ weightGrams, fromCityCode = 0, sellerId =
           cityName={`${selectedCity.city}${selectedCity.region ? ", " + selectedCity.region : ""}`}
           onSelect={pvz => {
             setSelectedPvz(pvz);
-            onSelect(selectedTariff, selectedCity, pvz.code);
+            onSelect(selectedTariff, selectedCity, pvz.code, pvz.address);
           }}
           onClose={() => setShowPvzMap(false)}
         />

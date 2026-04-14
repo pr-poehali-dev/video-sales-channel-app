@@ -286,10 +286,11 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
               weightGrams={totalWeight}
               fromCityCode={fromCityCode}
               sellerId={sellerIdForDelivery}
-              onSelect={(tariff, city, pvzCode) => {
+              onSelect={(tariff, city, pvzCode, pvzAddress) => {
                 setDelivery({ tariff, city });
                 setCdekPvzCode(pvzCode);
                 setDeliveryType(tariff?.code === 136 ? "cdek_pvz" : "cdek_courier");
+                if (pvzAddress) setDeliveryAddress(pvzAddress);
               }}
             />
           </div>
