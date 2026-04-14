@@ -25,7 +25,7 @@ interface Props {
 
 export default function StreamWatchPage({ stream, setPage, addToCart, onProductClick }: Props) {
   const { user } = useAuth();
-  const { addChatMessage, getStreamMessages, getSellerProducts } = useStore();
+  const { addChatMessage, getStreamMessages, getSellerProducts, banChatUser, unbanChatUser } = useStore();
   const sellerProducts = getSellerProducts(stream.sellerId);
 
   const clientRef   = useRef<IAgoraRTCClient | null>(null);
@@ -44,6 +44,12 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
   // "full" — видео на весь экран, "split" — видео сверху 50%, товары снизу
   const [viewMode, setViewMode] = useState<"full" | "split">("full");
   const productsRef = useRef<HTMLDivElement>(null);
+  const [bannedIds, setBannedIds] = useState<Set<string>>(new Set());
+  const [reportedId, setReportedId] = useState<string | null>(null);
+  const [banningId, setBanningId] = useState<string | null>(null);
+  const [sendError, setSendError] = useState<string | null>(null);
+
+  const isOwner = user?.id === stream.sellerId;
 
   // ── Agora подключение ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -100,12 +106,37 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
     const t = input.trim();
     if (!t || !user || sending) return;
     setSending(true);
+    setSendError(null);
     try {
       const msg = await addChatMessage({ streamId: stream.id, userId: user.id, userName: user.name.split(" ")[0], userAvatar: user.avatar, text: t });
       setMessages(prev => [...prev, msg]);
       setInput("");
-    } catch { /* ignore */ }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Ошибка";
+      setSendError(msg);
+      setTimeout(() => setSendError(null), 3000);
+    }
     finally { setSending(false); }
+  };
+
+  const handleBan = async (userId: string) => {
+    if (!user) return;
+    setBanningId(userId);
+    try {
+      await banChatUser(stream.id, userId, user.id);
+      setBannedIds(prev => new Set([...prev, userId]));
+      setMessages(prev => prev.filter(m => m.userId !== userId));
+      setReportedId(null);
+    } catch { /* ignore */ }
+    finally { setBanningId(null); }
+  };
+
+  const handleUnban = async (userId: string) => {
+    if (!user) return;
+    try {
+      await unbanChatUser(stream.id, userId);
+      setBannedIds(prev => { const s = new Set(prev); s.delete(userId); return s; });
+    } catch { /* ignore */ }
   };
 
   const isSplit = viewMode === "split";
@@ -180,14 +211,54 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
           {!isSplit && chatVisible && (
             <div className="px-3 pt-3 pb-1 space-y-1.5 overflow-y-auto" style={{ maxHeight: 160 }}>
               {messages.map(m => (
-                <div key={m.id} className="flex items-start gap-2">
+                <div key={m.id} className="flex items-start gap-2 group/msg relative">
                   <div className="w-5 h-5 rounded-full bg-white/20 text-white text-[9px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
                     {m.userAvatar}
                   </div>
-                  <p className="text-xs text-white leading-snug">
+                  <p className="text-xs text-white leading-snug flex-1 min-w-0">
                     <span className="font-bold text-white/90">{m.userName} </span>
                     <span className="text-white/80">{m.text}</span>
                   </p>
+                  {/* Кнопка жалобы — видна при hover или если это владелец */}
+                  {user && m.userId !== user.id && (
+                    <button
+                      onClick={() => setReportedId(reportedId === m.userId ? null : m.userId)}
+                      className="opacity-0 group-hover/msg:opacity-100 flex-shrink-0 w-5 h-5 flex items-center justify-center"
+                    >
+                      <Icon name="MoreVertical" size={12} className="text-white/50" />
+                    </button>
+                  )}
+                  {/* Панель действий */}
+                  {reportedId === m.userId && user && m.userId !== user.id && (
+                    <div className="absolute right-3 bg-black/90 border border-white/10 rounded-xl p-2 z-30 flex flex-col gap-1 min-w-[140px]">
+                      {isOwner ? (
+                        bannedIds.has(m.userId) ? (
+                          <button
+                            onClick={() => handleUnban(m.userId)}
+                            className="text-xs text-green-400 py-1 px-2 text-left hover:bg-white/10 rounded-lg"
+                          >
+                            Разблокировать
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleBan(m.userId)}
+                            disabled={banningId === m.userId}
+                            className="text-xs text-red-400 py-1 px-2 text-left hover:bg-white/10 rounded-lg disabled:opacity-50"
+                          >
+                            {banningId === m.userId ? "Блокирую..." : `Заблокировать ${m.userName}`}
+                          </button>
+                        )
+                      ) : (
+                        <p className="text-xs text-white/50 px-2 py-1">Пожаловаться нельзя — только владелец может блокировать</p>
+                      )}
+                      <button
+                        onClick={() => setReportedId(null)}
+                        className="text-xs text-white/40 py-1 px-2 text-left hover:bg-white/10 rounded-lg"
+                      >
+                        Отмена
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
               <div ref={chatEndRef} />
@@ -197,6 +268,9 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
           {/* Ввод (только в полном режиме) */}
           {!isSplit && (
             <div className="px-3 pt-1 pb-2">
+              {sendError && (
+                <p className="text-xs text-red-400 text-center mb-1 bg-black/60 rounded-full py-1">{sendError}</p>
+              )}
               {user ? (
                 <div className="flex gap-2 items-center">
                   <input

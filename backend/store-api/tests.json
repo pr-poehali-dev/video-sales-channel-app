@@ -45,6 +45,23 @@
       "expectedStatus": 400,
       "expectedBody": {"error": "invalid image data"},
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "add_chat with bad words returns 400",
+      "method": "POST",
+      "path": "/?action=add_chat",
+      "body": {"stream_id": "test", "user_id": "u1", "user_name": "Test", "text": "хуй"},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "Сообщение содержит недопустимые слова"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "get_bans without stream_id returns 400",
+      "method": "GET",
+      "path": "/?action=get_bans",
+      "expectedStatus": 400,
+      "expectedBody": {"error": "stream_id required"},
+      "bodyMatcher": "partial"
     }
   ]
 }

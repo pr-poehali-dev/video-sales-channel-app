@@ -105,6 +105,8 @@ interface StoreContextType {
   getSellerStreams: (sellerId: string) => StoreStream[];
   getStreamMessages: (streamId: string) => Promise<ChatMessage[]>;
   addChatMessage: (msg: Omit<ChatMessage, "id" | "sentAt">) => Promise<ChatMessage>;
+  banChatUser: (streamId: string, userId: string, bannedBy: string) => Promise<void>;
+  unbanChatUser: (streamId: string, userId: string) => Promise<void>;
   getProductReviews: (productId: string) => Promise<{ reviews: Review[]; avg: number; count: number }>;
   addReview: (data: Omit<Review, "id" | "createdAt">) => Promise<Review>;
   hasUserReviewed: (productId: string, userId: string) => boolean;
@@ -203,6 +205,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const banChatUser = useCallback(async (streamId: string, userId: string, bannedBy: string) => {
+    await api("ban_user", "POST", { stream_id: streamId, user_id: userId, banned_by: bannedBy });
+  }, []);
+
+  const unbanChatUser = useCallback(async (streamId: string, userId: string) => {
+    await api("unban_user", "POST", { stream_id: streamId, user_id: userId });
+  }, []);
+
   /* ── REVIEWS ── */
   const getProductReviews = useCallback(async (productId: string) => {
     const data = await api(`get_reviews&product_id=${productId}`);
@@ -248,7 +258,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       addProduct, updateProduct, deleteProduct,
       addStream, updateStream, deleteStream,
       getSellerProducts, getSellerStreams,
-      getStreamMessages, addChatMessage,
+      getStreamMessages, addChatMessage, banChatUser, unbanChatUser,
       getProductReviews, addReview, hasUserReviewed,
       getSellerReviews, addSellerReview,
     }}>
