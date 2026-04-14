@@ -86,12 +86,13 @@ def calc_tariffs(city_code: int, weight_g: int, token: str, from_city_code: int 
     out = []
     for tariff_code in tariff_codes:
         try:
-            result = cdek_request("/calculator/packages", token, {
+            result = cdek_request("/calculator/tariff", token, {
                 "tariff_code": tariff_code,
                 "from_location": {"code": sender_code},
                 "to_location": {"code": city_code},
                 "packages": [{"weight": max(weight_g, 100), "length": 20, "width": 15, "height": 10}],
             }, "POST")
+            print(f"[CDEK] raw result tariff={tariff_code}: {json.dumps(result)[:400]}")
             price = result.get("total_sum") or result.get("delivery_sum")
             if price:
                 out.append({
@@ -101,8 +102,10 @@ def calc_tariffs(city_code: int, weight_g: int, token: str, from_city_code: int 
                     "days_min": result.get("period_min", 1),
                     "days_max": result.get("period_max", 7),
                 })
-        except Exception:
+        except Exception as e:
+            print(f"[CDEK] tariff {tariff_code} error: {e}")
             continue
+    print(f"[CDEK] calc result from={sender_code} to={city_code} w={weight_g}: {out}")
     return sorted(out, key=lambda x: x["price"])
 
 
