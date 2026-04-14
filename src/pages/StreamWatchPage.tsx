@@ -123,7 +123,7 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
           ? "fixed z-40 bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/10 transition-all duration-300"
           : "relative w-full bg-black transition-all duration-300"}
         style={pipMode
-          ? { bottom: 80, right: 12, width: 148, aspectRatio: "9/16" }
+          ? { top: 68, right: 12, width: 100, aspectRatio: "9/16" }
           : { height: "calc(100dvh - 56px)" }}
       >
 
@@ -277,7 +277,7 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
 
       {/* ── ТОВАРЫ — скроллятся под видео ─────────────────────────────── */}
       {sellerProducts.length > 0 && (
-        <div ref={productsRef} className="px-4 py-5 bg-background pb-24">
+        <div ref={productsRef} className="px-4 py-5 bg-background pb-24" style={pipMode ? { paddingTop: 20 } : {}}>
           <h2 className="font-semibold text-base mb-4 flex items-center gap-2">
             <Icon name="ShoppingBag" size={16} className="text-primary" />
             Товары продавца
