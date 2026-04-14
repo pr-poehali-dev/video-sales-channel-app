@@ -142,12 +142,12 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
   const isSplit = viewMode === "split";
 
   return (
-    <div className="flex flex-col bg-black" style={{ minHeight: "calc(100dvh - 56px)" }}>
+    <div className="fixed inset-0 flex flex-col bg-black" style={{ zIndex: 40 }}>
 
       {/* ── ВИДЕО — полный экран или верхняя половина ─────────────────── */}
       <div
         className="relative w-full bg-black flex-shrink-0 transition-all duration-300"
-        style={{ height: isSplit ? "50dvh" : "calc(100dvh - 56px)" }}
+        style={{ height: isSplit ? "50dvh" : "100dvh" }}
       >
         {/* Превью */}
         {liveStatus !== "playing" && (
@@ -267,7 +267,7 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
 
           {/* Ввод (только в полном режиме) */}
           {!isSplit && (
-            <div className="px-3 pt-1 pb-2">
+            <div className="px-3 pt-1 pb-1">
               {sendError && (
                 <p className="text-xs text-red-400 text-center mb-1 bg-black/60 rounded-full py-1">{sendError}</p>
               )}
@@ -297,7 +297,7 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
           )}
 
           {/* Кнопки управления */}
-          <div className="flex items-center justify-center gap-2 px-3 pb-3 pt-1">
+          <div className="flex items-center justify-center gap-2 px-3 pt-1" style={{ paddingBottom: "calc(56px + 0.75rem + env(safe-area-inset-bottom, 0px))" }}>
             {sellerProducts.length > 0 && (
               <button
                 onClick={() => setViewMode(isSplit ? "full" : "split")}
