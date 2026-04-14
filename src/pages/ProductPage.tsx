@@ -15,6 +15,7 @@ export default function ProductPage({ productId, addToCart, onBack, onSellerClic
   const product = products.find(p => p.id === productId);
   const [activeImg, setActiveImg] = useState(0);
   const [added, setAdded] = useState(false);
+  const [showVideo, setShowVideo] = useState(false);
 
   if (!product) {
     return (
@@ -25,6 +26,8 @@ export default function ProductPage({ productId, addToCart, onBack, onSellerClic
       </div>
     );
   }
+
+  const videoUrl = (product as { videoUrl?: string }).videoUrl ?? null;
 
   const sellerProducts = getSellerProducts(product.sellerId)
     .filter(p => p.id !== product.id)
@@ -54,10 +57,20 @@ export default function ProductPage({ productId, addToCart, onBack, onSellerClic
       </button>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
-        {/* Фото */}
+        {/* Медиа */}
         <div>
-          <div className="aspect-square rounded-2xl overflow-hidden border border-border mb-3 bg-secondary">
-            {product.images.length > 0 ? (
+          <div className="aspect-square rounded-2xl overflow-hidden border border-border mb-3 bg-secondary relative">
+            {showVideo && videoUrl ? (
+              <video
+                src={videoUrl}
+                autoPlay
+                loop
+                muted={false}
+                playsInline
+                controls
+                className="w-full h-full object-cover"
+              />
+            ) : product.images.length > 0 ? (
               <img
                 src={product.images[activeImg]}
                 alt={product.name}
@@ -67,27 +80,47 @@ export default function ProductPage({ productId, addToCart, onBack, onSellerClic
                 decoding="async"
                 fetchPriority="high"
               />
+            ) : videoUrl ? (
+              <video
+                src={videoUrl}
+                autoPlay
+                loop
+                muted
+                playsInline
+                controls
+                className="w-full h-full object-cover"
+              />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
                 <Icon name="Package" size={60} className="text-muted-foreground opacity-30" />
               </div>
             )}
           </div>
-          {product.images.length > 1 && (
-            <div className="flex gap-2 flex-wrap">
-              {product.images.map((img, i) => (
-                <button
-                  key={i}
-                  onClick={() => setActiveImg(i)}
-                  className={`w-16 h-16 rounded-xl overflow-hidden border-2 transition-all flex-shrink-0 ${
-                    activeImg === i ? "border-primary" : "border-border hover:border-primary/40"
-                  }`}
-                >
-                  <img src={img} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" width={64} height={64} />
-                </button>
-              ))}
-            </div>
-          )}
+
+          {/* Переключатели: фото и видео */}
+          <div className="flex gap-2 flex-wrap">
+            {product.images.map((img, i) => (
+              <button
+                key={i}
+                onClick={() => { setActiveImg(i); setShowVideo(false); }}
+                className={`w-16 h-16 rounded-xl overflow-hidden border-2 transition-all flex-shrink-0 ${
+                  !showVideo && activeImg === i ? "border-primary" : "border-border hover:border-primary/40"
+                }`}
+              >
+                <img src={img} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" width={64} height={64} />
+              </button>
+            ))}
+            {videoUrl && (
+              <button
+                onClick={() => setShowVideo(true)}
+                className={`w-16 h-16 rounded-xl border-2 transition-all flex-shrink-0 flex items-center justify-center bg-black/80 ${
+                  showVideo ? "border-primary" : "border-border hover:border-primary/40"
+                }`}
+              >
+                <Icon name="Play" size={22} className="text-white" />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Инфо */}

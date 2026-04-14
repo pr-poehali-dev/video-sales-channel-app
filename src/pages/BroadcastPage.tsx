@@ -438,9 +438,6 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
   const chatPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { addChatMessage, getStreamMessages } = useStore();
 
-  // Фото-товар
-  const [quickProductImg, setQuickProductImg] = useState<string | null>(null);
-
   // Видео-товар
   const [quickProductVideo, setQuickProductVideo] = useState<string | null>(null);
   const [videoRecording, setVideoRecording] = useState(false);
@@ -558,18 +555,6 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
       }
     };
     reader.readAsDataURL(file);
-  };
-
-  // Делаем скриншот с видео для быстрого товара
-  const capturePhoto = () => {
-    const vid = nativeVideoRef.current;
-    if (!vid) return;
-    const canvas = document.createElement("canvas");
-    canvas.width = vid.videoWidth || 640;
-    canvas.height = vid.videoHeight || 360;
-    canvas.getContext("2d")?.drawImage(vid, 0, 0, canvas.width, canvas.height);
-    const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
-    setQuickProductImg(dataUrl);
   };
 
   const captureVideo = () => {
@@ -886,13 +871,6 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
         {/* Кнопки справа (только в эфире) */}
         {isLive && (
           <div className="flex items-center gap-2">
-            <button
-              onClick={capturePhoto}
-              className="w-9 h-9 rounded-full bg-primary flex items-center justify-center shadow-lg"
-              title="Сфотографировать и добавить товар"
-            >
-              <Icon name="Camera" size={17} className="text-primary-foreground" />
-            </button>
             {/* Кнопка видео-товара */}
             <button
               onClick={captureVideo}
@@ -1065,19 +1043,6 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
             </button>
           </div>
         </div>
-      )}
-
-      {/* ── Модалка быстрого товара ── */}
-      {quickProductImg && user && (
-        <QuickProductModal
-          imageDataUrl={quickProductImg}
-          sellerId={user.id}
-          sellerName={user.name}
-          sellerAvatar={user.avatar}
-          defaultWarehouse={defaultWarehouse}
-          onClose={() => setQuickProductImg(null)}
-          onSaved={() => setQuickProductImg(null)}
-        />
       )}
 
       {/* ── Модалка видео-товара ── */}

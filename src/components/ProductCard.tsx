@@ -13,7 +13,7 @@ export default function ProductCard({ product, addToCart, onClick }: ProductCard
   const [added, setAdded] = useState(false);
 
   const coverImage = product.images[0] ?? null;
-
+  const videoUrl = (product as { videoUrl?: string }).videoUrl ?? null;
   const inStock = product.inStock ?? 99;
 
   const handleAdd = (e: React.MouseEvent) => {
@@ -36,7 +36,21 @@ export default function ProductCard({ product, addToCart, onClick }: ProductCard
       className={`bg-card border border-border rounded-xl overflow-hidden hover:border-primary/40 transition-all group ${onClick ? "cursor-pointer" : ""}`}
     >
       <div className="relative aspect-square overflow-hidden bg-secondary">
-        {coverImage ? (
+        {videoUrl ? (
+          <>
+            <video
+              src={videoUrl}
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute top-2 right-2 bg-black/60 rounded-full p-1">
+              <Icon name="Video" size={11} className="text-white" />
+            </div>
+          </>
+        ) : coverImage ? (
           <img
             src={coverImage}
             alt={product.name}

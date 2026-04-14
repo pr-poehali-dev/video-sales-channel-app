@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import { useAuth } from "@/context/AuthContext";
 import { useStore } from "@/context/StoreContext";
@@ -8,41 +8,10 @@ const CATEGORIES = [
   "Электроника", "Дом и сад", "Детские товары", "Другое",
 ];
 
-const MAX_IMAGES = 5;
-const MAX_SIZE_MB = 2;
-
 const STORE_API = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c";
 const CDEK_API = "https://functions.poehali.dev/937e27f3-191a-445d-b034-61bd84ed5381";
 
 interface CdekCity { code: number; city: string; region: string; }
-
-async function uploadImage(file: File): Promise<string> {
-  const dataUrl = await new Promise<string>((resolve, reject) => {
-    const img = new Image();
-    const blobUrl = URL.createObjectURL(file);
-    img.onload = () => {
-      const maxPx = 800;
-      const ratio = Math.min(maxPx / img.width, maxPx / img.height, 1);
-      const w = Math.round(img.width * ratio);
-      const h = Math.round(img.height * ratio);
-      const canvas = document.createElement("canvas");
-      canvas.width = w; canvas.height = h;
-      canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
-      URL.revokeObjectURL(blobUrl);
-      resolve(canvas.toDataURL("image/jpeg", 0.8));
-    };
-    img.onerror = reject;
-    img.src = blobUrl;
-  });
-  const res = await fetch(`${STORE_API}?action=upload_image`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ data_url: dataUrl }),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "upload failed");
-  return data.url;
-}
 
 interface Props {
   warehouses: { id: string; cityCode: number; cityName: string; isDefault: boolean; }[];
@@ -64,8 +33,6 @@ export default function DashboardProductsTab({ warehouses }: Props) {
   const [fDesc, setFDesc] = useState("");
   const [fImages, setFImages] = useState<string[]>([]);
   const [fError, setFError] = useState<string | null>(null);
-  const [fImgLoading, setFImgLoading] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
   const [fWeightG, setFWeightG] = useState("500");
   const [fLengthCm, setFLengthCm] = useState("20");
   const [fWidthCm, setFWidthCm] = useState("15");
@@ -136,25 +103,6 @@ export default function DashboardProductsTab({ warehouses }: Props) {
     setShowForm(true);
   };
 
-  const handleImgAdd = async (files: FileList | null) => {
-    if (!files) return;
-    if (fImages.length >= MAX_IMAGES) { setFError(`Максимум ${MAX_IMAGES} фото`); return; }
-    setFImgLoading(true);
-    setFError(null);
-    const results: string[] = [];
-    for (const file of Array.from(files)) {
-      if (file.size > MAX_SIZE_MB * 1024 * 1024) { setFError(`Файл ${file.name} больше ${MAX_SIZE_MB} МБ`); continue; }
-      if (!file.type.startsWith("image/")) continue;
-      if (fImages.length + results.length >= MAX_IMAGES) break;
-      try { results.push(await uploadImage(file)); } catch { setFError("Ошибка загрузки фото, попробуй ещё раз"); }
-    }
-    setFImages(prev => [...prev, ...results].slice(0, MAX_IMAGES));
-    setFImgLoading(false);
-    if (fileRef.current) fileRef.current.value = "";
-  };
-
-  const removeImg = (idx: number) => setFImages(prev => prev.filter((_, i) => i !== idx));
-
   const handleSave = () => {
     setFError(null);
     if (!fName.trim()) { setFError("Введите название товара"); return; }
@@ -224,8 +172,15 @@ export default function DashboardProductsTab({ warehouses }: Props) {
         <div className="flex flex-col gap-2">
           {products.map(p => (
             <div key={p.id} className="bg-card border border-border rounded-xl p-4 flex items-center gap-4">
-              <div className="w-14 h-14 rounded-xl overflow-hidden bg-secondary flex-shrink-0">
-                {p.images.length > 0
+              <div className="w-14 h-14 rounded-xl overflow-hidden bg-secondary flex-shrink-0 relative">
+                {(p as { videoUrl?: string }).videoUrl ? (
+                  <>
+                    <video src={(p as { videoUrl?: string }).videoUrl} autoPlay loop muted playsInline className="w-full h-full object-cover" />
+                    <div className="absolute bottom-0.5 right-0.5 bg-orange-500 rounded-full p-0.5">
+                      <Icon name="Video" size={8} className="text-white" />
+                    </div>
+                  </>
+                ) : p.images.length > 0
                   ? <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover" />
                   : <div className="w-full h-full flex items-center justify-center">
                       <Icon name="ImageOff" size={20} className="text-muted-foreground opacity-40" />
@@ -237,9 +192,9 @@ export default function DashboardProductsTab({ warehouses }: Props) {
                 <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                   <span className="font-oswald text-sm font-semibold text-primary">{p.price.toLocaleString("ru")} ₽</span>
                   <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded">{p.category}</span>
-                  {p.images.length > 0 && (
-                    <span className="text-xs text-muted-foreground flex items-center gap-0.5">
-                      <Icon name="Image" size={11} />{p.images.length}
+                  {(p as { videoUrl?: string }).videoUrl && (
+                    <span className="text-xs text-orange-500 flex items-center gap-0.5">
+                      <Icon name="Video" size={11} />видео
                     </span>
                   )}
                 </div>
@@ -268,48 +223,6 @@ export default function DashboardProductsTab({ warehouses }: Props) {
               </button>
             </div>
             <div className="p-5 space-y-4">
-
-              {/* Фото */}
-              <div>
-                <label className="text-xs text-muted-foreground mb-2 block">Фотографии (до {MAX_IMAGES})</label>
-                <div className="flex flex-wrap gap-2">
-                  {fImages.map((img, idx) => (
-                    <div key={idx} className="relative w-20 h-20 rounded-xl overflow-hidden border border-border group">
-                      <img src={img} alt="" className="w-full h-full object-cover" />
-                      <button
-                        onClick={() => removeImg(idx)}
-                        className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <Icon name="Trash2" size={16} className="text-white" />
-                      </button>
-                      {idx === 0 && (
-                        <span className="absolute bottom-0 left-0 right-0 text-[9px] text-center bg-black/60 text-white py-0.5">Главное</span>
-                      )}
-                    </div>
-                  ))}
-                  {fImages.length < MAX_IMAGES && (
-                    <button
-                      onClick={() => fileRef.current?.click()}
-                      disabled={fImgLoading}
-                      className="w-20 h-20 rounded-xl border-2 border-dashed border-border hover:border-primary/50 flex flex-col items-center justify-center gap-1 transition-colors disabled:opacity-50"
-                    >
-                      {fImgLoading
-                        ? <Icon name="Loader" size={18} className="text-muted-foreground animate-spin" />
-                        : <><Icon name="Plus" size={18} className="text-muted-foreground" /><span className="text-[10px] text-muted-foreground">Фото</span></>
-                      }
-                    </button>
-                  )}
-                </div>
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                  onChange={e => handleImgAdd(e.target.files)}
-                />
-                <p className="text-[11px] text-muted-foreground mt-1">JPG, PNG до {MAX_SIZE_MB} МБ. Первое фото — обложка.</p>
-              </div>
 
               {/* Название */}
               <div>
