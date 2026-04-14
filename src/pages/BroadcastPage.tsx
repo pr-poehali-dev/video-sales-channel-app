@@ -666,7 +666,7 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
           </div>
 
           {/* Нижние кнопки управления */}
-          <div className="flex items-center justify-center gap-3 px-4 pb-5" style={{ paddingBottom: "calc(1.25rem + env(safe-area-inset-bottom))" }}>
+          <div className="flex items-center justify-center gap-3 px-4" style={{ paddingBottom: "calc(56px + 1.25rem + env(safe-area-inset-bottom, 0px))" }}>
             {/* Скрыть чат */}
             <button
               onClick={() => setChatVisible(v => !v)}
@@ -706,7 +706,7 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
       {/* ── НЕ В ЭФИРЕ: форма запуска ── */}
       {!isLive && (
         <div className="absolute bottom-0 left-0 right-0 z-20 px-4"
-          style={{ paddingBottom: "calc(2rem + env(safe-area-inset-bottom))", background: "linear-gradient(to top, rgba(0,0,0,0.85) 70%, transparent)" }}>
+          style={{ paddingBottom: "calc(56px + 2rem + env(safe-area-inset-bottom, 0px))", background: "linear-gradient(to top, rgba(0,0,0,0.85) 70%, transparent)" }}>
 
           <div className="flex flex-col gap-2 mb-4">
             <input value={title} onChange={e => setTitle(e.target.value)} maxLength={80}
