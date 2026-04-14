@@ -83,7 +83,8 @@ function QuickProductModal({ imageDataUrl, sellerId, sellerName, sellerAvatar, d
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70" onClick={onClose}>
       <div
-        className="w-full max-w-lg bg-zinc-900 rounded-t-2xl p-4 pb-8"
+        className="w-full max-w-lg bg-zinc-900 rounded-t-2xl p-4"
+        style={{ paddingBottom: "calc(2rem + 56px + env(safe-area-inset-bottom, 0px))" }}
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
