@@ -148,13 +148,40 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       description: data.description, images: data.images,
       seller_id: data.sellerId, seller_name: data.sellerName,
       seller_avatar: data.sellerAvatar, in_stock: data.inStock,
+      weight_g: (data as { weightG?: number }).weightG,
+      length_cm: (data as { lengthCm?: number }).lengthCm,
+      width_cm: (data as { widthCm?: number }).widthCm,
+      height_cm: (data as { heightCm?: number }).heightCm,
+      cdek_enabled: (data as { cdekEnabled?: boolean }).cdekEnabled,
+      nalog_enabled: (data as { nalogEnabled?: boolean }).nalogEnabled,
+      fitting_enabled: (data as { fittingEnabled?: boolean }).fittingEnabled,
+      from_city_code: (data as { fromCityCode?: number }).fromCityCode,
+      from_city_name: (data as { fromCityName?: string }).fromCityName,
     });
     setProducts(prev => [p, ...prev]);
     return p;
   }, []);
 
   const updateProduct = useCallback(async (id: string, data: Partial<StoreProduct>) => {
-    const updated = await api("update_product", "PATCH", { id, ...data });
+    const d = data as Record<string, unknown>;
+    const updated = await api("update_product", "PATCH", {
+      id,
+      ...(d.name !== undefined && { name: d.name }),
+      ...(d.price !== undefined && { price: d.price }),
+      ...(d.category !== undefined && { category: d.category }),
+      ...(d.description !== undefined && { description: d.description }),
+      ...(d.images !== undefined && { images: d.images }),
+      ...(d.inStock !== undefined && { in_stock: d.inStock }),
+      ...(d.weightG !== undefined && { weight_g: d.weightG }),
+      ...(d.lengthCm !== undefined && { length_cm: d.lengthCm }),
+      ...(d.widthCm !== undefined && { width_cm: d.widthCm }),
+      ...(d.heightCm !== undefined && { height_cm: d.heightCm }),
+      ...(d.cdekEnabled !== undefined && { cdek_enabled: d.cdekEnabled }),
+      ...(d.nalogEnabled !== undefined && { nalog_enabled: d.nalogEnabled }),
+      ...(d.fittingEnabled !== undefined && { fitting_enabled: d.fittingEnabled }),
+      ...(d.fromCityCode !== undefined && { from_city_code: d.fromCityCode }),
+      ...(d.fromCityName !== undefined && { from_city_name: d.fromCityName }),
+    });
     setProducts(prev => prev.map(p => p.id === id ? updated : p));
   }, []);
 
