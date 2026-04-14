@@ -552,7 +552,7 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
   );
 
   return (
-    <div className="relative bg-black" style={{ height: "calc(100dvh - 56px)" }}>
+    <div className="fixed inset-0 bg-black" style={{ zIndex: 40 }}>
 
       {/* ── ВИДЕО на весь экран ── */}
       <video
