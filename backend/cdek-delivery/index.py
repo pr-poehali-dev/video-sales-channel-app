@@ -12,9 +12,8 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 
 
-CDEK_API = "https://api.edu.cdek.ru/v2"
+CDEK_API = "https://api.cdek.ru/v2"
 
-# Адрес отправителя (склад по умолчанию — Краснодар, код 270)
 FROM_CITY_CODE = 270
 FROM_ADDRESS = "Краснодар, ул. Красная, 1"
 
@@ -23,13 +22,9 @@ def get_conn():
     return psycopg2.connect(os.environ["DATABASE_URL"])
 
 
-CDEK_TEST_ID = "wqGwiQx0gg8mLtiEKsUinjVSICCjtTEP"
-CDEK_TEST_SECRET = "RmAmgvSgSl1yirlz9QupbzOJVqhCxcP5"
-
-
 def get_token() -> str:
-    client_id = CDEK_TEST_ID
-    client_secret = CDEK_TEST_SECRET
+    client_id = os.environ["CDEK_CLIENT_ID"]
+    client_secret = os.environ["CDEK_CLIENT_SECRET"]
     body = urllib.parse.urlencode({
         "grant_type": "client_credentials",
         "client_id": client_id,
