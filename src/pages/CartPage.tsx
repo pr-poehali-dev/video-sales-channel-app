@@ -45,6 +45,7 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
   const orderTotal = goodsTotal + (deliveryCost ?? 0);
   const totalWeight = cart.reduce((s, c) => s + c.qty * (c.weightG ?? 300), 0);
   const fromCityCode = cart[0]?.fromCityCode ?? 0;
+  const sellerIdForDelivery = cart[0]?.sellerId ?? "";
 
   const contactFilled = buyerName.trim() && buyerPhone.trim();
   const canCheckout = deliveryCost !== null && payMethod !== null && !!contactFilled;
@@ -255,36 +256,15 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
               <Icon name="Truck" size={15} className="text-muted-foreground" />
               Способ получения
             </p>
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                { id: "cdek_pvz" as DeliveryType, icon: "Store", label: "ПВЗ СДЭК", sub: "Самовывоз из пункта" },
-                { id: "cdek_courier" as DeliveryType, icon: "Home", label: "Курьер СДЭК", sub: "До двери" },
-              ].map(opt => (
-                <button key={opt.id} onClick={() => setDeliveryType(opt.id)}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border text-left transition-all ${
-                    deliveryType === opt.id ? "border-primary bg-primary/8" : "border-border bg-secondary hover:border-border/60"
-                  }`}>
-                  <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
-                    deliveryType === opt.id ? "border-primary" : "border-muted-foreground"
-                  }`}>
-                    {deliveryType === opt.id && <div className="w-2 h-2 rounded-full bg-primary" />}
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{opt.label}</p>
-                    <p className="text-xs text-muted-foreground">{opt.sub}</p>
-                  </div>
-                </button>
-              ))}
-            </div>
-
-            {deliveryType === "cdek_courier" && (
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Адрес доставки</label>
-                <input value={deliveryAddress} onChange={e => setDeliveryAddress(e.target.value)}
-                  placeholder="Улица, дом, квартира"
-                  className="w-full bg-secondary border border-border rounded-xl px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors" />
+            <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-primary bg-primary/8">
+              <div className="w-4 h-4 rounded-full border-2 border-primary flex-shrink-0 flex items-center justify-center">
+                <div className="w-2 h-2 rounded-full bg-primary" />
               </div>
-            )}
+              <div>
+                <p className="text-sm font-medium text-foreground">ПВЗ СДЭК</p>
+                <p className="text-xs text-muted-foreground">Самовывоз из пункта</p>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -295,6 +275,7 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
             <CdekDelivery
               weightGrams={totalWeight}
               fromCityCode={fromCityCode}
+              sellerId={sellerIdForDelivery}
               onSelect={(tariff, city) => setDelivery({ tariff, city })}
             />
           </div>

@@ -20,10 +20,11 @@ interface Tariff {
 interface CdekDeliveryProps {
   weightGrams: number;
   fromCityCode?: number;
+  sellerId?: string;
   onSelect: (tariff: Tariff | null, city: City | null) => void;
 }
 
-export default function CdekDelivery({ weightGrams, fromCityCode = 0, onSelect }: CdekDeliveryProps) {
+export default function CdekDelivery({ weightGrams, fromCityCode = 0, sellerId = "", onSelect }: CdekDeliveryProps) {
   const [query, setQuery] = useState("");
   const [cities, setCities] = useState<City[]>([]);
   const [selectedCity, setSelectedCity] = useState<City | null>(null);
@@ -81,7 +82,8 @@ export default function CdekDelivery({ weightGrams, fromCityCode = 0, onSelect }
     setLoadingTariffs(true);
     setError("");
     const fromParam = fromCityCode ? `&from_city_code=${fromCityCode}` : "";
-    fetch(`${CDEK_URL}?action=calc&city_code=${city.code}&weight=${weightGrams}${fromParam}`)
+    const sellerParam = sellerId ? `&seller_id=${sellerId}` : "";
+    fetch(`${CDEK_URL}?action=calc&city_code=${city.code}&weight=${weightGrams}${fromParam}${sellerParam}`)
       .then(r => r.json())
       .then(data => {
         if (Array.isArray(data) && data.length > 0) {

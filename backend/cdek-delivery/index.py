@@ -80,12 +80,9 @@ def search_cities(query: str, token: str) -> list:
 
 
 def calc_tariffs(city_code: int, weight_g: int, token: str, from_city_code: int = 0) -> list:
-    tariff_codes = [136, 137, 138, 139]
+    tariff_codes = [136]
     names = {
-        136: "Посылка склад-склад",
-        137: "Посылка склад-дверь",
-        138: "Посылка дверь-склад",
-        139: "Посылка дверь-дверь",
+        136: "Посылка склад-склад (ПВЗ)",
     }
     sender_code = from_city_code or FROM_CITY_CODE
     out = []
@@ -268,8 +265,31 @@ def handler(event: dict, context) -> dict:
             city_code = int(qs.get("city_code", 0))
             weight_g = int(qs.get("weight", 500))
             from_city = int(qs.get("from_city_code", 0))
+            seller_id = qs.get("seller_id", "")
             if not city_code:
                 return {"statusCode": 400, "headers": headers, "body": json.dumps({"error": "city_code required"})}
+            # Если from_city_code не передан — берём склад по умолчанию из БД
+            if not from_city and seller_id:
+                try:
+                    conn = get_conn()
+                    cur = conn.cursor(cursor_factory=RealDictCursor)
+                    cur.execute(
+                        "SELECT city_code FROM warehouses WHERE seller_id=%s AND is_default=TRUE LIMIT 1",
+                        (seller_id,)
+                    )
+                    row = cur.fetchone()
+                    if not row:
+                        cur.execute(
+                            "SELECT city_code FROM warehouses WHERE seller_id=%s ORDER BY created_at ASC LIMIT 1",
+                            (seller_id,)
+                        )
+                        row = cur.fetchone()
+                    if row:
+                        from_city = row["city_code"]
+                    cur.close()
+                    conn.close()
+                except Exception:
+                    pass
             tariffs = calc_tariffs(city_code, weight_g, token, from_city)
             return {"statusCode": 200, "headers": headers, "body": json.dumps(tariffs)}
 
