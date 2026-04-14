@@ -256,7 +256,8 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
                   onKeyDown={e => e.key === "Enter" && sendMessage()}
                   placeholder="Написать в чат..."
                   maxLength={200}
-                  className="flex-1 bg-black/50 backdrop-blur border border-white/20 rounded-full px-4 py-2.5 text-sm text-white placeholder:text-white/40 outline-none focus:border-white/40"
+                  className="flex-1 bg-black/50 backdrop-blur border border-white/20 rounded-full px-4 py-2.5 text-white placeholder:text-white/40 outline-none focus:border-white/40"
+                  style={{ fontSize: 16 }}
                 />
                 <button onClick={sendMessage} disabled={!input.trim() || sending}
                   className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center disabled:opacity-40 flex-shrink-0">
