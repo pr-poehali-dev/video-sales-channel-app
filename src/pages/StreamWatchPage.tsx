@@ -104,10 +104,17 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
     finally { setSending(false); }
   };
 
+  // Высота навбара (~56px) + видео (100vw * 9/16)
+  const VIDEO_TOP = 56; // px, высота NavBar
+  const videoHeightVw = "56.25vw"; // 16:9
+
   return (
     <div className="bg-background overflow-x-hidden">
-      {/* ── ВИДЕО (sticky) ──────────────────────────────────────────── */}
-      <div className="sticky top-0 z-30 bg-black w-full overflow-hidden" style={{ aspectRatio: "16/9" }}>
+      {/* ── ВИДЕО (fixed) ───────────────────────────────────────────── */}
+      <div
+        className="fixed left-0 right-0 z-30 bg-black overflow-hidden"
+        style={{ top: VIDEO_TOP, height: videoHeightVw }}
+      >
         {/* Превью / заглушка */}
         {liveStatus !== "playing" && (
           <img
@@ -161,6 +168,9 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
           </div>
         )}
       </div>
+
+      {/* ── КОНТЕНТ (отступ = NavBar + высота видео) ─────────────────── */}
+      <div style={{ paddingTop: `calc(${VIDEO_TOP}px + ${videoHeightVw})` }}>
 
       {/* ── ИНФО О СТРИМЕ ───────────────────────────────────────────── */}
       <div className="px-4 py-3 border-b border-border bg-background">
@@ -292,6 +302,8 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
           </div>
         </div>
       )}
+
+      </div>{/* end content wrapper */}
     </div>
   );
 }
