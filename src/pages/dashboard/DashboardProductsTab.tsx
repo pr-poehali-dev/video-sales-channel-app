@@ -306,9 +306,9 @@ export default function DashboardProductsTab({ warehouses }: Props) {
 
       {/* Форма товара */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-50 p-4 animate-fade-in" onClick={e => { if (e.target === e.currentTarget) setShowForm(false); }}>
-          <div className="bg-card border border-border rounded-2xl w-full max-w-lg shadow-xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-5 border-b border-border sticky top-0 bg-card z-10">
+        <div className="fixed inset-0 z-50 flex flex-col bg-card animate-fade-in">
+          <div className="bg-card border border-border rounded-2xl w-full max-w-lg shadow-xl flex flex-col h-full mx-auto">
+            <div className="flex items-center justify-between p-5 border-b border-border flex-shrink-0">
               <h3 className="font-oswald text-lg font-semibold text-foreground tracking-wide">
                 {editId ? "Редактировать товар" : "Новый товар"}
               </h3>
@@ -316,7 +316,7 @@ export default function DashboardProductsTab({ warehouses }: Props) {
                 <Icon name="X" size={15} className="text-muted-foreground" />
               </button>
             </div>
-            <div className="p-5 space-y-4">
+            <div className="flex-1 overflow-y-auto p-5 space-y-4">
 
               {/* Видео товара */}
               <div>
@@ -488,17 +488,18 @@ export default function DashboardProductsTab({ warehouses }: Props) {
               {fError && (
                 <div className="bg-destructive/10 border border-destructive/30 rounded-xl px-3 py-2 text-sm text-destructive">{fError}</div>
               )}
+            </div>
 
-              <div className="flex gap-3 pt-1">
-                <button onClick={handleSave}
-                  className="flex-1 bg-primary text-primary-foreground font-semibold py-3 rounded-xl hover:opacity-90 transition-opacity text-sm">
-                  {editId ? "Сохранить" : "Добавить товар"}
-                </button>
-                <button onClick={() => setShowForm(false)}
-                  className="px-5 border border-border text-muted-foreground font-medium rounded-xl hover:bg-secondary transition-colors text-sm">
-                  Отмена
-                </button>
-              </div>
+            {/* Зафиксированные кнопки снизу */}
+            <div className="flex-shrink-0 border-t border-border px-5 py-4 flex gap-3 bg-card">
+              <button onClick={handleSave}
+                className="flex-1 bg-primary text-primary-foreground font-semibold py-3 rounded-xl hover:opacity-90 transition-opacity text-sm">
+                {editId ? "Сохранить" : "Добавить товар"}
+              </button>
+              <button onClick={() => setShowForm(false)}
+                className="px-5 border border-border text-muted-foreground font-medium rounded-xl hover:bg-secondary transition-colors text-sm">
+                Отмена
+              </button>
             </div>
           </div>
         </div>
