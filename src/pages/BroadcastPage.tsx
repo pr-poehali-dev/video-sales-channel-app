@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import AgoraRTC, { type IAgoraRTCClient, type ILocalVideoTrack, type ILocalAudioTrack } from "agora-rtc-sdk-ng";
-import Icon from "@/components/ui/icon";
 import { useAuth } from "@/context/AuthContext";
 import { useStore, type ChatMessage } from "@/context/StoreContext";
 import type { Page } from "@/App";
+import QuickVideoProductModal from "./broadcast/QuickVideoProductModal";
+import BroadcastScreens from "./broadcast/BroadcastScreens";
+import BroadcastLiveView from "./broadcast/BroadcastLiveView";
 
 const AGORA_TOKEN = "https://functions.poehali.dev/a2751c9f-9c4b-4808-bf97-73f350e873a1";
 const API = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c";
@@ -15,376 +17,6 @@ const CODEC = (() => {
   return ua.includes("safari") && !ua.includes("chrome") ? "h264" : "vp8";
 })();
 
-// ── Модалка быстрого добавления товара ────────────────────────────────────────
-interface QuickProductModalProps {
-  imageDataUrl: string;
-  sellerId: string;
-  sellerName: string;
-  sellerAvatar: string;
-  defaultWarehouse?: { cityCode: number; cityName: string; name: string } | null;
-  onClose: () => void;
-  onSaved: () => void;
-}
-
-function QuickProductModal({ imageDataUrl, sellerId, sellerName, sellerAvatar, defaultWarehouse, onClose, onSaved }: QuickProductModalProps) {
-  const { addProduct } = useStore();
-  const [name, setName]       = useState("");
-  const [price, setPrice]     = useState("");
-  const [stock, setStock]     = useState("10");
-  const [weightG, setWeightG] = useState("500");
-  const [lengthCm, setLengthCm] = useState("20");
-  const [widthCm, setWidthCm]   = useState("15");
-  const [heightCm, setHeightCm] = useState("10");
-  const [saving, setSaving]   = useState(false);
-  const [imgUrl, setImgUrl]   = useState<string | null>(null);
-
-  // Загружаем фото в S3 сразу при открытии
-  useEffect(() => {
-    (async () => {
-      try {
-        const resp = await fetch(`${API}?action=upload_image`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ data_url: imageDataUrl }),
-        });
-        const data = await resp.json();
-        if (data.url) setImgUrl(data.url);
-      } catch { /* ignore */ }
-    })();
-  }, [imageDataUrl]);
-
-  const save = async () => {
-    if (!name.trim() || !price || saving) return;
-    setSaving(true);
-    try {
-      await addProduct({
-        name: name.trim(),
-        price: parseFloat(price),
-        category: "Разное",
-        description: "",
-        images: imgUrl ? [imgUrl] : [],
-        sellerId,
-        sellerName,
-        sellerAvatar,
-        inStock: parseInt(stock) || 0,
-        weightG: parseInt(weightG) || 500,
-        lengthCm: parseInt(lengthCm) || 20,
-        widthCm: parseInt(widthCm) || 15,
-        heightCm: parseInt(heightCm) || 10,
-        cdekEnabled: !!defaultWarehouse,
-        fromCityCode: defaultWarehouse?.cityCode ?? 0,
-        fromCityName: defaultWarehouse?.cityName ?? "",
-      } as never);
-      onSaved();
-    } catch { /* ignore */ }
-    finally { setSaving(false); }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70" onClick={onClose}>
-      <div
-        className="w-full max-w-lg bg-zinc-900 rounded-t-2xl p-4"
-        style={{ paddingBottom: "calc(2rem + 56px + env(safe-area-inset-bottom, 0px))" }}
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <p className="font-semibold text-white text-sm">Быстрый товар из эфира</p>
-          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-full bg-white/10">
-            <Icon name="X" size={14} className="text-white" />
-          </button>
-        </div>
-
-        <div className="flex gap-3 mb-4">
-          {/* Фото */}
-          <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-white/10">
-            <img src={imageDataUrl} className="w-full h-full object-cover" />
-          </div>
-          {/* Поля */}
-          <div className="flex-1 flex flex-col gap-2">
-            <input
-              value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder="Название товара..."
-              className="bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/30 outline-none focus:border-primary/60 w-full"
-              style={{ fontSize: 16 }}
-              autoFocus
-            />
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <input
-                  value={price}
-                  onChange={e => setPrice(e.target.value.replace(/[^0-9.]/g, ""))}
-                  placeholder="Цена"
-                  type="number"
-                  className="bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/30 outline-none focus:border-primary/60 w-full pr-6"
-                  style={{ fontSize: 16 }}
-                />
-                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/40 text-xs">₽</span>
-              </div>
-              <div className="relative w-20">
-                <input
-                  value={stock}
-                  onChange={e => setStock(e.target.value.replace(/[^0-9]/g, ""))}
-                  placeholder="Кол-во"
-                  type="number"
-                  className="bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/30 outline-none focus:border-primary/60 w-full pr-5"
-                  style={{ fontSize: 16 }}
-                />
-                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-white/40 text-[10px]">шт</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {defaultWarehouse ? (
-          <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-3 py-2 mb-3">
-            <Icon name="Warehouse" size={13} className="text-white/40 flex-shrink-0" />
-            <span className="text-[11px] text-white/50">Склад:</span>
-            <span className="text-[11px] text-white/80 font-medium truncate">{defaultWarehouse.name} · {defaultWarehouse.cityName}</span>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2 bg-yellow-500/10 border border-yellow-500/20 rounded-xl px-3 py-2 mb-3">
-            <Icon name="AlertTriangle" size={13} className="text-yellow-400 flex-shrink-0" />
-            <span className="text-[11px] text-yellow-400">Склад не задан — доставка СДЭК не будет рассчитана</span>
-          </div>
-        )}
-
-        {/* Вес и габариты */}
-        <div className="mb-3">
-          <p className="text-[11px] text-white/40 mb-2">Вес и габариты (для доставки)</p>
-          <div className="grid grid-cols-4 gap-1.5">
-            {[
-              { label: "Вес, г", val: weightG, set: setWeightG },
-              { label: "Дл., см", val: lengthCm, set: setLengthCm },
-              { label: "Шир., см", val: widthCm, set: setWidthCm },
-              { label: "Выс., см", val: heightCm, set: setHeightCm },
-            ].map(({ label, val, set }) => (
-              <div key={label}>
-                <p className="text-[9px] text-white/30 mb-1 text-center">{label}</p>
-                <input
-                  value={val}
-                  onChange={e => set(e.target.value.replace(/\D/g, ""))}
-                  inputMode="numeric"
-                  className="w-full bg-white/10 border border-white/10 rounded-xl px-2 py-2 text-sm text-white text-center outline-none focus:border-primary/50 transition-colors"
-                  style={{ fontSize: 15 }}
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {!imgUrl && (
-          <p className="text-[11px] text-white/30 text-center mb-3">Загружаю фото...</p>
-        )}
-
-        <button
-          onClick={save}
-          disabled={!name.trim() || !price || saving}
-          className="w-full bg-primary text-primary-foreground font-bold py-3 rounded-xl text-sm disabled:opacity-40 flex items-center justify-center gap-2"
-        >
-          {saving ? <Icon name="Loader" size={15} className="animate-spin" /> : <Icon name="Plus" size={15} />}
-          {saving ? "Сохраняю..." : "Добавить в магазин"}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ── Модалка видео-товара ───────────────────────────────────────────────────────
-interface QuickVideoProductModalProps {
-  videoBlobUrl: string;
-  sellerId: string;
-  sellerName: string;
-  sellerAvatar: string;
-  defaultWarehouse?: { cityCode: number; cityName: string; name: string } | null;
-  onClose: () => void;
-  onSaved: () => void;
-}
-
-function QuickVideoProductModal({ videoBlobUrl, sellerId, sellerName, sellerAvatar, defaultWarehouse, onClose, onSaved }: QuickVideoProductModalProps) {
-  const { addProduct } = useStore();
-  const [name, setName]         = useState("");
-  const [price, setPrice]       = useState("");
-  const [stock, setStock]       = useState("10");
-  const [weightG, setWeightG]   = useState("500");
-  const [lengthCm, setLengthCm] = useState("20");
-  const [widthCm, setWidthCm]   = useState("15");
-  const [heightCm, setHeightCm] = useState("10");
-  const [saving, setSaving]     = useState(false);
-  const [videoUrl, setVideoUrl] = useState<string | null>(null);
-  const [thumbUrl, setThumbUrl] = useState<string | null>(null);
-
-  // Загружаем видео в S3 при открытии
-  useEffect(() => {
-    (async () => {
-      try {
-        const blob = await fetch(videoBlobUrl).then(r => r.blob());
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-          const dataUrl = e.target?.result as string;
-          const resp = await fetch(`${API}?action=upload_video`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ data_url: dataUrl }),
-          });
-          const data = await resp.json();
-          if (data.url) setVideoUrl(data.url);
-          if (data.thumb_url) setThumbUrl(data.thumb_url);
-        };
-        reader.readAsDataURL(blob);
-      } catch { /* ignore */ }
-    })();
-  }, [videoBlobUrl]);
-
-  const save = async () => {
-    if (!name.trim() || !price || saving) return;
-    setSaving(true);
-    try {
-      await addProduct({
-        name: name.trim(),
-        price: parseFloat(price),
-        category: "Разное",
-        description: "",
-        images: thumbUrl ? [thumbUrl] : [],
-        videoUrl: videoUrl ?? undefined,
-        sellerId,
-        sellerName,
-        sellerAvatar,
-        inStock: parseInt(stock) || 0,
-        weightG: parseInt(weightG) || 500,
-        lengthCm: parseInt(lengthCm) || 20,
-        widthCm: parseInt(widthCm) || 15,
-        heightCm: parseInt(heightCm) || 10,
-        cdekEnabled: !!defaultWarehouse,
-        fromCityCode: defaultWarehouse?.cityCode ?? 0,
-        fromCityName: defaultWarehouse?.cityName ?? "",
-      } as never);
-      onSaved();
-    } catch { /* ignore */ }
-    finally { setSaving(false); }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70" onClick={onClose}>
-      <div
-        className="w-full max-w-lg bg-zinc-900 rounded-t-2xl p-4"
-        style={{ paddingBottom: "calc(2rem + 56px + env(safe-area-inset-bottom, 0px))" }}
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <p className="font-semibold text-white text-sm">Видео-товар из эфира</p>
-          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-full bg-white/10">
-            <Icon name="X" size={14} className="text-white" />
-          </button>
-        </div>
-
-        <div className="flex gap-3 mb-4">
-          {/* Видео-превью */}
-          <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-black border border-orange-500/40 relative">
-            <video
-              src={videoBlobUrl}
-              autoPlay
-              loop
-              muted
-              playsInline
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute bottom-1 right-1 bg-orange-500 rounded-full p-0.5">
-              <Icon name="Video" size={9} className="text-white" />
-            </div>
-          </div>
-          {/* Поля */}
-          <div className="flex-1 flex flex-col gap-2">
-            <input
-              value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder="Название товара..."
-              className="bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/30 outline-none focus:border-primary/60 w-full"
-              style={{ fontSize: 16 }}
-              autoFocus
-            />
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <input
-                  value={price}
-                  onChange={e => setPrice(e.target.value.replace(/[^0-9.]/g, ""))}
-                  placeholder="Цена"
-                  type="number"
-                  className="bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/30 outline-none focus:border-primary/60 w-full pr-6"
-                  style={{ fontSize: 16 }}
-                />
-                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/40 text-xs">₽</span>
-              </div>
-              <div className="relative w-20">
-                <input
-                  value={stock}
-                  onChange={e => setStock(e.target.value.replace(/[^0-9]/g, ""))}
-                  placeholder="Кол-во"
-                  type="number"
-                  className="bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/30 outline-none focus:border-primary/60 w-full pr-5"
-                  style={{ fontSize: 16 }}
-                />
-                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-white/40 text-[10px]">шт</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {defaultWarehouse ? (
-          <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-3 py-2 mb-3">
-            <Icon name="Warehouse" size={13} className="text-white/40 flex-shrink-0" />
-            <span className="text-[11px] text-white/50">Склад:</span>
-            <span className="text-[11px] text-white/80 font-medium truncate">{defaultWarehouse.name} · {defaultWarehouse.cityName}</span>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2 bg-yellow-500/10 border border-yellow-500/20 rounded-xl px-3 py-2 mb-3">
-            <Icon name="AlertTriangle" size={13} className="text-yellow-400 flex-shrink-0" />
-            <span className="text-[11px] text-yellow-400">Склад не задан — доставка СДЭК не будет рассчитана</span>
-          </div>
-        )}
-
-        {/* Вес и габариты */}
-        <div className="mb-3">
-          <p className="text-[11px] text-white/40 mb-2">Вес и габариты (для доставки)</p>
-          <div className="grid grid-cols-4 gap-1.5">
-            {[
-              { label: "Вес, г", val: weightG, set: setWeightG },
-              { label: "Дл., см", val: lengthCm, set: setLengthCm },
-              { label: "Шир., см", val: widthCm, set: setWidthCm },
-              { label: "Выс., см", val: heightCm, set: setHeightCm },
-            ].map(({ label, val, set }) => (
-              <div key={label}>
-                <p className="text-[9px] text-white/30 mb-1 text-center">{label}</p>
-                <input
-                  value={val}
-                  onChange={e => set(e.target.value.replace(/\D/g, ""))}
-                  inputMode="numeric"
-                  className="w-full bg-white/10 border border-white/10 rounded-xl px-2 py-2 text-sm text-white text-center outline-none focus:border-primary/50 transition-colors"
-                  style={{ fontSize: 15 }}
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {!videoUrl && (
-          <p className="text-[11px] text-orange-400/70 text-center mb-3">Загружаю видео...</p>
-        )}
-
-        <button
-          onClick={save}
-          disabled={!name.trim() || !price || saving}
-          className="w-full bg-orange-500 text-white font-bold py-3 rounded-xl text-sm disabled:opacity-40 flex items-center justify-center gap-2"
-        >
-          {saving ? <Icon name="Loader" size={15} className="animate-spin" /> : <Icon name="Plus" size={15} />}
-          {saving ? "Сохраняю..." : "Добавить видео-товар"}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ── Главная ───────────────────────────────────────────────────────────────────
 interface BroadcastPageProps { setPage: (p: Page) => void; }
 
 export default function BroadcastPage({ setPage }: BroadcastPageProps) {
@@ -409,7 +41,7 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
   const clientRef      = useRef<IAgoraRTCClient | null>(null);
   const videoTrackRef  = useRef<ILocalVideoTrack | null>(null);
   const audioTrackRef  = useRef<ILocalAudioTrack | null>(null);
-  const nativeVideoRef = useRef<HTMLVideoElement | null>(null);
+  const nativeVideoRef = useRef<HTMLVideoElement>(null);
   const timerRef       = useRef<ReturnType<typeof setInterval> | null>(null);
   const streamIdRef    = useRef<string | null>(null);
   const facingModeRef  = useRef<"user" | "environment">("user");
@@ -473,7 +105,6 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
     if (chatVisible) chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages.length, chatVisible]);
 
-  // Очищаем таймер при размонтировании
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
@@ -700,7 +331,6 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
     setIsFront(newFacing === "user");
     const oldTrack = videoTrackRef.current;
     try {
-      // Сначала unpublish, потом закрываем старый трек
       if (clientRef.current && isLive && oldTrack) {
         try { await clientRef.current.unpublish([oldTrack]); } catch { /* ignore */ }
       }
@@ -722,330 +352,81 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
   const fmt = (s: number) => `${String(Math.floor(s / 60)).padStart(2,"0")}:${String(s % 60).padStart(2,"0")}`;
 
   // ── Экраны-заглушки ──────────────────────────────────────────────────────────
-  if (!user) return (
-    <div className="max-w-md mx-auto px-4 py-24 text-center">
-      <Icon name="Video" size={36} className="mx-auto mb-4 text-muted-foreground opacity-40" />
-      <h2 className="font-oswald text-xl font-semibold mb-2">Войдите в аккаунт</h2>
-      <p className="text-sm text-muted-foreground mb-5">Чтобы вести эфиры, необходимо войти</p>
-      <button onClick={() => setPage("auth")} className="bg-primary text-primary-foreground font-semibold px-6 py-3 rounded-xl hover:opacity-90">Войти</button>
-    </div>
-  );
+  if (!user) return <BroadcastScreens type="no-user" setPage={setPage} />;
 
-  if (checkedActive === "loading" && !isLive) return (
-    <div className="max-w-md mx-auto px-4 py-24 text-center">
-      <Icon name="Loader" size={32} className="mx-auto text-muted-foreground animate-spin" />
-    </div>
-  );
+  if (checkedActive === "loading" && !isLive) return <BroadcastScreens type="loading" setPage={setPage} />;
 
   if (checkedActive && !isLive) return (
-    <div className="max-w-md mx-auto px-4 py-24 text-center">
-      <div className="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-5">
-        <Icon name="Radio" size={40} className="text-red-500" />
-      </div>
-      <h2 className="font-oswald text-2xl font-semibold mb-2">Эфир идёт прямо сейчас</h2>
-      <p className="text-sm text-muted-foreground mb-1">«{checkedActive.title}»</p>
-      <p className="text-sm text-muted-foreground mb-6">Нажмите «Вернуться в эфир» чтобы продолжить управление</p>
-      <div className="flex flex-col gap-3 max-w-xs mx-auto">
-        <button
-          onClick={async () => {
-            if (!user) return;
-            setStatus("connecting");
-            setTitle(checkedActive.title);
-            streamIdRef.current = checkedActive.id;
-            try {
-              // Если треки ещё не инициализированы — создаём их заново
-              if (!audioTrackRef.current || !videoTrackRef.current) {
-                const [at, vt] = await AgoraRTC.createMicrophoneAndCameraTracks(
-                  { encoderConfig: "speech_standard" },
-                  { encoderConfig: { width: 640, height: 360, frameRate: 15, bitrateMax: 600 }, optimizationMode: "motion", facingMode: facingModeRef.current }
-                );
-                audioTrackRef.current = at;
-                videoTrackRef.current = vt;
-                attachStream(vt);
-              }
-              const tokenResp = await fetch(`${AGORA_TOKEN}?channel=${checkedActive.id}&uid=1&role=publisher`);
-              const tokenData = await tokenResp.json();
-              const client = AgoraRTC.createClient({ mode: "live", codec: CODEC });
-              clientRef.current = client;
-              await client.setClientRole("host");
-              await client.join(tokenData.appId, checkedActive.id, tokenData.token, 1);
-              await client.publish([audioTrackRef.current!, videoTrackRef.current!]);
-              setCheckedActive(null);
-              setIsLive(true);
-              setStatus("live");
-              timerRef.current = setInterval(() => setDuration(d => d + 1), 1000);
-            } catch (e: unknown) {
-              setStatus("error");
-              setErrorMsg((e as Error).message);
-            }
-          }}
-          className="bg-primary text-primary-foreground font-semibold px-6 py-3 rounded-xl hover:opacity-90 flex items-center justify-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-white animate-live-pulse" />
-          Вернуться в эфир
-        </button>
-        <button
-          onClick={async () => {
-            setStoppingActive(true);
-            try {
-              await updateStream(checkedActive.id, { isLive: false });
-              setCheckedActive(null);
-              setFinished(true);
-              setTitle(checkedActive.title);
-            }
-            catch { /* ignore */ }
-            finally { setStoppingActive(false); }
-          }}
-          disabled={stoppingActive}
-          className="border border-red-500/40 text-red-500 font-semibold px-6 py-3 rounded-xl hover:bg-red-500/10 flex items-center justify-center gap-2 disabled:opacity-60">
-          {stoppingActive ? <Icon name="Loader" size={16} className="animate-spin" /> : <Icon name="Square" size={16} />}
-          Завершить эфир
-        </button>
-        <button onClick={() => setPage("dashboard")}
-          className="border border-border font-semibold px-6 py-3 rounded-xl hover:bg-accent">Назад в кабинет</button>
-      </div>
-    </div>
+    <BroadcastScreens
+      type="active"
+      setPage={setPage}
+      checkedActive={checkedActive}
+      stoppingActive={stoppingActive}
+      audioTrackRef={audioTrackRef}
+      videoTrackRef={videoTrackRef}
+      facingModeRef={facingModeRef}
+      streamIdRef={streamIdRef}
+      attachStream={attachStream}
+      setCheckedActive={setCheckedActive}
+      setIsLive={setIsLive}
+      setStatus={setStatus}
+      setErrorMsg={setErrorMsg}
+      setTitle={setTitle}
+      setDuration={setDuration}
+      timerRef={timerRef}
+      setStoppingActive={setStoppingActive}
+      setFinished={setFinished}
+      updateStream={updateStream as (id: string, data: Record<string, unknown>) => Promise<void>}
+    />
   );
 
   if (finished) return (
-    <div className="max-w-md mx-auto px-4 py-24 text-center">
-      <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-5">
-        <Icon name="CheckCircle" size={40} className="text-primary" />
-      </div>
-      <h2 className="font-oswald text-2xl font-semibold mb-2">Эфир завершён!</h2>
-      <p className="text-sm text-muted-foreground mb-1">«{title}»</p>
-      <p className="text-sm text-muted-foreground mb-6">Длительность: {fmt(savedDuration)}</p>
-      <div className="flex flex-col gap-3 max-w-xs mx-auto">
-        <button onClick={() => { setFinished(false); setTitle(""); setDuration(0); streamIdRef.current = null; setStatus("idle"); setChatMessages([]); }}
-          className="bg-primary text-primary-foreground font-semibold px-6 py-3 rounded-xl hover:opacity-90">Новый эфир</button>
-        <button onClick={() => setPage("dashboard")}
-          className="border border-border font-semibold px-6 py-3 rounded-xl hover:bg-accent">Кабинет</button>
-      </div>
-    </div>
+    <BroadcastScreens
+      type="finished"
+      setPage={setPage}
+      title={title}
+      savedDuration={savedDuration}
+      fmt={fmt}
+      onNewBroadcast={() => { setFinished(false); setTitle(""); setDuration(0); streamIdRef.current = null; setStatus("idle"); setChatMessages([]); }}
+    />
   );
 
   return (
-    <div className="fixed inset-0 bg-black" style={{ zIndex: 40 }}>
-
-      {/* ── ВИДЕО на весь экран ── */}
-      <video
-        ref={nativeVideoRef}
-        autoPlay
-        playsInline
-        muted
-        className="absolute inset-0 w-full h-full object-cover"
-        style={{ background: "#000" }}
+    <>
+      <BroadcastLiveView
+        nativeVideoRef={nativeVideoRef}
+        status={status}
+        errorMsg={errorMsg}
+        isLive={isLive}
+        duration={duration}
+        fmt={fmt}
+        isMuted={isMuted}
+        isCamOff={isCamOff}
+        videoRecording={videoRecording}
+        videoCountdown={videoCountdown}
+        chatVisible={chatVisible}
+        chatMessages={chatMessages}
+        chatInput={chatInput}
+        chatSending={chatSending}
+        chatEndRef={chatEndRef}
+        title={title}
+        customThumb={customThumb}
+        thumbInputRef={thumbInputRef}
+        thumbUploading={thumbUploading}
+        setPage={setPage}
+        onToggleMute={toggleMute}
+        onToggleCamera={toggleCamera}
+        onFlipCamera={flipCamera}
+        onStopBroadcast={stopBroadcast}
+        onCaptureVideo={captureVideo}
+        onSendChat={sendChat}
+        onChatInputChange={setChatInput}
+        onChatInputKeyDown={e => e.key === "Enter" && sendChat()}
+        onToggleChatVisible={() => setChatVisible(v => !v)}
+        onTitleChange={setTitle}
+        onThumbFileChange={handleThumbFile}
+        onStartBroadcast={status === "error" ? () => { setStatus("idle"); setErrorMsg(""); } : startBroadcast}
       />
-
-      {/* Ошибка камеры */}
-      {status === "error" && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/90 p-6 text-center z-10">
-          <div>
-            <Icon name="VideoOff" size={36} className="mx-auto mb-3 text-red-400" />
-            <p className="text-sm text-white/80 mb-4">{errorMsg}</p>
-          </div>
-        </div>
-      )}
-
-      {/* ── ШАПКА ── */}
-      <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-3 pt-3 z-20"
-        style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.6), transparent)" }}>
-        <button onClick={() => setPage("streams")}
-          className="w-9 h-9 rounded-full bg-black/40 backdrop-blur flex items-center justify-center">
-          <Icon name="ArrowLeft" size={18} className="text-white" />
-        </button>
-
-        <div className="flex items-center gap-2">
-          {isLive && (
-            <>
-              <span className="flex items-center gap-1.5 bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full">
-                <span className="w-1.5 h-1.5 rounded-full bg-white animate-live-pulse" />LIVE
-              </span>
-              <span className="bg-black/60 text-white text-xs font-mono px-2 py-1 rounded-lg">{fmt(duration)}</span>
-            </>
-          )}
-          {status === "connecting" && (
-            <div className="flex items-center gap-1.5 bg-black/60 text-white/70 text-xs px-3 py-1.5 rounded-full">
-              <Icon name="Loader" size={12} className="animate-spin" />Подключение...
-            </div>
-          )}
-        </div>
-
-        {/* Кнопки справа (только в эфире) */}
-        {isLive && (
-          <div className="flex items-center gap-2">
-            {/* Кнопка видео-товара */}
-            <button
-              onClick={captureVideo}
-              disabled={videoRecording}
-              className="relative w-9 h-9 rounded-full bg-orange-500 flex items-center justify-center shadow-lg disabled:opacity-80"
-              title="Снять 5-сек видео и добавить товар"
-            >
-              {videoRecording ? (
-                <span className="text-white font-bold text-sm leading-none">{videoCountdown}</span>
-              ) : (
-                <Icon name="Video" size={17} className="text-white" />
-              )}
-              {videoRecording && (
-                <span className="absolute inset-0 rounded-full border-2 border-white animate-ping opacity-60" />
-              )}
-            </button>
-            <button
-              onClick={stopBroadcast}
-              className="flex items-center gap-1.5 bg-red-600 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg"
-            >
-              <Icon name="Square" size={11} />
-              Стоп
-            </button>
-          </div>
-        )}
-        {!isLive && <div className="w-9 h-9" />}
-      </div>
-
-      {/* ── ЧАТ ПОВЕРХ ВИДЕО (только в эфире) ── */}
-      {isLive && (
-        <div className="absolute bottom-0 left-0 right-0 z-20"
-          style={{ background: "linear-gradient(to top, rgba(0,0,0,0.75) 60%, transparent)" }}>
-
-          {/* Сообщения */}
-          {chatVisible && (
-            <div className="px-3 pt-3 pb-1 space-y-1.5 overflow-y-auto" style={{ maxHeight: 150 }}>
-              {chatMessages.length === 0
-                ? <p className="text-[11px] text-white/30 text-center">Пока тихо...</p>
-                : chatMessages.map(m => (
-                  <div key={m.id} className="flex items-start gap-1.5">
-                    <div className="w-5 h-5 rounded-full bg-white/20 text-white text-[9px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
-                      {m.userAvatar}
-                    </div>
-                    <p className="text-xs text-white leading-snug">
-                      <span className="font-bold text-primary/90">{m.userName} </span>
-                      <span className="text-white/80">{m.text}</span>
-                    </p>
-                  </div>
-                ))
-              }
-              <div ref={chatEndRef} />
-            </div>
-          )}
-
-          {/* Ввод сообщения */}
-          <div className="px-3 pt-1 pb-2">
-            <div className="flex gap-2 items-center">
-              <input
-                value={chatInput}
-                onChange={e => setChatInput(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && sendChat()}
-                placeholder="Написать в чат..."
-                maxLength={200}
-                className="flex-1 bg-black/50 backdrop-blur border border-white/20 rounded-full px-4 py-2 text-white placeholder:text-white/40 outline-none focus:border-white/40"
-                style={{ fontSize: 16 }}
-              />
-              <button onClick={sendChat} disabled={!chatInput.trim() || chatSending}
-                className="w-9 h-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center disabled:opacity-40 flex-shrink-0">
-                {chatSending ? <Icon name="Loader" size={14} className="animate-spin" /> : <Icon name="Send" size={14} />}
-              </button>
-            </div>
-          </div>
-
-          {/* Нижние кнопки управления */}
-          <div className="flex flex-col items-center gap-2 px-4" style={{ paddingBottom: "calc(56px + 1.25rem + env(safe-area-inset-bottom, 0px))" }}>
-            {/* Скрыть чат */}
-            <button
-              onClick={() => setChatVisible(v => !v)}
-              className="flex items-center gap-1.5 bg-black/50 backdrop-blur text-white text-xs px-3 py-1.5 rounded-full"
-            >
-              <Icon name={chatVisible ? "MessageCircleOff" : "MessageCircle"} size={13} />
-              {chatVisible ? "Скрыть чат" : "Чат"}
-            </button>
-
-            {/* Основные кнопки */}
-            <div className="flex items-center justify-center gap-3 w-full">
-              {/* Микрофон */}
-              <button onClick={toggleMute}
-                className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${isMuted ? "bg-red-600" : "bg-black/60 backdrop-blur border border-white/20"}`}>
-                <Icon name={isMuted ? "MicOff" : "Mic"} size={18} className="text-white" />
-              </button>
-
-              {/* Завершить */}
-              <button onClick={stopBroadcast}
-                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-3 rounded-full text-sm shadow-lg transition-colors">
-                <Icon name="Square" size={15} />Завершить
-              </button>
-
-              {/* Камера вкл/выкл */}
-              <button onClick={toggleCamera}
-                className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${isCamOff ? "bg-red-600" : "bg-black/60 backdrop-blur border border-white/20"}`}>
-                <Icon name={isCamOff ? "VideoOff" : "Video"} size={18} className="text-white" />
-              </button>
-
-              {/* Перевернуть камеру */}
-              <button onClick={flipCamera} disabled={isCamOff}
-                className="w-12 h-12 rounded-full bg-black/60 backdrop-blur border border-white/20 flex items-center justify-center disabled:opacity-30 transition-colors">
-                <Icon name="RefreshCw" size={18} className="text-white" />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── НЕ В ЭФИРЕ: форма запуска ── */}
-      {!isLive && (
-        <div className="absolute bottom-0 left-0 right-0 z-20 px-4"
-          style={{ paddingBottom: "calc(56px + 2rem + env(safe-area-inset-bottom, 0px))", background: "linear-gradient(to top, rgba(0,0,0,0.85) 70%, transparent)" }}>
-
-          <div className="flex flex-col gap-2 mb-4">
-            <input value={title} onChange={e => setTitle(e.target.value)} maxLength={80}
-              placeholder="Название эфира..."
-              className="w-full bg-black/60 backdrop-blur border border-white/20 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-white/40 outline-none focus:border-primary/60"
-              style={{ fontSize: 16 }}
-            />
-            <input ref={thumbInputRef} type="file" accept="image/*" className="hidden" onChange={handleThumbFile} />
-            <button
-              onClick={() => thumbInputRef.current?.click()}
-              className="flex items-center gap-2 bg-black/60 backdrop-blur border border-white/20 rounded-xl px-4 py-2 text-xs text-white/70 hover:text-white hover:border-white/40 transition-colors w-full"
-            >
-              {customThumb
-                ? <><img src={customThumb} className="w-5 h-5 rounded object-cover flex-shrink-0" /><span className="truncate">Превью загружено — нажми чтобы сменить</span></>
-                : <><Icon name="Image" size={14} className="flex-shrink-0" /><span>Загрузить превью (необязательно)</span></>
-              }
-            </button>
-          </div>
-
-          {errorMsg && (
-            <div className="mb-3 bg-black/80 border border-red-500/50 rounded-xl px-4 py-2.5 text-xs text-red-400 text-center">
-              {errorMsg}
-            </div>
-          )}
-
-          <div className="flex items-center justify-center gap-4">
-            <button onClick={toggleMute}
-              className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${isMuted ? "bg-red-600" : "bg-black/60 backdrop-blur border border-white/20"}`}>
-              <Icon name={isMuted ? "MicOff" : "Mic"} size={18} className="text-white" />
-            </button>
-
-            <button
-              onClick={status === "error" ? () => { setStatus("idle"); setErrorMsg(""); } : startBroadcast}
-              disabled={!title.trim() || status === "connecting"}
-              className="flex items-center gap-2 bg-red-500 hover:bg-red-600 disabled:opacity-40 text-white font-bold px-8 py-3.5 rounded-full text-sm shadow-lg transition-colors">
-              {status === "connecting"
-                ? <><Icon name="Loader" size={16} className="animate-spin" />Подключение...</>
-                : status === "error"
-                ? <><Icon name="RefreshCw" size={16} />Повторить</>
-                : <><span className="w-2.5 h-2.5 rounded-full bg-white" />Начать эфир</>
-              }
-            </button>
-
-            <button onClick={toggleCamera}
-              className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${isCamOff ? "bg-red-600" : "bg-black/60 backdrop-blur border border-white/20"}`}>
-              <Icon name={isCamOff ? "VideoOff" : "Video"} size={18} className="text-white" />
-            </button>
-
-            <button onClick={flipCamera} disabled={isCamOff}
-              className="w-12 h-12 rounded-full bg-black/60 backdrop-blur border border-white/20 flex items-center justify-center disabled:opacity-30 transition-colors">
-              <Icon name="RefreshCw" size={18} className="text-white" />
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* ── Модалка видео-товара ── */}
       {quickProductVideo && user && (
@@ -1059,6 +440,6 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
           onSaved={() => { URL.revokeObjectURL(quickProductVideo); setQuickProductVideo(null); }}
         />
       )}
-    </div>
+    </>
   );
 }
