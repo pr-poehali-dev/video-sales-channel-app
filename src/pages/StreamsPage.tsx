@@ -66,18 +66,7 @@ export default function StreamsPage({ setPage, addToCart, onProductClick }: Stre
             <Icon name="Radio" size={36} className="text-muted-foreground opacity-40" />
           </div>
           <h2 className="font-oswald text-xl font-semibold text-foreground tracking-wide mb-2">Эфиров пока нет</h2>
-          <p className="text-muted-foreground text-sm max-w-xs mx-auto mb-6">Никто ещё не запустил трансляцию. Будьте первым!</p>
-          {user ? (
-            <button onClick={() => setPage("broadcast")}
-              className="inline-flex items-center gap-2 bg-primary text-primary-foreground font-semibold px-6 py-3 rounded-xl hover:opacity-90 transition-opacity">
-              <Icon name="Video" size={16} />Запустить первый эфир
-            </button>
-          ) : (
-            <button onClick={() => setPage("auth")}
-              className="inline-flex items-center gap-2 border border-border text-foreground font-semibold px-6 py-3 rounded-xl hover:bg-secondary transition-colors">
-              <Icon name="UserPlus" size={16} />Войти и следить за эфирами
-            </button>
-          )}
+          <p className="text-muted-foreground text-sm max-w-xs mx-auto">Никто ещё не запустил трансляцию</p>
         </div>
       </div>
     );
