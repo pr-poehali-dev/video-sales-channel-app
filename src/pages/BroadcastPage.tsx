@@ -269,8 +269,8 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
     try {
       try {
         const allResp = await fetch(`${API}?action=get_streams`);
-        const allStreams: Array<{seller_id: string; is_live: boolean; id: string}> = await allResp.json();
-        const active = allStreams.filter(s => s.seller_id === user.id && s.is_live);
+        const allStreams: Array<{sellerId: string; seller_id?: string; isLive: boolean; is_live?: boolean; id: string}> = await allResp.json();
+        const active = allStreams.filter(s => (s.sellerId === user.id || s.seller_id === user.id) && (s.isLive || s.is_live));
         for (const st of active) {
           await updateStream(st.id, { isLive: false } as never);
         }

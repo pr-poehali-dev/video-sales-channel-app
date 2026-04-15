@@ -21,7 +21,8 @@ export default function DashboardStreamsTab({ setPage }: Props) {
   const { deleteStream, updateStream, reload, getSellerStreams } = useStore();
 
   const myStreams = user ? getSellerStreams(user.id) : [];
-  const activeStream = myStreams.find(s => s.isLive) ?? null;
+  const activeStreams = myStreams.filter(s => s.isLive);
+  const activeStream = activeStreams[0] ?? null;
 
   const [stoppingStream, setStoppingStream] = useState<string | null>(null);
   const [editStreamId, setEditStreamId] = useState<string | null>(null);
@@ -33,6 +34,17 @@ export default function DashboardStreamsTab({ setPage }: Props) {
     setStoppingStream(id);
     try {
       await updateStream(id, { isLive: false });
+      await reload();
+    } catch { /* ignore */ }
+    finally { setStoppingStream(null); }
+  };
+
+  const handleStopAllActive = async () => {
+    setStoppingStream("all");
+    try {
+      for (const s of activeStreams) {
+        await updateStream(s.id, { isLive: false });
+      }
       await reload();
     } catch { /* ignore */ }
     finally { setStoppingStream(null); }
@@ -58,14 +70,14 @@ export default function DashboardStreamsTab({ setPage }: Props) {
         <div className="flex items-center gap-2">
           {activeStream && (
             <button
-              onClick={() => handleStopStream(activeStream.id)}
-              disabled={stoppingStream === activeStream.id}
+              onClick={handleStopAllActive}
+              disabled={!!stoppingStream}
               className="flex items-center gap-1.5 text-xs font-semibold text-white bg-red-500 px-3 py-1.5 rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50"
             >
-              {stoppingStream === activeStream.id
+              {stoppingStream
                 ? <Icon name="Loader" size={12} className="animate-spin" />
                 : <Icon name="Square" size={12} />}
-              Завершить эфир
+              Завершить эфир{activeStreams.length > 1 ? ` (${activeStreams.length})` : ""}
             </button>
           )}
           {!activeStream && (
