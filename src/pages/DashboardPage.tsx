@@ -7,6 +7,7 @@ import DashboardProductsTab from "./dashboard/DashboardProductsTab";
 import DashboardStreamsTab from "./dashboard/DashboardStreamsTab";
 import DashboardWarehousesTab, { type Warehouse } from "./dashboard/DashboardWarehousesTab";
 import DashboardOrdersTab from "./dashboard/DashboardOrdersTab";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 
 interface DashboardPageProps {
   setPage: (p: Page) => void;
@@ -25,6 +26,8 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
 
   const [tab, setTab] = useState("Заказы");
   const [stoppingStream, setStoppingStream] = useState<string | null>(null);
+  const { subscribed, isSupported, subscribe, unsubscribe, status: pushStatus } = usePushNotifications(user?.id ?? null);
+  const [pushLoading, setPushLoading] = useState(false);
 
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [whLoading, setWhLoading] = useState(false);
@@ -44,6 +47,13 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
   useEffect(() => {
     if (user && tab === "Склады") loadWarehouses(user.id);
   }, [tab]);
+
+  // Навигация к заказам при клике на push-уведомление
+  useEffect(() => {
+    const handler = () => setTab("Заказы");
+    window.addEventListener("navigate-orders", handler);
+    return () => window.removeEventListener("navigate-orders", handler);
+  }, []);
 
   const handleStopStream = async (id: string) => {
     setStoppingStream(id);
@@ -88,6 +98,31 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
             <Icon name="FileText" size={15} />
             Реквизиты
           </button>
+          {isSupported && pushStatus !== "denied" && (
+            <button
+              onClick={async () => {
+                setPushLoading(true);
+                if (subscribed) await unsubscribe();
+                else await subscribe();
+                setPushLoading(false);
+              }}
+              disabled={pushLoading}
+              title={subscribed ? "Уведомления включены — нажми чтобы отключить" : "Включить уведомления о заказах"}
+              className={`relative p-2.5 rounded-xl border transition-colors disabled:opacity-50 ${
+                subscribed
+                  ? "bg-primary/10 border-primary/30 text-primary"
+                  : "border-border text-muted-foreground hover:bg-secondary"
+              }`}
+            >
+              {pushLoading
+                ? <Icon name="Loader" size={16} className="animate-spin" />
+                : <Icon name={subscribed ? "BellRing" : "BellOff"} size={16} />
+              }
+              {subscribed && (
+                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-primary rounded-full" />
+              )}
+            </button>
+          )}
           {activeStream ? (
             <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 px-4 py-2.5 rounded-xl">
               <span className="w-2 h-2 rounded-full bg-red-500 animate-live-pulse flex-shrink-0" />

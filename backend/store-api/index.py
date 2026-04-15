@@ -7,11 +7,28 @@ import os
 import uuid
 import re
 import base64
+import urllib.request
 from datetime import datetime, timezone
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import boto3
 from botocore.client import Config
+
+PUSH_API = "https://functions.poehali.dev/843759f9-8a03-41bd-a539-41e0cdb187cc"
+
+def _notify_seller(seller_id: str, payload: dict):
+    """Отправить push-уведомление продавцу (fire-and-forget)"""
+    try:
+        data = json.dumps({"seller_id": seller_id, "payload": payload}).encode()
+        req = urllib.request.Request(
+            f"{PUSH_API}?action=notify_seller",
+            data=data,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        urllib.request.urlopen(req, timeout=5)
+    except Exception as e:
+        print(f"[PUSH] notify failed: {e}")
 
 # ── Автофильтр матов ─────────────────────────────────────────────────────────
 _BAD_WORDS = [
@@ -241,6 +258,15 @@ def handler(event: dict, context) -> dict:
                   json.dumps(items, ensure_ascii=False), goods_total, order_total,
                   "new", body.get("payment_method","")))
             conn.commit()
+            # Push-уведомление продавцу о новом заказе
+            seller_ids = list({i.get("sellerId","") for i in items if i.get("sellerId")})
+            for sid in seller_ids:
+                _notify_seller(sid, {
+                    "title": "Новый заказ!",
+                    "body": f"{body.get('buyer_name','Покупатель')} оформил заказ на {int(order_total):,} ₽".replace(",", " "),
+                    "orderId": oid,
+                    "tag": f"order-{oid}",
+                })
             return ok({"ok": True, "order_id": oid, "order_total": order_total}, 201)
 
         if action == "get_orders":

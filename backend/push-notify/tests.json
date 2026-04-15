@@ -1,0 +1,36 @@
+{
+  "tests": [
+    {
+      "name": "get_vapid_key returns key or 503",
+      "method": "GET",
+      "path": "/?action=get_vapid_key",
+      "expectedStatus": [200, 503],
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "save_subscription without user_id returns 400",
+      "method": "POST",
+      "path": "/?action=save_subscription",
+      "body": {},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "user_id and subscription required"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "notify_seller without seller_id returns 400",
+      "method": "POST",
+      "path": "/?action=notify_seller",
+      "body": {},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "seller_id required"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "unknown action returns 404",
+      "method": "GET",
+      "path": "/?action=unknown",
+      "expectedStatus": 404,
+      "bodyMatcher": "partial"
+    }
+  ]
+}
