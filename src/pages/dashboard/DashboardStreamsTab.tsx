@@ -68,11 +68,13 @@ export default function DashboardStreamsTab({ setPage }: Props) {
               Завершить эфир
             </button>
           )}
-          <button onClick={() => setPage("broadcast")}
-            className="flex items-center gap-1.5 text-sm text-primary border border-primary/30 px-3 py-1.5 rounded-lg hover:bg-primary/5 transition-colors font-medium">
-            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-live-pulse" />
-            {activeStream ? "Вернуться в эфир" : "Начать эфир"}
-          </button>
+          {!activeStream && (
+            <button onClick={() => setPage("broadcast")}
+              className="flex items-center gap-1.5 text-sm text-primary border border-primary/30 px-3 py-1.5 rounded-lg hover:bg-primary/5 transition-colors font-medium">
+              <Icon name="Video" size={13} />
+              Начать эфир
+            </button>
+          )}
         </div>
       </div>
 

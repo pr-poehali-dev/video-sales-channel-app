@@ -32,11 +32,47 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
         .then(r => r.json())
         .then((all: Array<{sellerId: string; isLive: boolean; id: string; title: string}>) => {
           const found = all.find(s => s.sellerId === user.id && s.isLive);
-          setCheckedActive(found ?? null);
+          if (found) {
+            setCheckedActive(found);
+            autoRejoin(found);
+          } else {
+            setCheckedActive(null);
+          }
         })
         .catch(() => setCheckedActive(null));
     });
   }, [user?.id]);
+
+  const autoRejoin = async (stream: {id: string; title: string}) => {
+    setStatus("connecting");
+    setTitle(stream.title);
+    streamIdRef.current = stream.id;
+    try {
+      if (!audioTrackRef.current || !videoTrackRef.current) {
+        await new Promise(res => setTimeout(res, 800));
+      }
+      const tokenResp = await fetch(`${AGORA_TOKEN}?channel=${stream.id}&uid=1&role=publisher`);
+      const tokenData = await tokenResp.json();
+      const client = AgoraRTC.createClient({ mode: "live", codec: CODEC });
+      clientRef.current = client;
+      await client.setClientRole("host");
+      await Promise.race([
+        client.join(tokenData.appId, stream.id, tokenData.token, 1),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Таймаут подключения 15с")), 15000)),
+      ]);
+      if (audioTrackRef.current && videoTrackRef.current) {
+        await client.publish([audioTrackRef.current, videoTrackRef.current]);
+      }
+      setCheckedActive(null);
+      setIsLive(true);
+      setStatus("live");
+      timerRef.current = setInterval(() => setDuration(d => d + 1), 1000);
+    } catch (e: unknown) {
+      setStatus("error");
+      setErrorMsg((e as Error).message);
+      setCheckedActive(null);
+    }
+  };
 
   const clientRef      = useRef<IAgoraRTCClient | null>(null);
   const videoTrackRef  = useRef<ILocalVideoTrack | null>(null);
@@ -356,30 +392,6 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
 
   if (checkedActive === "loading" && !isLive) return <BroadcastScreens type="loading" setPage={setPage} />;
 
-  if (checkedActive && !isLive && status !== "connecting") return (
-    <BroadcastScreens
-      type="active"
-      setPage={setPage}
-      checkedActive={checkedActive}
-      stoppingActive={stoppingActive}
-      audioTrackRef={audioTrackRef}
-      videoTrackRef={videoTrackRef}
-      facingModeRef={facingModeRef}
-      streamIdRef={streamIdRef}
-      clientRef={clientRef}
-      attachStream={attachStream}
-      setCheckedActive={setCheckedActive}
-      setIsLive={setIsLive}
-      setStatus={setStatus}
-      setErrorMsg={setErrorMsg}
-      setTitle={setTitle}
-      setDuration={setDuration}
-      timerRef={timerRef}
-      setStoppingActive={setStoppingActive}
-      setFinished={setFinished}
-      updateStream={updateStream as (id: string, data: Record<string, unknown>) => Promise<void>}
-    />
-  );
 
   if (finished) return (
     <BroadcastScreens
