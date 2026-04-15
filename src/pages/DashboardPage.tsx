@@ -6,12 +6,13 @@ import type { Page } from "@/App";
 import DashboardProductsTab from "./dashboard/DashboardProductsTab";
 import DashboardStreamsTab from "./dashboard/DashboardStreamsTab";
 import DashboardWarehousesTab, { type Warehouse } from "./dashboard/DashboardWarehousesTab";
+import DashboardOrdersTab from "./dashboard/DashboardOrdersTab";
 
 interface DashboardPageProps {
   setPage: (p: Page) => void;
 }
 
-const TABS = ["Товары", "Склады", "Мои эфиры", "Статистика"];
+const TABS = ["Заказы", "Товары", "Склады", "Мои эфиры", "Статистика"];
 const STORE_API = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c";
 
 export default function DashboardPage({ setPage }: DashboardPageProps) {
@@ -22,7 +23,7 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
   const myStreams = user ? getSellerStreams(user.id) : [];
   const activeStream = myStreams.find(s => s.isLive) ?? null;
 
-  const [tab, setTab] = useState("Товары");
+  const [tab, setTab] = useState("Заказы");
   const [stoppingStream, setStoppingStream] = useState<string | null>(null);
 
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
@@ -131,10 +132,10 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
       </div>
 
       {/* Табы */}
-      <div className="flex gap-1 mb-6 bg-secondary rounded-xl p-1 w-fit">
+      <div className="flex gap-1 mb-6 overflow-x-auto scrollbar-hide bg-secondary rounded-xl p-1 w-fit max-w-full">
         {TABS.map(t => (
           <button key={t} onClick={() => setTab(t)}
-            className={`px-4 py-2 text-sm rounded-lg font-medium transition-all ${
+            className={`relative flex-shrink-0 px-4 py-2 text-sm rounded-lg font-medium transition-all ${
               tab === t ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
             }`}>
             {t}
@@ -142,6 +143,7 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
         ))}
       </div>
 
+      {tab === "Заказы" && <DashboardOrdersTab />}
       {tab === "Товары" && <DashboardProductsTab warehouses={warehouses} />}
       {tab === "Склады" && <DashboardWarehousesTab warehouses={warehouses} setWarehouses={setWarehouses} whLoading={whLoading} />}
       {tab === "Мои эфиры" && <DashboardStreamsTab setPage={setPage} />}

@@ -252,6 +252,61 @@ def handler(event: dict, context) -> dict:
             rows = cur.fetchall()
             return ok([_fmt_order(r) for r in rows])
 
+        if action == "get_seller_orders":
+            """Получить все заказы продавца по его seller_id"""
+            seller_id = qs.get("seller_id") or body.get("seller_id")
+            if not seller_id:
+                return err("seller_id required", 400)
+            # Ищем заказы где хотя бы один товар принадлежит продавцу
+            cur.execute("""
+                SELECT * FROM orders
+                WHERE seller_id = %s
+                   OR EXISTS (
+                       SELECT 1 FROM jsonb_array_elements(items) AS item
+                       WHERE item->>'sellerId' = %s
+                   )
+                ORDER BY created_at DESC
+                LIMIT 200
+            """, (seller_id, seller_id))
+            rows = cur.fetchall()
+            # Фильтруем items — оставляем только товары этого продавца
+            result = []
+            for r in rows:
+                fmt = _fmt_order(r)
+                fmt["sellerItems"] = [it for it in fmt["items"] if it.get("sellerId") == seller_id]
+                fmt["sellerTotal"] = sum(
+                    float(it.get("price", 0)) * int(it.get("qty", it.get("quantity", 1)))
+                    for it in fmt["sellerItems"]
+                )
+                result.append(fmt)
+            return ok(result)
+
+        if action == "update_seller_order_status":
+            """Обновить статус заказа продавцом"""
+            order_id = body.get("order_id") or qs.get("order_id")
+            seller_id = body.get("seller_id") or qs.get("seller_id")
+            new_status = body.get("seller_status")
+            comment = body.get("comment", "")
+            allowed = ("new_order", "assembling", "ready_to_ship", "shipped", "completed", "cancelled")
+            if not order_id or not seller_id:
+                return err("order_id and seller_id required", 400)
+            if new_status not in allowed:
+                return err(f"invalid status, allowed: {allowed}", 400)
+            cur.execute("""
+                UPDATE orders
+                SET seller_status = %s,
+                    seller_id = %s,
+                    seller_comment = %s,
+                    seller_status_updated_at = now()
+                WHERE id = %s
+                RETURNING *
+            """, (new_status, seller_id, comment, order_id))
+            conn.commit()
+            row = cur.fetchone()
+            if not row:
+                return err("order not found", 404)
+            return ok(_fmt_order(row))
+
         # ─────────── PRODUCTS ───────────
         if action == "get_products":
             seller_id = qs.get("seller_id")
@@ -783,7 +838,13 @@ def _fmt_order(r):
         "goodsTotal":         float(r["goods_total"]),
         "orderTotal":         float(r["order_total"]),
         "status":             r["status"],
+        "sellerStatus":       r.get("seller_status", "new_order"),
+        "sellerId":           r.get("seller_id", ""),
+        "sellerComment":      r.get("seller_comment", ""),
+        "sellerStatusUpdatedAt": r["seller_status_updated_at"].strftime("%d.%m.%Y %H:%M") if r.get("seller_status_updated_at") else "",
         "paymentMethod":      r["payment_method"],
+        "cdekTrackNumber":    r.get("cdek_track_number", ""),
+        "cdekOrderUuid":      r.get("cdek_order_uuid", ""),
         "createdAt":          r["created_at"].strftime("%d.%m.%Y %H:%M") if r["created_at"] else "",
     }
 

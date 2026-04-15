@@ -30,6 +30,22 @@
       "bodyMatcher": "partial"
     },
     {
+      "name": "get_seller_orders without seller_id returns 400",
+      "method": "GET",
+      "path": "/?action=get_seller_orders",
+      "expectedStatus": 400,
+      "expectedBody": {"error": "seller_id required"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "update_seller_order_status without required fields returns 400",
+      "method": "POST",
+      "path": "/?action=update_seller_order_status",
+      "body": {},
+      "expectedStatus": 400,
+      "bodyMatcher": "partial"
+    },
+    {
       "name": "unknown action returns 404",
       "method": "GET",
       "path": "/?action=unknown",
