@@ -254,7 +254,7 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
 
       await Promise.race([
         client.join(tokenData.appId, s.id, tokenData.token, 1),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("Таймаут подключения 30с")), 30000)),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Таймаут подключения 15с. Проверьте интернет-соединение")), 15000)),
       ]);
 
       if (audioTrackRef.current && videoTrackRef.current) {
