@@ -356,7 +356,7 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
 
   if (checkedActive === "loading" && !isLive) return <BroadcastScreens type="loading" setPage={setPage} />;
 
-  if (checkedActive && !isLive) return (
+  if (checkedActive && !isLive && status !== "connecting") return (
     <BroadcastScreens
       type="active"
       setPage={setPage}
