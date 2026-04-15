@@ -15,9 +15,9 @@ from psycopg2.extras import RealDictCursor
 FROM_CITY_CODE = 270
 FROM_ADDRESS = "Краснодар, ул. Красная, 1"
 
-CDEK_API = "https://api.edu.cdek.ru/v2"
-_CDEK_ID = "wqGwiQx0gg8mLtiEKsUinjVSICCjtTEP"
-_CDEK_SECRET = "RmAmgvSgSl1yirlz9QupbzOJVqhCxcP5"
+CDEK_API = "https://api.cdek.ru/v2"
+_CDEK_ID = os.environ.get("CDEK_CLIENT_ID", "")
+_CDEK_SECRET = os.environ.get("CDEK_CLIENT_SECRET", "")
 
 
 def get_conn():
