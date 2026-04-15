@@ -81,6 +81,7 @@ export default function DashboardProductsTab({ warehouses }: Props) {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
       camStreamRef.current = stream;
       setCamOpen(true);
+      document.body.style.overflow = "hidden";
       setTimeout(() => {
         if (camVideoRef.current) {
           camVideoRef.current.srcObject = stream;
@@ -97,6 +98,7 @@ export default function DashboardProductsTab({ warehouses }: Props) {
     setCamOpen(false);
     setCamRecording(false);
     setCamCountdown(0);
+    document.body.style.overflow = "";
   }, [stopCamStream]);
 
   const startRecording = () => {
@@ -117,6 +119,7 @@ export default function DashboardProductsTab({ warehouses }: Props) {
       setCamOpen(false);
       setCamRecording(false);
       setCamCountdown(0);
+      document.body.style.overflow = "";
       const blob = new Blob(chunks, { type: mimeType });
       const blobUrl = URL.createObjectURL(blob);
       setFVideoBlobUrl(blobUrl);
@@ -530,14 +533,14 @@ export default function DashboardProductsTab({ warehouses }: Props) {
 
       {/* ── Камера для съёмки видео-товара ── */}
       {camOpen && (
-        <div className="fixed inset-0 z-[60] bg-black flex flex-col">
+        <div className="fixed inset-0 z-[100] bg-black flex flex-col overflow-hidden touch-none">
           {/* Видео с камеры */}
           <video
             ref={camVideoRef}
             autoPlay
             muted
             playsInline
-            className="flex-1 w-full object-cover"
+            className="absolute inset-0 w-full h-full object-cover"
           />
 
           {/* Оверлей управления */}
