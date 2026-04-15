@@ -366,6 +366,7 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
       videoTrackRef={videoTrackRef}
       facingModeRef={facingModeRef}
       streamIdRef={streamIdRef}
+      clientRef={clientRef}
       attachStream={attachStream}
       setCheckedActive={setCheckedActive}
       setIsLive={setIsLive}

@@ -1,5 +1,5 @@
 import Icon from "@/components/ui/icon";
-import AgoraRTC, { type ILocalVideoTrack, type ILocalAudioTrack } from "agora-rtc-sdk-ng";
+import AgoraRTC, { type IAgoraRTCClient, type ILocalVideoTrack, type ILocalAudioTrack } from "agora-rtc-sdk-ng";
 import type { Page } from "@/App";
 
 const AGORA_TOKEN = "https://functions.poehali.dev/a2751c9f-9c4b-4808-bf97-73f350e873a1";
@@ -21,6 +21,7 @@ interface BroadcastScreensProps {
   videoTrackRef?: React.MutableRefObject<ILocalVideoTrack | null>;
   facingModeRef?: React.MutableRefObject<"user" | "environment">;
   streamIdRef?: React.MutableRefObject<string | null>;
+  clientRef?: React.MutableRefObject<IAgoraRTCClient | null>;
   attachStream?: (track: ILocalVideoTrack | null) => void;
   setCheckedActive?: (v: ActiveStream | null) => void;
   setIsLive?: (v: boolean) => void;
@@ -48,6 +49,7 @@ export default function BroadcastScreens({
   videoTrackRef,
   facingModeRef,
   streamIdRef,
+  clientRef,
   attachStream,
   setCheckedActive,
   setIsLive,
@@ -107,6 +109,7 @@ export default function BroadcastScreens({
               const tokenResp = await fetch(`${AGORA_TOKEN}?channel=${checkedActive.id}&uid=1&role=publisher`);
               const tokenData = await tokenResp.json();
               const client = AgoraRTC.createClient({ mode: "live", codec: CODEC });
+              if (clientRef) clientRef.current = client;
               await client.setClientRole("host");
               await client.join(tokenData.appId, checkedActive.id, tokenData.token, 1);
               await client.publish([audioTrackRef.current!, videoTrackRef.current!]);
