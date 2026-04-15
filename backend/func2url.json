@@ -1,4 +1,5 @@
 {
+  "auth-api": "https://functions.poehali.dev/f78c2cf9-b718-4a63-9473-a8f6bcff11f4",
   "push-notify": "https://functions.poehali.dev/843759f9-8a03-41bd-a539-41e0cdb187cc",
   "support-chat": "https://functions.poehali.dev/0a8bbc48-f71c-4a23-b48e-cd0a9392789f",
   "agora-token": "https://functions.poehali.dev/a2751c9f-9c4b-4808-bf97-73f350e873a1",

@@ -1,0 +1,31 @@
+{
+  "tests": [
+    {
+      "name": "Register new user",
+      "method": "POST",
+      "path": "/?action=register",
+      "body": {"name": "Тест Юзер", "email": "testuser_auto@test.com", "phone": "+79001234567", "city": "Москва", "password": "password123"},
+      "expectedStatus": 201,
+      "expectedBody": {"user": {"role": "user"}},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Login admin",
+      "method": "POST",
+      "path": "/?action=login",
+      "body": {"email": "admin@yugastore.ru", "password": "admin2024"},
+      "expectedStatus": 200,
+      "expectedBody": {"user": {"role": "admin"}},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Login wrong password",
+      "method": "POST",
+      "path": "/?action=login",
+      "body": {"email": "admin@yugastore.ru", "password": "wrongpass"},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "Неверный email или пароль"},
+      "bodyMatcher": "partial"
+    }
+  ]
+}

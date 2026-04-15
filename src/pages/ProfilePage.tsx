@@ -33,8 +33,8 @@ export default function ProfilePage({ setPage }: ProfilePageProps) {
     );
   }
 
-  const handleSave = () => {
-    updateUser({ name: name.trim(), phone: phone.trim(), city: city.trim() });
+  const handleSave = async () => {
+    await updateUser({ name: name.trim(), phone: phone.trim(), city: city.trim() });
     setEditing(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);

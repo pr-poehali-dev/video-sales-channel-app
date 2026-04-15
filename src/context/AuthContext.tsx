@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 
 export type UserRole = "user" | "admin";
 
@@ -19,11 +19,11 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<string | null>;
   register: (data: RegisterData) => Promise<string | null>;
   logout: () => void;
-  updateUser: (data: Partial<User>) => void;
-  getAllUsers: () => (User & { password: string })[];
-  blockUser: (id: string) => void;
-  unblockUser: (id: string) => void;
-  deleteUser: (id: string) => void;
+  updateUser: (data: Partial<User>) => Promise<void>;
+  getAllUsers: () => Promise<(User)[]>;
+  blockUser: (id: string) => Promise<void>;
+  unblockUser: (id: string) => Promise<void>;
+  deleteUser: (id: string) => Promise<void>;
 }
 
 export interface RegisterData {
@@ -37,37 +37,16 @@ export interface RegisterData {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-const USERS_KEY = "yugastore_users";
 const SESSION_KEY = "yugastore_session";
+const AUTH_API = "https://functions.poehali.dev/f78c2cf9-b718-4a63-9473-a8f6bcff11f4";
 
-// Аккаунт администратора — только через жёстко заданные данные, не хранится в списке пользователей
-const ADMIN_EMAIL = "admin@yugastore.ru";
-const ADMIN_PASSWORD = "admin2024";
-const ADMIN_USER: User = {
-  id: "admin_root",
-  name: "Администратор",
-  email: ADMIN_EMAIL,
-  role: "admin",
-  avatar: "АД",
-  phone: "",
-  city: "",
-  joinedAt: "январь 2024",
-};
-
-function getUsers(): (User & { password: string })[] {
-  try {
-    return JSON.parse(localStorage.getItem(USERS_KEY) || "[]");
-  } catch {
-    return [];
-  }
-}
-
-function saveUsers(users: (User & { password: string })[]) {
-  localStorage.setItem(USERS_KEY, JSON.stringify(users));
-}
-
-function initials(name: string) {
-  return name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
+async function authFetch(action: string, body?: object, method = "POST") {
+  const res = await fetch(`${AUTH_API}?action=${action}`, {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  return res.json();
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -80,77 +59,67 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   });
 
-  const login = async (email: string, password: string): Promise<string | null> => {
-    // Проверяем admin
-    if (email.toLowerCase() === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-      setUser(ADMIN_USER);
-      localStorage.setItem(SESSION_KEY, JSON.stringify(ADMIN_USER));
-      return null;
+  const saveSession = (u: User | null) => {
+    setUser(u);
+    if (u) {
+      localStorage.setItem(SESSION_KEY, JSON.stringify(u));
+    } else {
+      localStorage.removeItem(SESSION_KEY);
     }
-    const users = getUsers();
-    const found = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === password);
-    if (!found) return "Неверный email или пароль";
-    if (found.isBlocked) return "Ваш аккаунт заблокирован. Обратитесь к администратору.";
-    const { password: _, ...userData } = found;
-    setUser(userData);
-    localStorage.setItem(SESSION_KEY, JSON.stringify(userData));
+  };
+
+  const login = async (email: string, password: string): Promise<string | null> => {
+    const data = await authFetch("login", { email, password });
+    if (data.error) return data.error;
+    saveSession(data.user);
     return null;
   };
 
-  const register = async (data: RegisterData): Promise<string | null> => {
-    if (data.email.toLowerCase() === ADMIN_EMAIL) return "Этот email недоступен для регистрации";
-    const users = getUsers();
-    if (users.find(u => u.email.toLowerCase() === data.email.toLowerCase())) {
-      return "Пользователь с таким email уже существует";
-    }
-    const newUser: User & { password: string } = {
-      id: `user_${Date.now()}`,
-      name: data.name,
-      email: data.email,
-      phone: data.phone,
-      role: "user",
-      avatar: initials(data.name),
-      city: data.city,
-      joinedAt: new Date().toLocaleDateString("ru", { month: "long", year: "numeric" }),
-      password: data.password,
-      isBlocked: false,
-    };
-    saveUsers([...users, newUser]);
-    const { password: _, ...userData } = newUser;
-    setUser(userData);
-    localStorage.setItem(SESSION_KEY, JSON.stringify(userData));
+  const register = async (registerData: RegisterData): Promise<string | null> => {
+    const data = await authFetch("register", {
+      name: registerData.name,
+      email: registerData.email,
+      phone: registerData.phone,
+      city: registerData.city,
+      password: registerData.password,
+    });
+    if (data.error) return data.error;
+    saveSession(data.user);
     return null;
   };
 
   const logout = () => {
-    setUser(null);
-    localStorage.removeItem(SESSION_KEY);
+    saveSession(null);
   };
 
-  const updateUser = (data: Partial<User>) => {
+  const updateUser = async (updateData: Partial<User>) => {
     if (!user) return;
-    const updated = { ...user, ...data };
-    setUser(updated);
-    localStorage.setItem(SESSION_KEY, JSON.stringify(updated));
-    const users = getUsers().map(u => u.id === updated.id ? { ...u, ...data } : u);
-    saveUsers(users);
+    const data = await authFetch("update_profile", {
+      user_id: user.id,
+      name: updateData.name ?? user.name,
+      phone: updateData.phone ?? user.phone,
+      city: updateData.city ?? user.city,
+    });
+    if (!data.error) {
+      saveSession(data.user);
+    }
   };
 
-  const getAllUsers = () => getUsers();
-
-  const blockUser = (id: string) => {
-    const users = getUsers().map(u => u.id === id ? { ...u, isBlocked: true } : u);
-    saveUsers(users);
+  const getAllUsers = async (): Promise<User[]> => {
+    const data = await authFetch("get_all_users", undefined, "GET");
+    return data.users || [];
   };
 
-  const unblockUser = (id: string) => {
-    const users = getUsers().map(u => u.id === id ? { ...u, isBlocked: false } : u);
-    saveUsers(users);
+  const blockUser = async (id: string) => {
+    await authFetch("block_user", { user_id: id });
   };
 
-  const deleteUser = (id: string) => {
-    const users = getUsers().filter(u => u.id !== id);
-    saveUsers(users);
+  const unblockUser = async (id: string) => {
+    await authFetch("unblock_user", { user_id: id });
+  };
+
+  const deleteUser = async (id: string) => {
+    await authFetch("delete_user", { user_id: id });
   };
 
   return (

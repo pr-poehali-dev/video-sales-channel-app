@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import { useAuth, type User } from "@/context/AuthContext";
 
@@ -9,27 +9,29 @@ const ROLE_LABELS: Record<string, string> = {
 
 export default function AdminUsersTab() {
   const { getAllUsers, blockUser, unblockUser, deleteUser } = useAuth();
-  const [users, setUsers] = useState<(User & { password: string })[]>(() => getAllUsers());
+  const [users, setUsers] = useState<User[]>([]);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<"all" | "user">("all");
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
-  const refresh = () => setUsers(getAllUsers());
+  const refresh = async () => setUsers(await getAllUsers());
 
-  const handleBlock = (id: string) => {
-    blockUser(id);
-    refresh();
+  useEffect(() => { refresh(); }, []);
+
+  const handleBlock = async (id: string) => {
+    await blockUser(id);
+    await refresh();
   };
 
-  const handleUnblock = (id: string) => {
-    unblockUser(id);
-    refresh();
+  const handleUnblock = async (id: string) => {
+    await unblockUser(id);
+    await refresh();
   };
 
-  const handleDelete = (id: string) => {
-    deleteUser(id);
+  const handleDelete = async (id: string) => {
+    await deleteUser(id);
     setConfirmDelete(null);
-    refresh();
+    await refresh();
   };
 
   const filtered = users.filter(u => {

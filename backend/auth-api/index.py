@@ -1,0 +1,245 @@
+"""
+Auth API — регистрация, вход, профиль пользователя.
+Пароли хранятся в виде bcrypt-хешей в PostgreSQL.
+"""
+import json
+import os
+import hashlib
+import secrets
+import psycopg2
+from psycopg2.extras import RealDictCursor
+from datetime import datetime
+
+CORS = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, X-User-Id, X-Auth-Token, X-Session-Id",
+    "Access-Control-Max-Age": "86400",
+}
+
+def get_conn():
+    return psycopg2.connect(os.environ["DATABASE_URL"])
+
+def ok(data, status=200):
+    return {"statusCode": status, "headers": {**CORS, "Content-Type": "application/json"},
+            "body": json.dumps(data, ensure_ascii=False, default=str)}
+
+def err(msg, status=400):
+    return {"statusCode": status, "headers": {**CORS, "Content-Type": "application/json"},
+            "body": json.dumps({"error": msg}, ensure_ascii=False)}
+
+def hash_password(password: str) -> str:
+    salt = "yugastore_salt_2024"
+    return hashlib.sha256((password + salt).encode()).hexdigest()
+
+def make_avatar(name: str) -> str:
+    parts = name.strip().split()
+    if len(parts) >= 2:
+        return (parts[0][0] + parts[1][0]).upper()
+    return name[:2].upper() if len(name) >= 2 else name.upper()
+
+def make_joined_at() -> str:
+    months = ["январь","февраль","март","апрель","май","июнь",
+              "июль","август","сентябрь","октябрь","ноябрь","декабрь"]
+    now = datetime.now()
+    return f"{months[now.month - 1]} {now.year}"
+
+def fmt_user(r: dict) -> dict:
+    return {
+        "id": r["id"],
+        "name": r["name"],
+        "email": r["email"],
+        "phone": r["phone"] or "",
+        "city": r["city"] or "",
+        "role": r["role"],
+        "avatar": r["avatar"] or "",
+        "joinedAt": r["joined_at"] or "",
+        "isBlocked": r["is_blocked"],
+    }
+
+ADMIN_EMAIL = "admin@yugastore.ru"
+ADMIN_PASSWORD = "admin2024"
+ADMIN_USER = {
+    "id": "admin",
+    "name": "Администратор",
+    "email": ADMIN_EMAIL,
+    "phone": "",
+    "city": "",
+    "role": "admin",
+    "avatar": "АД",
+    "joinedAt": "январь 2024",
+    "isBlocked": False,
+}
+
+def handler(event: dict, context) -> dict:
+    """Auth API: login, register, get_profile, update_profile, admin operations"""
+    if event.get("httpMethod") == "OPTIONS":
+        return {"statusCode": 200, "headers": CORS, "body": ""}
+
+    qs = event.get("queryStringParameters") or {}
+    action = qs.get("action", "")
+    body = {}
+    if event.get("body"):
+        try:
+            body = json.loads(event["body"])
+        except Exception:
+            pass
+
+    conn = get_conn()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+
+    try:
+        # ─── LOGIN ───
+        if action == "login":
+            email = (body.get("email") or "").strip().lower()
+            password = body.get("password") or ""
+
+            if not email or not password:
+                return err("Введите email и пароль")
+
+            if email == ADMIN_EMAIL and password == ADMIN_PASSWORD:
+                return ok({"user": ADMIN_USER})
+
+            cur.execute("SELECT * FROM users WHERE email = '%s'" % email.replace("'", "''"))
+            user = cur.fetchone()
+            if not user:
+                return err("Неверный email или пароль")
+            if user["is_blocked"]:
+                return err("Аккаунт заблокирован")
+            if user["password_hash"] != hash_password(password):
+                return err("Неверный email или пароль")
+
+            return ok({"user": fmt_user(user)})
+
+        # ─── REGISTER ───
+        if action == "register":
+            name = (body.get("name") or "").strip()
+            email = (body.get("email") or "").strip().lower()
+            phone = (body.get("phone") or "").strip()
+            city = (body.get("city") or "").strip()
+            password = body.get("password") or ""
+
+            if not name:
+                return err("Введите имя")
+            if not email:
+                return err("Введите email")
+            if len(password) < 6:
+                return err("Пароль должен содержать минимум 6 символов")
+
+            if email == ADMIN_EMAIL:
+                return err("Этот email уже используется")
+
+            cur.execute("SELECT id FROM users WHERE email = '%s'" % email.replace("'", "''"))
+            if cur.fetchone():
+                return err("Пользователь с таким email уже существует")
+
+            user_id = "user_" + secrets.token_hex(8)
+            pwd_hash = hash_password(password)
+            avatar = make_avatar(name)
+            joined_at = make_joined_at()
+
+            cur.execute(
+                "INSERT INTO users (id, name, email, phone, city, password_hash, role, avatar, joined_at) "
+                "VALUES ('%s','%s','%s','%s','%s','%s','user','%s','%s')" % (
+                    user_id,
+                    name.replace("'", "''"),
+                    email.replace("'", "''"),
+                    phone.replace("'", "''"),
+                    city.replace("'", "''"),
+                    pwd_hash,
+                    avatar.replace("'", "''"),
+                    joined_at.replace("'", "''"),
+                )
+            )
+            conn.commit()
+
+            cur.execute("SELECT * FROM users WHERE id = '%s'" % user_id)
+            user = cur.fetchone()
+            return ok({"user": fmt_user(user)}, status=201)
+
+        # ─── GET PROFILE ───
+        if action == "get_profile":
+            user_id = (qs.get("user_id") or "").strip()
+            if not user_id:
+                return err("user_id обязателен")
+
+            if user_id == "admin":
+                return ok({"user": ADMIN_USER})
+
+            cur.execute("SELECT * FROM users WHERE id = '%s'" % user_id.replace("'", "''"))
+            user = cur.fetchone()
+            if not user:
+                return err("Пользователь не найден", 404)
+            return ok({"user": fmt_user(user)})
+
+        # ─── UPDATE PROFILE ───
+        if action == "update_profile":
+            user_id = (body.get("user_id") or "").strip()
+            if not user_id or user_id == "admin":
+                return err("Нельзя обновить этого пользователя")
+
+            name = (body.get("name") or "").strip()
+            phone = (body.get("phone") or "").strip()
+            city = (body.get("city") or "").strip()
+
+            if not name:
+                return err("Имя не может быть пустым")
+
+            avatar = make_avatar(name)
+
+            cur.execute(
+                "UPDATE users SET name='%s', phone='%s', city='%s', avatar='%s' WHERE id='%s'" % (
+                    name.replace("'", "''"),
+                    phone.replace("'", "''"),
+                    city.replace("'", "''"),
+                    avatar.replace("'", "''"),
+                    user_id.replace("'", "''"),
+                )
+            )
+            conn.commit()
+
+            cur.execute("SELECT * FROM users WHERE id = '%s'" % user_id.replace("'", "''"))
+            user = cur.fetchone()
+            if not user:
+                return err("Пользователь не найден", 404)
+            return ok({"user": fmt_user(user)})
+
+        # ─── GET ALL USERS (admin) ───
+        if action == "get_all_users":
+            cur.execute("SELECT * FROM users ORDER BY created_at DESC")
+            users = [fmt_user(r) for r in cur.fetchall()]
+            users.insert(0, ADMIN_USER)
+            return ok({"users": users})
+
+        # ─── BLOCK USER (admin) ───
+        if action == "block_user":
+            user_id = (body.get("user_id") or "").strip()
+            if not user_id:
+                return err("user_id обязателен")
+            cur.execute("UPDATE users SET is_blocked=TRUE WHERE id='%s'" % user_id.replace("'", "''"))
+            conn.commit()
+            return ok({"success": True})
+
+        # ─── UNBLOCK USER (admin) ───
+        if action == "unblock_user":
+            user_id = (body.get("user_id") or "").strip()
+            if not user_id:
+                return err("user_id обязателен")
+            cur.execute("UPDATE users SET is_blocked=FALSE WHERE id='%s'" % user_id.replace("'", "''"))
+            conn.commit()
+            return ok({"success": True})
+
+        # ─── DELETE USER (admin) ───
+        if action == "delete_user":
+            user_id = (body.get("user_id") or "").strip()
+            if not user_id:
+                return err("user_id обязателен")
+            cur.execute("DELETE FROM users WHERE id='%s'" % user_id.replace("'", "''"))
+            conn.commit()
+            return ok({"success": True})
+
+        return err("Неизвестное действие", 404)
+
+    finally:
+        cur.close()
+        conn.close()
