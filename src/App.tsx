@@ -17,6 +17,7 @@ import SellerRegisterPage from "@/pages/SellerRegisterPage";
 import SupportPage from "@/pages/SupportPage";
 import SupportAdminPage from "@/pages/SupportAdminPage";
 import NavBar from "@/components/NavBar";
+import LiveBroadcastBar from "@/components/LiveBroadcastBar";
 
 const BroadcastPage = lazy(() => import("@/pages/BroadcastPage"));
 
@@ -80,6 +81,7 @@ function AppInner() {
   return (
     <div className="min-h-screen bg-background font-golos">
       <NavBar page={page} setPage={navSetPage} cartCount={cart.reduce((s, c) => s + c.qty, 0)} />
+      <LiveBroadcastBar page={page} setPage={navSetPage} />
       <main className="pb-16 md:pb-0">
         {page === "home" && <HomePage setPage={navSetPage} addToCart={addToCart} onProductClick={openProduct} />}
         {page === "streams" && <StreamsPage setPage={navSetPage} addToCart={addToCart} onProductClick={openProduct} />}
