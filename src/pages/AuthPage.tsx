@@ -49,7 +49,7 @@ export default function AuthPage({ onSuccess }: AuthPageProps) {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="font-oswald text-3xl font-semibold text-foreground tracking-wider mb-2">
-            <span className="text-primary">БАЗАР</span>.РФ
+            <span className="font-light text-foreground">стрим</span><span className="text-primary">БАЗАР</span>.РФ
           </div>
           <h1 className="text-xl font-semibold text-foreground mt-4">
             {mode === "login" ? "Войти в аккаунт" : "Создать аккаунт"}

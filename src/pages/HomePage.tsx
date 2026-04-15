@@ -39,7 +39,7 @@ export default function HomePage({ setPage, addToCart, onProductClick }: HomePag
               Живые покупки онлайн
             </div>
             <h1 className="font-oswald text-4xl md:text-6xl font-semibold text-white tracking-wide mb-3 leading-tight">
-              БАЗАР.РФ
+              <span className="font-light">стрим</span>БАЗАР.РФ
             </h1>
             <p className="font-oswald text-xl md:text-2xl text-white/80 tracking-wide mb-2">
               Живой торг — без посредников
