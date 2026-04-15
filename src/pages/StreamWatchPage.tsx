@@ -364,8 +364,15 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
                   className="bg-card border border-border rounded-2xl overflow-hidden cursor-pointer hover:border-primary/40 transition-all group"
                   onClick={() => { setReviewProduct(p); onProductClick(p.id); }}
                 >
-                  <div className="aspect-square bg-secondary overflow-hidden">
-                    {p.images[0]
+                  <div className="aspect-square bg-secondary overflow-hidden relative">
+                    {(p as { videoUrl?: string }).videoUrl ? (
+                      <>
+                        <video src={(p as { videoUrl?: string }).videoUrl} autoPlay loop muted playsInline className="w-full h-full object-cover" />
+                        <div className="absolute bottom-1 right-1 bg-orange-500 rounded-full p-0.5">
+                          <Icon name="Video" size={9} className="text-white" />
+                        </div>
+                      </>
+                    ) : p.images[0]
                       ? <img src={p.images[0]} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                       : <div className="w-full h-full flex items-center justify-center"><Icon name="Package" size={24} className="text-muted-foreground opacity-30" /></div>
                     }
@@ -376,7 +383,7 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
                     <button
                       onClick={e => {
                         e.stopPropagation();
-                        addToCart({ id: p.id, name: p.name, price: p.price, image: p.images[0] ?? "" });
+                        addToCart({ id: p.id, name: p.name, price: p.price, image: p.images[0] ?? "", videoUrl: (p as { videoUrl?: string }).videoUrl ?? "" });
                         setAddedId(p.id);
                         setTimeout(() => setAddedId(null), 1500);
                       }}
