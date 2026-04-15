@@ -21,7 +21,7 @@ interface BroadcastPageProps { setPage: (p: Page) => void; }
 
 export default function BroadcastPage({ setPage }: BroadcastPageProps) {
   const { user } = useAuth();
-  const { addStream, updateStream, reload } = useStore();
+  const { addStream, updateStream, deleteStream, reload } = useStore();
 
   const [checkedActive, setCheckedActive] = useState<{id: string; title: string} | null | "loading">("loading");
 
@@ -289,11 +289,11 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
       const err = e as Error;
       setErrorMsg("Ошибка подключения: " + err.message);
       setStatus("error");
+      try { await clientRef.current?.leave(); } catch { /* ignore */ }
+      clientRef.current = null;
       if (createdStreamId) {
         streamIdRef.current = null;
-        try {
-          await updateStream(createdStreamId, { isLive: false } as never);
-        } catch { /* ignore */ }
+        try { await deleteStream(createdStreamId); } catch { /* ignore */ }
       }
     }
   };
