@@ -29,6 +29,7 @@ export default function DashboardStreamsTab({ setPage }: Props) {
   const [editStreamTitle, setEditStreamTitle] = useState("");
   const [savingStreamTitle, setSavingStreamTitle] = useState(false);
   const [confirmDeleteStream, setConfirmDeleteStream] = useState<string | null>(null);
+  const [playingStreamId, setPlayingStreamId] = useState<string | null>(null);
 
   const handleStopStream = async (id: string) => {
     setStoppingStream(id);
@@ -166,6 +167,30 @@ export default function DashboardStreamsTab({ setPage }: Props) {
                 </div>
               </div>
 
+              {/* Встроенный видеоплеер */}
+              {!s.isLive && playingStreamId === s.id && (
+                <div className="border-t border-border bg-black">
+                  {s.videoUrl ? (
+                    <video
+                      key={s.videoUrl}
+                      className="w-full max-h-64 object-contain"
+                      controls
+                      playsInline
+                      autoPlay
+                      poster={s.thumbnail || STREAM_THUMBNAIL}
+                    >
+                      <source src={s.videoUrl} type={s.videoUrl.includes(".mp4") ? "video/mp4" : "video/webm"} />
+                      <source src={s.videoUrl} />
+                    </video>
+                  ) : (
+                    <div className="flex items-center justify-center gap-2 py-4 text-xs text-white/50">
+                      <Icon name="Clock" size={13} />
+                      Запись появится через несколько минут
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Кнопки действий */}
               <div className="flex border-t border-border">
                 {s.isLive ? (
@@ -192,11 +217,11 @@ export default function DashboardStreamsTab({ setPage }: Props) {
                 ) : (
                   <>
                     <button
-                      onClick={() => setPage("streams")}
+                      onClick={() => s.videoUrl ? setPlayingStreamId(playingStreamId === s.id ? null : s.id) : setPage("streams")}
                       className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
                     >
-                      <Icon name="Play" size={13} />
-                      Смотреть
+                      <Icon name={playingStreamId === s.id ? "ChevronUp" : "Play"} size={13} />
+                      {playingStreamId === s.id ? "Скрыть" : "Смотреть"}
                     </button>
                     <div className="w-px bg-border" />
                     <button
