@@ -61,7 +61,7 @@ export default function ProductCard({ product, addToCart, onClick }: ProductCard
   const [added, setAdded] = useState(false);
 
   const coverImage = product.images[0] ?? null;
-  const videoUrl = product.videoUrl ?? null;
+  const videoUrl = product.videoUrl || null;
   const inStock = product.inStock ?? 99;
 
   const handleAdd = (e: React.MouseEvent) => {
