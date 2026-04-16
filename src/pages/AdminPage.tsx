@@ -6,6 +6,7 @@ import AdminChatsTab from "@/components/admin/AdminChatsTab";
 import AdminStreamsTab from "@/components/admin/AdminStreamsTab";
 import AdminCdekTab from "@/components/admin/AdminCdekTab";
 import AdminUsersTab from "@/components/admin/AdminUsersTab";
+import AdminTestOrderTab from "@/components/admin/AdminTestOrderTab";
 
 interface AdminPageProps {
   setPage: (p: Page) => void;
@@ -13,7 +14,7 @@ interface AdminPageProps {
 
 export default function AdminPage({ setPage }: AdminPageProps) {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<"users" | "cdek" | "chats" | "streams">("chats");
+  const [activeTab, setActiveTab] = useState<"users" | "cdek" | "chats" | "streams" | "test_order">("chats");
 
   if (!user || user.role !== "admin") {
     return (
@@ -43,7 +44,7 @@ export default function AdminPage({ setPage }: AdminPageProps) {
 
       {/* Вкладки */}
       <div className="flex gap-1 mb-6 bg-secondary rounded-xl p-1 w-fit">
-        {([["chats", "Чаты"], ["streams", "Эфиры"], ["users", "Пользователи"], ["cdek", "СДЭК"]] as const).map(([key, label]) => (
+        {([["chats", "Чаты"], ["streams", "Эфиры"], ["users", "Пользователи"], ["cdek", "СДЭК"], ["test_order", "Тест-заказ"]] as const).map(([key, label]) => (
           <button key={key} onClick={() => setActiveTab(key)}
             className={`px-4 py-2 text-sm rounded-lg font-medium transition-all ${
               activeTab === key ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
@@ -57,6 +58,7 @@ export default function AdminPage({ setPage }: AdminPageProps) {
       {activeTab === "streams" && <AdminStreamsTab setPage={setPage} />}
       {activeTab === "cdek" && <AdminCdekTab />}
       {activeTab === "users" && <AdminUsersTab />}
+      {activeTab === "test_order" && <AdminTestOrderTab />}
     </div>
   );
 }
