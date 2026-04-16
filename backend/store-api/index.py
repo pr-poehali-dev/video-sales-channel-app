@@ -410,9 +410,9 @@ def handler(event: dict, context) -> dict:
             ext = header.split("/")[1].split(";")[0]
             img_bytes = base64.b64decode(encoded)
             key = f"thumbnails/{stream_id}.{ext}"
-            s3 = get_s3()
-            s3.put_object(Bucket="files", Key=key, Body=img_bytes, ContentType=f"image/{ext}")
-            url = f"{CDN_BASE}/{key}"
+            s3 = get_s3_video()
+            s3.put_object(Bucket="strimbazar", Key=key, Body=img_bytes, ContentType=f"image/{ext}")
+            url = f"{REGRU_CDN_BASE}/{key}"
             cur.execute("UPDATE streams SET thumbnail=%s WHERE id=%s", (url, stream_id))
             conn.commit()
             return ok({"url": url})

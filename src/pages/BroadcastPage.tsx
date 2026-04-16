@@ -68,6 +68,7 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
       setIsLive(true);
       setStatus("live");
       timerRef.current = setInterval(() => setDuration(d => d + 1), 1000);
+      startAutoRecord(stream.id);
     } catch (e: unknown) {
       setStatus("error");
       setErrorMsg((e as Error).message);
@@ -112,6 +113,8 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
   const [videoRecording, setVideoRecording] = useState(false);
   const [videoCountdown, setVideoCountdown] = useState(0);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const autoRecorderRef = useRef<MediaRecorder | null>(null);
+  const autoRecordTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [defaultWarehouse, setDefaultWarehouse] = useState<{ cityCode: number; cityName: string; name: string } | null>(null);
 
   useEffect(() => {
@@ -146,6 +149,10 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
+      if (autoRecordTimerRef.current) clearTimeout(autoRecordTimerRef.current);
+      if (autoRecorderRef.current && autoRecorderRef.current.state === "recording") {
+        try { autoRecorderRef.current.stop(); } catch { /* ignore */ }
+      }
     };
   }, []);
 
@@ -263,6 +270,48 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
     }, 1000);
   };
 
+  const startAutoRecord = useCallback((streamId: string) => {
+    autoRecordTimerRef.current = setTimeout(() => {
+      const vid = nativeVideoRef.current;
+      if (!vid) return;
+      const ms = vid.srcObject as MediaStream | null;
+      if (!ms) return;
+      const mimeType = MediaRecorder.isTypeSupported("video/mp4")
+        ? "video/mp4"
+        : MediaRecorder.isTypeSupported("video/webm;codecs=vp8")
+        ? "video/webm;codecs=vp8"
+        : MediaRecorder.isTypeSupported("video/webm")
+        ? "video/webm"
+        : "video/mp4";
+      try {
+        const recorder = new MediaRecorder(ms, { mimeType });
+        autoRecorderRef.current = recorder;
+        const chunks: Blob[] = [];
+        recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+        recorder.onstop = async () => {
+          autoRecorderRef.current = null;
+          const blob = new Blob(chunks, { type: mimeType });
+          const reader = new FileReader();
+          reader.onload = async () => {
+            const dataUrl = reader.result as string;
+            try {
+              await fetch(`${API}?action=upload_video`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ data_url: dataUrl, stream_id: streamId, folder: "streams" }),
+              });
+            } catch { /* не критично */ }
+          };
+          reader.readAsDataURL(blob);
+        };
+        recorder.start();
+        setTimeout(() => {
+          if (recorder.state === "recording") recorder.stop();
+        }, 20000);
+      } catch { /* не критично */ }
+    }, 3000);
+  }, []);
+
   const startBroadcast = async () => {
     if (!title.trim() || !user) return;
     setStatus("connecting");
@@ -303,6 +352,7 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
       setStatus("live");
       setDuration(0);
       timerRef.current = setInterval(() => setDuration(d => d + 1), 1000);
+      startAutoRecord(s.id);
 
       setTimeout(async () => {
         try {
@@ -338,6 +388,10 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
 
   const stopBroadcast = async () => {
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+    if (autoRecordTimerRef.current) { clearTimeout(autoRecordTimerRef.current); autoRecordTimerRef.current = null; }
+    if (autoRecorderRef.current && autoRecorderRef.current.state === "recording") {
+      autoRecorderRef.current.stop();
+    }
     if (chatPollRef.current) { clearInterval(chatPollRef.current); chatPollRef.current = null; }
     const dur = duration;
     setSavedDuration(dur);

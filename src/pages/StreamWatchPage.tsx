@@ -164,8 +164,19 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
             <Icon name="Loader" size={32} className="text-white animate-spin" />
           </div>
         )}
-        {/* Завершён */}
-        {!stream.isLive && (
+        {/* Завершён — если есть видео, показываем плеер */}
+        {!stream.isLive && stream.videoUrl && (
+          <video
+            src={stream.videoUrl}
+            className="absolute inset-0 w-full h-full object-cover"
+            controls
+            playsInline
+            autoPlay
+            loop
+            poster={stream.thumbnail || STREAM_THUMBNAIL}
+          />
+        )}
+        {!stream.isLive && !stream.videoUrl && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/60">
             <div className="text-center">
               <Icon name="PlayCircle" size={40} className="text-white/50 mx-auto mb-2" />
