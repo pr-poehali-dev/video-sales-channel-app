@@ -1,4 +1,4 @@
-import { useState, lazy, Suspense, useCallback } from "react";
+import { useState, lazy, Suspense, useCallback, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/context/AuthContext";
@@ -18,6 +18,7 @@ import SupportPage from "@/pages/SupportPage";
 import SupportAdminPage from "@/pages/SupportAdminPage";
 import NavBar from "@/components/NavBar";
 import LiveBroadcastBar from "@/components/LiveBroadcastBar";
+import PWAInstallBanner from "@/components/PWAInstallBanner";
 
 const BroadcastPage = lazy(() => import("@/pages/BroadcastPage"));
 
@@ -39,6 +40,12 @@ export interface CartItem {
 
 function AppInner() {
   const [page, setPage] = useState<Page>("home");
+
+  useEffect(() => {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch(() => {});
+    }
+  }, []);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [selectedSellerId, setSelectedSellerId] = useState<string | null>(null);
@@ -123,6 +130,7 @@ function AppInner() {
           />
         )}
       </main>
+      <PWAInstallBanner />
     </div>
   );
 }
