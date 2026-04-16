@@ -72,7 +72,17 @@ def get_s3():
         config=Config(signature_version="s3v4"),
     )
 
+def get_s3_video():
+    return boto3.client(
+        "s3",
+        endpoint_url="https://s3.regru.cloud",
+        aws_access_key_id=os.environ["REGRU_S3_ACCESS_KEY"],
+        aws_secret_access_key=os.environ["REGRU_S3_SECRET_KEY"],
+        config=Config(signature_version="s3v4"),
+    )
+
 CDN_BASE = f"https://cdn.poehali.dev/projects/{os.environ.get('AWS_ACCESS_KEY_ID','')}/bucket"
+REGRU_CDN_BASE = "https://s3.regru.cloud/strimbazar"
 
 CORS = {
     "Access-Control-Allow-Origin": "*",
@@ -158,15 +168,15 @@ def handler(event: dict, context) -> dict:
             video_bytes = base64.b64decode(encoded)
             folder = body.get("folder", "products")
             key = f"{folder}/{uuid.uuid4().hex}.{ext}"
-            s3 = get_s3()
+            s3 = get_s3_video()
             s3.put_object(
-                Bucket="files",
+                Bucket="strimbazar",
                 Key=key,
                 Body=video_bytes,
                 ContentType=mime,
                 ContentDisposition="inline",
             )
-            cdn_url = f"{CDN_BASE}/{key}"
+            cdn_url = f"{REGRU_CDN_BASE}/{key}"
             stream_id = body.get("stream_id")
             if stream_id:
                 cur.execute("UPDATE streams SET video_url=%s WHERE id=%s", (cdn_url, stream_id))
@@ -179,13 +189,13 @@ def handler(event: dict, context) -> dict:
             mime = body.get("mime", "video/webm")
             ext = mime.split("/")[1].split(";")[0]
             key = f"streams/{uuid.uuid4().hex}.{ext}"
-            s3 = get_s3()
+            s3 = get_s3_video()
             presigned = s3.generate_presigned_url(
                 "put_object",
-                Params={"Bucket": "files", "Key": key, "ContentType": mime},
+                Params={"Bucket": "strimbazar", "Key": key, "ContentType": mime},
                 ExpiresIn=3600,
             )
-            cdn_url = f"{CDN_BASE}/{key}"
+            cdn_url = f"{REGRU_CDN_BASE}/{key}"
             return ok({"upload_url": presigned, "cdn_url": cdn_url, "key": key, "stream_id": stream_id})
 
         # ─────────── Сохранить video_url у стрима ───────────
