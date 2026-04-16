@@ -248,7 +248,7 @@ export default function BroadcastPage({ setPage, onLiveChange }: BroadcastPagePr
       : MediaRecorder.isTypeSupported("video/webm")
       ? "video/webm"
       : "video/mp4";
-    const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 100000 });
+    const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 500000 });
     mediaRecorderRef.current = recorder;
     const chunks: Blob[] = [];
     recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
@@ -261,7 +261,7 @@ export default function BroadcastPage({ setPage, onLiveChange }: BroadcastPagePr
     };
     setVideoRecording(true);
     setVideoCountdown(6);
-    recorder.start();
+    recorder.start(500);
     let remaining = 6;
     const tick = setInterval(() => {
       remaining -= 1;
