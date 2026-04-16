@@ -65,21 +65,22 @@ export default function QuickVideoProductModal({ videoBlobUrl, sellerId, sellerN
           }).then(r => r.json()).then(d => { if (d.url) setThumbUrl(d.url); }).catch(() => {});
         }
 
-        // Загружаем видео напрямую в S3 через presigned URL
-        const mimeType = blob.type || "video/mp4";
-        const urlResp = await fetch(`${API}?action=get_video_upload_url`, {
+        // Загружаем видео через бэкенд (base64, низкий битрейт)
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = e => resolve(e.target?.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+        const resp = await fetch(`${API}?action=upload_video`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ mime: mimeType }),
+          body: JSON.stringify({ data_url: dataUrl, folder: "products" }),
         });
-        const { upload_url, cdn_url } = await urlResp.json();
-        await fetch(upload_url, {
-          method: "PUT",
-          headers: { "Content-Type": mimeType },
-          body: blob,
-        });
-        setVideoUrl(cdn_url);
-      } catch { /* ignore */ }
+        const data = await resp.json();
+        if (data.url) setVideoUrl(data.url);
+        else console.error("[quickvideo] upload error:", data);
+      } catch (e) { console.error("[quickvideo] catch:", e); }
     })();
   }, [videoBlobUrl]);
 

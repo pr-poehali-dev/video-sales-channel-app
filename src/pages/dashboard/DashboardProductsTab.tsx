@@ -103,14 +103,14 @@ export default function DashboardProductsTab({ warehouses }: Props) {
 
   const startRecording = () => {
     if (!camStreamRef.current || camRecording) return;
-    const mimeType = MediaRecorder.isTypeSupported("video/mp4")
+    const mimeType = MediaRecorder.isTypeSupported("video/mp4;codecs=avc1")
+      ? "video/mp4;codecs=avc1"
+      : MediaRecorder.isTypeSupported("video/mp4")
       ? "video/mp4"
       : MediaRecorder.isTypeSupported("video/webm;codecs=vp8")
       ? "video/webm;codecs=vp8"
-      : MediaRecorder.isTypeSupported("video/webm")
-      ? "video/webm"
-      : "video/mp4";
-    const recorder = new MediaRecorder(camStreamRef.current, { mimeType });
+      : "video/webm";
+    const recorder = new MediaRecorder(camStreamRef.current, { mimeType, videoBitsPerSecond: 100000 });
     camRecorderRef.current = recorder;
     const chunks: Blob[] = [];
     recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
@@ -123,23 +123,24 @@ export default function DashboardProductsTab({ warehouses }: Props) {
       const blob = new Blob(chunks, { type: mimeType });
       const blobUrl = URL.createObjectURL(blob);
       setFVideoBlobUrl(blobUrl);
-      // Загружаем напрямую в S3 через presigned URL
       setCamUploading(true);
       try {
-        const urlResp = await fetch(`${STORE_API}?action=get_video_upload_url`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ mime: mimeType }),
-        });
-        const { upload_url, cdn_url } = await urlResp.json();
-        await fetch(upload_url, {
-          method: "PUT",
-          headers: { "Content-Type": mimeType },
-          body: blob,
-        });
-        setFVideoUrl(cdn_url);
-      } catch { /* ignore */ }
-      finally { setCamUploading(false); }
+        const reader = new FileReader();
+        reader.onload = async (ev) => {
+          const dataUrl = ev.target?.result as string;
+          const resp = await fetch(`${STORE_API}?action=upload_video`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ data_url: dataUrl, folder: "products" }),
+          });
+          const data = await resp.json();
+          if (data.url) setFVideoUrl(data.url);
+          else console.error("[video upload] error:", data);
+        };
+        reader.readAsDataURL(blob);
+      } catch (e) {
+        console.error("[video upload] catch:", e);
+      } finally { setCamUploading(false); }
     };
     setCamRecording(true);
     setCamCountdown(5);
