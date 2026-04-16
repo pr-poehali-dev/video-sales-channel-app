@@ -128,14 +128,15 @@ export default function DashboardProductsTab({ warehouses }: Props) {
         const reader = new FileReader();
         reader.onload = async (ev) => {
           const dataUrl = ev.target?.result as string;
+          console.log("[video] blob size KB:", Math.round(blob.size / 1024), "dataUrl KB:", Math.round(dataUrl.length / 1024));
           const resp = await fetch(`${STORE_API}?action=upload_video`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ data_url: dataUrl, folder: "products" }),
           });
           const data = await resp.json();
+          console.log("[video] response:", data);
           if (data.url) setFVideoUrl(data.url);
-          else console.error("[video upload] error:", data);
         };
         reader.readAsDataURL(blob);
       } catch (e) {
@@ -143,9 +144,9 @@ export default function DashboardProductsTab({ warehouses }: Props) {
       } finally { setCamUploading(false); }
     };
     setCamRecording(true);
-    setCamCountdown(5);
+    setCamCountdown(7);
     recorder.start();
-    let rem = 5;
+    let rem = 7;
     const tick = setInterval(() => {
       rem -= 1;
       setCamCountdown(rem);
