@@ -130,13 +130,28 @@ export default function AdminProductsTab() {
             <div key={p.id} className="bg-card border border-border rounded-xl overflow-hidden">
               <div className="flex gap-3 p-3">
                 {/* Превью */}
-                <div className="w-16 h-16 rounded-lg overflow-hidden bg-secondary flex-shrink-0 relative">
-                  {p.images?.[0]
-                    ? <img src={p.images[0]} className="w-full h-full object-cover" />
-                    : <div className="w-full h-full flex items-center justify-center">
-                        <Icon name="ImageOff" size={18} className="text-muted-foreground opacity-40" />
-                      </div>
-                  }
+                <div className="w-16 h-16 rounded-lg overflow-hidden bg-black flex-shrink-0 relative">
+                  {p.videoUrl ? (
+                    <video
+                      key={p.videoUrl}
+                      className="w-full h-full object-cover"
+                      autoPlay
+                      playsInline
+                      muted
+                      loop
+                      preload="auto"
+                      src={p.videoUrl}
+                      poster={p.images?.[0]}
+                      onLoadedMetadata={e => { (e.currentTarget as HTMLVideoElement).play().catch(() => {}); }}
+                      onCanPlay={e => { (e.currentTarget as HTMLVideoElement).play().catch(() => {}); }}
+                    />
+                  ) : p.images?.[0] ? (
+                    <img src={p.images[0]} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-secondary">
+                      <Icon name="ImageOff" size={18} className="text-muted-foreground opacity-40" />
+                    </div>
+                  )}
                   {p.videoUrl && (
                     <div className="absolute bottom-0.5 right-0.5 bg-black/60 rounded px-1 py-0.5">
                       <Icon name="Video" size={9} className="text-white" />
