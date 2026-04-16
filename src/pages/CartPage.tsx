@@ -68,7 +68,7 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
         delivery_tariff_name: delivery.tariff?.name || "",
         delivery_cost: deliveryCost || 0,
         cdek_pvz_code: cdekPvzCode || "",
-        items: cart.map(c => ({ id: c.id, name: c.name, price: c.price, qty: c.qty, image: c.image })),
+        items: cart.map(c => ({ id: c.id, name: c.name, price: c.price, qty: c.qty, image: c.image, videoUrl: c.videoUrl || "" })),
         payment_method: payMethod || "",
         goods_total: goodsTotal,
         order_total: orderTotal,

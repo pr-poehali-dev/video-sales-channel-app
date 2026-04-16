@@ -12,8 +12,10 @@ interface OrderItem {
   price: number;
   qty?: number;
   quantity?: number;
+  image?: string;
   images?: string[];
   sellerId?: string;
+  videoUrl?: string;
 }
 
 interface Order {
@@ -241,13 +243,28 @@ export default function DashboardOrdersTab() {
                       const qty = item.qty ?? item.quantity ?? 1;
                       return (
                         <div key={idx} className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-secondary flex-shrink-0 overflow-hidden">
-                            {item.images?.[0]
-                              ? <img src={item.images[0]} alt={item.name} className="w-full h-full object-cover" />
-                              : <div className="w-full h-full flex items-center justify-center">
-                                  <Icon name="Package" size={14} className="text-muted-foreground opacity-40" />
-                                </div>
-                            }
+                          <div className="w-10 h-10 rounded-lg bg-black flex-shrink-0 overflow-hidden">
+                            {item.videoUrl ? (
+                              <video
+                                key={item.videoUrl}
+                                className="w-full h-full object-cover"
+                                autoPlay
+                                playsInline
+                                muted
+                                loop
+                                preload="auto"
+                                src={item.videoUrl}
+                                poster={item.image || item.images?.[0]}
+                                onLoadedMetadata={e => { (e.currentTarget as HTMLVideoElement).play().catch(() => {}); }}
+                                onCanPlay={e => { (e.currentTarget as HTMLVideoElement).play().catch(() => {}); }}
+                              />
+                            ) : (item.image || item.images?.[0]) ? (
+                              <img src={item.image || item.images![0]} alt={item.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center bg-secondary">
+                                <Icon name="Package" size={14} className="text-muted-foreground opacity-40" />
+                              </div>
+                            )}
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm text-foreground line-clamp-1">{item.name}</p>

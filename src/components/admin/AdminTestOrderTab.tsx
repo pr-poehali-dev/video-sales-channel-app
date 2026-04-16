@@ -91,6 +91,7 @@ export default function AdminTestOrderTab() {
           price: i.product.price,
           qty: i.qty,
           image: i.product.images?.[0] || "",
+          videoUrl: i.product.videoUrl || "",
           sellerId: i.product.sellerId,
         })),
       };
