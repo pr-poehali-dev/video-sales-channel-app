@@ -4,6 +4,26 @@ import { useStore } from "@/context/StoreContext";
 
 const API = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c";
 
+async function grabThumbFromBlob(blobUrl: string): Promise<string | null> {
+  return new Promise(resolve => {
+    const vid = document.createElement("video");
+    vid.src = blobUrl;
+    vid.muted = true;
+    vid.playsInline = true;
+    vid.currentTime = 0.5;
+    vid.onloadeddata = () => {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = vid.videoWidth || 640;
+        canvas.height = vid.videoHeight || 640;
+        canvas.getContext("2d")?.drawImage(vid, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", 0.85));
+      } catch { resolve(null); }
+    };
+    vid.onerror = () => resolve(null);
+  });
+}
+
 interface QuickVideoProductModalProps {
   videoBlobUrl: string;
   sellerId: string;
@@ -30,7 +50,22 @@ export default function QuickVideoProductModal({ videoBlobUrl, sellerId, sellerN
   useEffect(() => {
     (async () => {
       try {
-        const blob = await fetch(videoBlobUrl).then(r => r.blob());
+        // Параллельно: захват превью и загрузка видео
+        const [thumbDataUrl, blob] = await Promise.all([
+          grabThumbFromBlob(videoBlobUrl),
+          fetch(videoBlobUrl).then(r => r.blob()),
+        ]);
+
+        // Загружаем превью
+        if (thumbDataUrl) {
+          fetch(`${API}?action=upload_image`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ data_url: thumbDataUrl }),
+          }).then(r => r.json()).then(d => { if (d.url) setThumbUrl(d.url); }).catch(() => {});
+        }
+
+        // Загружаем видео
         const reader = new FileReader();
         reader.onload = async (e) => {
           const dataUrl = e.target?.result as string;
@@ -41,7 +76,6 @@ export default function QuickVideoProductModal({ videoBlobUrl, sellerId, sellerN
           });
           const data = await resp.json();
           if (data.url) setVideoUrl(data.url);
-          if (data.thumb_url) setThumbUrl(data.thumb_url);
         };
         reader.readAsDataURL(blob);
       } catch { /* ignore */ }

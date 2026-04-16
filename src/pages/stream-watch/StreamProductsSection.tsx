@@ -72,6 +72,8 @@ function ProductReviewsBlock({ product, addToCart, onClose }: {
       <div className="flex items-center gap-3 p-4 border-b border-border">
         {product.images[0]
           ? <img src={product.images[0]} className="w-14 h-14 rounded-xl object-cover flex-shrink-0" />
+          : product.videoUrl
+          ? <video src={product.videoUrl} autoPlay loop muted playsInline className="w-14 h-14 rounded-xl object-cover flex-shrink-0" />
           : <div className="w-14 h-14 rounded-xl bg-secondary flex-shrink-0" />
         }
         <div className="flex-1 min-w-0">
