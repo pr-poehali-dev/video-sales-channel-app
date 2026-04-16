@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import type { CartItem } from "@/App";
 import type { StoreProduct } from "@/context/StoreContext";
@@ -7,6 +7,54 @@ interface ProductCardProps {
   product: StoreProduct;
   addToCart: (item: Omit<CartItem, "qty">) => void;
   onClick?: () => void;
+}
+
+function VideoPreview({ src, poster }: { src: string; poster?: string }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [playing, setPlaying] = useState(false);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        const v = videoRef.current;
+        if (!v) return;
+        if (entry.isIntersecting) {
+          v.play().then(() => setPlaying(true)).catch(() => {});
+        } else {
+          v.pause();
+          v.currentTime = 0;
+          setPlaying(false);
+        }
+      },
+      { threshold: 0.5 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div ref={containerRef} className="absolute inset-0">
+      {poster && !playing && (
+        <img src={poster} alt="" className="absolute inset-0 w-full h-full object-cover" />
+      )}
+      <video
+        ref={videoRef}
+        src={src}
+        className="absolute inset-0 w-full h-full object-cover transition-opacity duration-300"
+        style={{ opacity: playing ? 1 : 0 }}
+        playsInline
+        muted
+        loop
+        preload="metadata"
+      />
+      <div className="absolute top-2 right-2 bg-black/60 rounded-full p-1">
+        <Icon name="Video" size={11} className="text-white" />
+      </div>
+    </div>
+  );
 }
 
 export default function ProductCard({ product, addToCart, onClick }: ProductCardProps) {
@@ -38,22 +86,7 @@ export default function ProductCard({ product, addToCart, onClick }: ProductCard
     >
       <div className="relative aspect-square overflow-hidden bg-secondary">
         {videoUrl ? (
-          <>
-            {coverImage && (
-              <img src={coverImage} alt={product.name} className="absolute inset-0 w-full h-full object-cover" />
-            )}
-            <video
-              src={videoUrl}
-              autoPlay
-              loop
-              muted
-              playsInline
-              className="absolute inset-0 w-full h-full object-cover"
-            />
-            <div className="absolute top-2 right-2 bg-black/60 rounded-full p-1">
-              <Icon name="Video" size={11} className="text-white" />
-            </div>
-          </>
+          <VideoPreview src={videoUrl} poster={coverImage ?? undefined} />
         ) : coverImage ? (
           <img
             src={coverImage}
