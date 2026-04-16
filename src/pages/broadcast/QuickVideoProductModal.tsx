@@ -4,6 +4,43 @@ import { useStore } from "@/context/StoreContext";
 
 const API = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c";
 
+async function reencodeVideo(blobUrl: string): Promise<Blob> {
+  return new Promise((resolve) => {
+    const video = document.createElement("video");
+    video.src = blobUrl;
+    video.muted = true;
+    video.playsInline = true;
+    video.onloadedmetadata = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.min(video.videoWidth, 320);
+      canvas.height = Math.min(video.videoHeight, 568);
+      const ctx = canvas.getContext("2d")!;
+      const stream = canvas.captureStream(15);
+      const mimeType = MediaRecorder.isTypeSupported("video/mp4;codecs=avc1")
+        ? "video/mp4;codecs=avc1"
+        : MediaRecorder.isTypeSupported("video/mp4")
+        ? "video/mp4"
+        : "video/webm;codecs=vp8";
+      const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 100000 });
+      const chunks: Blob[] = [];
+      recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+      recorder.onstop = () => resolve(new Blob(chunks, { type: mimeType.split(";")[0] }));
+      recorder.start();
+      video.play();
+      const draw = () => {
+        if (video.ended || video.paused) { recorder.stop(); return; }
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        requestAnimationFrame(draw);
+      };
+      requestAnimationFrame(draw);
+      video.onended = () => recorder.stop();
+    };
+    video.onerror = () => {
+      fetch(blobUrl).then(r => r.blob()).then(resolve).catch(() => resolve(new Blob()));
+    };
+  });
+}
+
 async function grabThumbFromBlob(blobUrl: string): Promise<string | null> {
   return new Promise(resolve => {
     const vid = document.createElement("video");
@@ -50,13 +87,8 @@ export default function QuickVideoProductModal({ videoBlobUrl, sellerId, sellerN
   useEffect(() => {
     (async () => {
       try {
-        // Параллельно: захват превью и загрузка видео
-        const [thumbDataUrl, blob] = await Promise.all([
-          grabThumbFromBlob(videoBlobUrl),
-          fetch(videoBlobUrl).then(r => r.blob()),
-        ]);
+        const thumbDataUrl = await grabThumbFromBlob(videoBlobUrl);
 
-        // Загружаем превью
         if (thumbDataUrl) {
           fetch(`${API}?action=upload_image`, {
             method: "POST",
@@ -65,12 +97,13 @@ export default function QuickVideoProductModal({ videoBlobUrl, sellerId, sellerN
           }).then(r => r.json()).then(d => { if (d.url) setThumbUrl(d.url); }).catch(() => {});
         }
 
-        // Загружаем видео через бэкенд (base64, низкий битрейт)
+        // Перекодируем видео с низким битрейтом прямо в браузере
+        const reencoded = await reencodeVideo(videoBlobUrl);
         const dataUrl = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = e => resolve(e.target?.result as string);
           reader.onerror = reject;
-          reader.readAsDataURL(blob);
+          reader.readAsDataURL(reencoded);
         });
         const resp = await fetch(`${API}?action=upload_video`, {
           method: "POST",
@@ -79,7 +112,6 @@ export default function QuickVideoProductModal({ videoBlobUrl, sellerId, sellerN
         });
         const data = await resp.json();
         if (data.url) setVideoUrl(data.url);
-        else console.error("[quickvideo] upload error:", data);
       } catch (e) { console.error("[quickvideo] catch:", e); }
     })();
   }, [videoBlobUrl]);
