@@ -17,9 +17,9 @@ const IS_SAFARI = ua.includes("safari") && !ua.includes("chrome");
 const CODEC = IS_SAFARI ? "h264" : "vp8";
 const CLIENT_MODE = IS_SAFARI ? "rtc" : "live";
 
-interface BroadcastPageProps { setPage: (p: Page) => void; }
+interface BroadcastPageProps { setPage: (p: Page) => void; onLiveChange?: (live: boolean) => void; }
 
-export default function BroadcastPage({ setPage }: BroadcastPageProps) {
+export default function BroadcastPage({ setPage, onLiveChange }: BroadcastPageProps) {
   const { user } = useAuth();
   const { addStream, updateStream, deleteStream, reload } = useStore();
 
@@ -67,6 +67,7 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
       }
       setCheckedActive(null);
       setIsLive(true);
+      onLiveChange?.(true);
       setStatus("live");
       timerRef.current = setInterval(() => setDuration(d => d + 1), 1000);
       startAutoRecord(stream.id);
@@ -351,6 +352,7 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
       }
 
       setIsLive(true);
+      onLiveChange?.(true);
       setStatus("live");
       setDuration(0);
       timerRef.current = setInterval(() => setDuration(d => d + 1), 1000);
@@ -403,6 +405,7 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
     streamIdRef.current = null;
     if (sid) await updateStream(sid, { isLive: false, duration_sec: dur } as never);
     setIsLive(false);
+    onLiveChange?.(false);
     setStatus("idle");
     setFinished(true);
   };

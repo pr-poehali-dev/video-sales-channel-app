@@ -1,4 +1,4 @@
-import { useState, lazy, Suspense } from "react";
+import { useState, lazy, Suspense, useCallback } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/context/AuthContext";
@@ -43,6 +43,10 @@ function AppInner() {
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [selectedSellerId, setSelectedSellerId] = useState<string | null>(null);
   const [prevPage, setPrevPage] = useState<Page>("catalog");
+  const [broadcastMounted, setBroadcastMounted] = useState(false);
+
+  const handleLiveChange = useCallback((_live: boolean) => {
+  }, []);
 
   const addToCart = (item: Omit<CartItem, "qty">) => {
     setCart(prev => {
@@ -75,6 +79,7 @@ function AppInner() {
 
   const navSetPage = (p: Page) => {
     if (p !== "product" && p !== "seller") setPrevPage(p);
+    if (p === "broadcast") setBroadcastMounted(true);
     setPage(p);
   };
 
@@ -90,7 +95,13 @@ function AppInner() {
         {page === "cart" && <CartPage cart={cart} removeFromCart={removeFromCart} updateQty={updateQty} />}
         {page === "dashboard" && <DashboardPage setPage={navSetPage} />}
         {page === "auth" && <AuthPage onSuccess={() => navSetPage("home")} />}
-        {page === "broadcast" && <Suspense fallback={null}><BroadcastPage setPage={navSetPage} /></Suspense>}
+        {broadcastMounted && (
+          <div className={page !== "broadcast" ? "hidden" : ""}>
+            <Suspense fallback={null}>
+              <BroadcastPage setPage={navSetPage} onLiveChange={handleLiveChange} />
+            </Suspense>
+          </div>
+        )}
         {page === "admin" && <AdminPage setPage={navSetPage} />}
         {page === "seller-register" && <SellerRegisterPage setPage={navSetPage} />}
         {page === "support" && <SupportPage setPage={navSetPage} />}
