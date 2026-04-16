@@ -184,19 +184,22 @@ def handler(event: dict, context) -> dict:
                 conn.commit()
             return ok({"url": cdn_url})
 
-        # ─────────── PRESIGNED URL для загрузки видео ───────────
+        # ─────────── PRESIGNED URL для загрузки видео (poehali S3) ───────────
         if action == "get_video_upload_url":
             stream_id = body.get("stream_id") or qs.get("stream_id")
             mime = body.get("mime", "video/webm")
             ext = mime.split("/")[1].split(";")[0]
+            if ext in ("mp4", "quicktime"):
+                ext = "mp4"
+                mime = "video/mp4"
             key = f"streams/{uuid.uuid4().hex}.{ext}"
-            s3 = get_s3_video()
+            s3 = get_s3()
             presigned = s3.generate_presigned_url(
                 "put_object",
-                Params={"Bucket": "strimbazar", "Key": key, "ContentType": mime},
+                Params={"Bucket": "files", "Key": key, "ContentType": mime},
                 ExpiresIn=3600,
             )
-            cdn_url = f"{REGRU_CDN_BASE}/{key}"
+            cdn_url = f"{CDN_BASE}/{key}"
             return ok({"upload_url": presigned, "cdn_url": cdn_url, "key": key, "stream_id": stream_id})
 
         # ─────────── Сохранить video_url у стрима ───────────

@@ -293,18 +293,24 @@ export default function BroadcastPage({ setPage, onLiveChange }: BroadcastPagePr
         recorder.onstop = async () => {
           autoRecorderRef.current = null;
           const blob = new Blob(chunks, { type: mimeType });
-          const reader = new FileReader();
-          reader.onload = async () => {
-            const dataUrl = reader.result as string;
-            try {
-              await fetch(`${API}?action=upload_video`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ data_url: dataUrl, stream_id: streamId, folder: "streams" }),
-              });
-            } catch { /* не критично */ }
-          };
-          reader.readAsDataURL(blob);
+          try {
+            const urlResp = await fetch(`${API}?action=get_video_upload_url`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ stream_id: streamId, mime: mimeType }),
+            });
+            const { upload_url, cdn_url } = await urlResp.json();
+            await fetch(upload_url, {
+              method: "PUT",
+              headers: { "Content-Type": mimeType },
+              body: blob,
+            });
+            await fetch(`${API}?action=set_video_url`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ stream_id: streamId, video_url: cdn_url }),
+            });
+          } catch { /* не критично */ }
         };
         recorder.start();
         setTimeout(() => {

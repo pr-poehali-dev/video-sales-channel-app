@@ -78,6 +78,24 @@
       "expectedStatus": 400,
       "expectedBody": {"error": "stream_id required"},
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "get_video_upload_url returns presigned url",
+      "method": "POST",
+      "path": "/?action=get_video_upload_url",
+      "body": {"stream_id": "test_stream", "mime": "video/webm"},
+      "expectedStatus": 200,
+      "expectedBody": {"upload_url": "string", "cdn_url": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "set_video_url without required fields returns 400",
+      "method": "POST",
+      "path": "/?action=set_video_url",
+      "body": {},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "stream_id and video_url required"},
+      "bodyMatcher": "partial"
     }
   ]
 }
