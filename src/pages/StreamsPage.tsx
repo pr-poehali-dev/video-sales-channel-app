@@ -21,14 +21,16 @@ function fmtDuration(sec?: number) {
 export default function StreamsPage({ setPage, addToCart, onProductClick }: StreamsPageProps) {
   const { user } = useAuth();
   const { streams, loading } = useStore();
-  const [watching, setWatching] = useState<StoreStream | null>(null);
+  const [watchingId, setWatchingId] = useState<string | null>(null);
+
+  const watching = watchingId ? (streams.find(s => s.id === watchingId) ?? null) : null;
 
   if (watching) {
     return (
       <Suspense fallback={null}>
         <StreamWatchPage
           stream={watching}
-          setPage={(p) => { setWatching(null); setPage(p); }}
+          setPage={(p) => { setWatchingId(null); setPage(p); }}
           addToCart={addToCart}
           onProductClick={onProductClick}
         />
@@ -74,7 +76,7 @@ export default function StreamsPage({ setPage, addToCart, onProductClick }: Stre
 
   const StreamCard = ({ s }: { s: StoreStream }) => (
     <div
-      onClick={() => setWatching(s)}
+      onClick={() => setWatchingId(s.id)}
       className="bg-card border border-border rounded-2xl overflow-hidden hover:border-primary/40 transition-all cursor-pointer group"
     >
       <div className="relative aspect-video bg-secondary flex items-center justify-center overflow-hidden">

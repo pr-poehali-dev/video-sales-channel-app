@@ -408,6 +408,7 @@ export default function BroadcastPage({ setPage, onLiveChange }: BroadcastPagePr
     onLiveChange?.(false);
     setStatus("idle");
     setFinished(true);
+    setTimeout(() => reload(), 25000);
   };
 
   const toggleMute = async () => {

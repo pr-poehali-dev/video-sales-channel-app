@@ -1,8 +1,11 @@
+import { lazy, Suspense, useState } from "react";
 import Icon from "@/components/ui/icon";
 import type { Page, CartItem } from "@/App";
 import { useAuth } from "@/context/AuthContext";
-import { useStore } from "@/context/StoreContext";
+import { useStore, type StoreStream } from "@/context/StoreContext";
 import ProductCard from "@/components/ProductCard";
+
+const StreamWatchPage = lazy(() => import("@/pages/StreamWatchPage"));
 
 interface HomePageProps {
   setPage: (p: Page) => void;
@@ -10,12 +13,73 @@ interface HomePageProps {
   onProductClick: (productId: string) => void;
 }
 
+function fmtDuration(sec?: number) {
+  if (!sec) return "";
+  const m = Math.floor(sec / 60), s = sec % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
 export default function HomePage({ setPage, addToCart, onProductClick }: HomePageProps) {
   const { user } = useAuth();
   const { products, streams } = useStore();
+  const [watchingId, setWatchingId] = useState<string | null>(null);
+
+  const watching = watchingId ? (streams.find(s => s.id === watchingId) ?? null) : null;
+
+  if (watching) {
+    return (
+      <Suspense fallback={null}>
+        <StreamWatchPage
+          stream={watching}
+          setPage={(p) => { setWatchingId(null); setPage(p); }}
+          addToCart={addToCart}
+          onProductClick={onProductClick}
+        />
+      </Suspense>
+    );
+  }
 
   const liveStreams = streams.filter(s => s.isLive).slice(0, 3);
+  const recordedStreams = streams.filter(s => !s.isLive && s.videoUrl).slice(0, 3);
   const latestProducts = products.slice(0, 8);
+
+  const StreamCard = ({ s, onWatch }: { s: StoreStream; onWatch: (id: string) => void }) => (
+    <div onClick={() => onWatch(s.id)} className="bg-card border border-border rounded-2xl overflow-hidden hover:border-primary/30 transition-all cursor-pointer group">
+      <div className="relative aspect-video bg-secondary flex items-center justify-center overflow-hidden">
+        {s.thumbnail
+          ? <img src={s.thumbnail} alt={s.title} className="absolute inset-0 w-full h-full object-cover" />
+          : (
+            <div className="text-center">
+              <div className="w-14 h-14 rounded-full bg-primary/20 text-primary text-xl font-bold flex items-center justify-center font-oswald mx-auto mb-2">{s.sellerAvatar}</div>
+              <p className="text-xs text-muted-foreground">{s.sellerName}</p>
+            </div>
+          )
+        }
+        {s.isLive ? (
+          <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded">
+            <span className="w-1.5 h-1.5 rounded-full bg-white animate-live-pulse inline-block" />LIVE
+          </div>
+        ) : (
+          <>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-full bg-black/40 group-hover:bg-black/60 flex items-center justify-center transition-colors">
+                <Icon name="Play" size={18} className="text-white ml-0.5" />
+              </div>
+            </div>
+            {s.duration && (
+              <div className="absolute bottom-2 right-2 bg-black/70 text-white text-[10px] font-mono px-1.5 py-0.5 rounded">
+                {fmtDuration(s.duration)}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+      <div className="p-4">
+        <p className="font-semibold text-foreground text-sm line-clamp-1">{s.title}</p>
+        <p className="text-xs text-muted-foreground mt-1">{s.sellerName}</p>
+      </div>
+    </div>
+  );
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-10 space-y-14 animate-fade-in">
@@ -82,21 +146,22 @@ export default function HomePage({ setPage, addToCart, onProductClick }: HomePag
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {liveStreams.map(s => (
-              <div key={s.id} className="bg-card border border-border rounded-2xl overflow-hidden hover:border-primary/30 transition-all cursor-pointer" onClick={() => setPage("streams")}>
-                <div className="relative aspect-video bg-secondary flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="w-14 h-14 rounded-full bg-primary/20 text-primary text-xl font-bold flex items-center justify-center font-oswald mx-auto mb-2">{s.sellerAvatar}</div>
-                    <p className="text-xs text-muted-foreground">{s.sellerName}</p>
-                  </div>
-                  <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded">
-                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-live-pulse inline-block" />LIVE
-                  </div>
-                </div>
-                <div className="p-4">
-                  <p className="font-semibold text-foreground text-sm line-clamp-1">{s.title}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{s.sellerName}</p>
-                </div>
-              </div>
+              <StreamCard key={s.id} s={s} onWatch={setWatchingId} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Записи эфиров */}
+      {recordedStreams.length > 0 && (
+        <section>
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="font-oswald text-xl font-semibold text-foreground tracking-wide">Записи эфиров</h2>
+            <button onClick={() => setPage("streams")} className="text-sm text-primary hover:underline">Все записи</button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {recordedStreams.map(s => (
+              <StreamCard key={s.id} s={s} onWatch={setWatchingId} />
             ))}
           </div>
         </section>
