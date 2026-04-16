@@ -136,19 +136,18 @@ def handler(event: dict, context) -> dict:
             data_url = body.get("data_url", "")
             if not data_url.startswith("data:image/"):
                 return err("invalid image data")
-            # Парсим data URL
             header, encoded = data_url.split(",", 1)
             ext = header.split("/")[1].split(";")[0]  # jpeg, png, webp
             img_bytes = base64.b64decode(encoded)
             key = f"products/{uuid.uuid4().hex}.{ext}"
-            s3 = get_s3()
+            s3 = get_s3_video()
             s3.put_object(
-                Bucket="files",
+                Bucket="strimbazar",
                 Key=key,
                 Body=img_bytes,
                 ContentType=f"image/{ext}",
             )
-            url = f"{CDN_BASE}/{key}"
+            url = f"{REGRU_CDN_BASE}/{key}"
             return ok({"url": url})
 
         # ─────────── UPLOAD VIDEO ───────────
