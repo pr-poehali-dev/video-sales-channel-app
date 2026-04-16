@@ -82,7 +82,7 @@ def get_s3_video():
     )
 
 CDN_BASE = f"https://cdn.poehali.dev/projects/{os.environ.get('AWS_ACCESS_KEY_ID','')}/bucket"
-REGRU_CDN_BASE = "https://s3.regru.cloud/strimbazar"
+REGRU_CDN_BASE = "https://strimbazar.s3.regru.cloud"
 
 CORS = {
     "Access-Control-Allow-Origin": "*",
@@ -146,6 +146,7 @@ def handler(event: dict, context) -> dict:
                 Key=key,
                 Body=img_bytes,
                 ContentType=f"image/{ext}",
+                ACL="public-read",
             )
             url = f"{REGRU_CDN_BASE}/{key}"
             return ok({"url": url})
@@ -174,6 +175,7 @@ def handler(event: dict, context) -> dict:
                 Body=video_bytes,
                 ContentType=mime,
                 ContentDisposition="inline",
+                ACL="public-read",
             )
             cdn_url = f"{REGRU_CDN_BASE}/{key}"
             stream_id = body.get("stream_id")
@@ -411,7 +413,7 @@ def handler(event: dict, context) -> dict:
             img_bytes = base64.b64decode(encoded)
             key = f"thumbnails/{stream_id}.{ext}"
             s3 = get_s3_video()
-            s3.put_object(Bucket="strimbazar", Key=key, Body=img_bytes, ContentType=f"image/{ext}")
+            s3.put_object(Bucket="strimbazar", Key=key, Body=img_bytes, ContentType=f"image/{ext}", ACL="public-read")
             url = f"{REGRU_CDN_BASE}/{key}"
             cur.execute("UPDATE streams SET thumbnail=%s WHERE id=%s", (url, stream_id))
             conn.commit()

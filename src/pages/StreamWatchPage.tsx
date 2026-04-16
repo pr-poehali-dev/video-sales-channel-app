@@ -11,10 +11,10 @@ const STREAM_THUMBNAIL = "https://cdn.poehali.dev/projects/a4bacfcf-1dfc-4307-b1
 
 AgoraRTC.setLogLevel(3);
 
-const CODEC = (() => {
-  const ua = navigator.userAgent.toLowerCase();
-  return ua.includes("safari") && !ua.includes("chrome") ? "h264" : "vp8";
-})();
+const _ua = navigator.userAgent.toLowerCase();
+const IS_SAFARI = _ua.includes("safari") && !_ua.includes("chrome");
+const CODEC = IS_SAFARI ? "h264" : "vp8";
+const CLIENT_MODE = IS_SAFARI ? "rtc" : "live";
 
 interface Props {
   stream: StoreStream;
@@ -59,9 +59,9 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
     let audioTrack: IRemoteAudioTrack | null = null;
     (async () => {
       try {
-        client = AgoraRTC.createClient({ mode: "live", codec: CODEC });
+        client = AgoraRTC.createClient({ mode: CLIENT_MODE, codec: CODEC });
         clientRef.current = client;
-        await client.setClientRole("audience");
+        if (CLIENT_MODE === "live") await client.setClientRole("audience");
         const viewerUid = Math.floor(Math.random() * 100000) + 1000;
         const tokenResp = await fetch(`${AGORA_TOKEN}?channel=${stream.id}&uid=${viewerUid}&role=subscriber`);
         const tokenData = await tokenResp.json();

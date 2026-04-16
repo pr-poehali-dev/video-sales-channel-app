@@ -12,10 +12,10 @@ const API = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c"
 
 AgoraRTC.setLogLevel(3);
 
-const CODEC = (() => {
-  const ua = navigator.userAgent.toLowerCase();
-  return ua.includes("safari") && !ua.includes("chrome") ? "h264" : "vp8";
-})();
+const ua = navigator.userAgent.toLowerCase();
+const IS_SAFARI = ua.includes("safari") && !ua.includes("chrome");
+const CODEC = IS_SAFARI ? "h264" : "vp8";
+const CLIENT_MODE = IS_SAFARI ? "rtc" : "live";
 
 interface BroadcastPageProps { setPage: (p: Page) => void; }
 
@@ -54,12 +54,12 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
       }
       const tokenResp = await fetch(`${AGORA_TOKEN}?channel=${stream.id}&uid=1&role=publisher`);
       const tokenData = await tokenResp.json();
-      const client = AgoraRTC.createClient({ mode: "live", codec: CODEC });
+      const client = AgoraRTC.createClient({ mode: CLIENT_MODE, codec: CODEC });
       clientRef.current = client;
-      await client.setClientRole("host");
+      if (CLIENT_MODE === "live") await client.setClientRole("host");
       await Promise.race([
         client.join(tokenData.appId, stream.id, tokenData.token, 1),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("Таймаут подключения 15с")), 15000)),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Таймаут подключения 30с. Проверьте интернет-соединение")), 30000)),
       ]);
       if (audioTrackRef.current && videoTrackRef.current) {
         await client.publish([audioTrackRef.current, videoTrackRef.current]);
@@ -335,13 +335,13 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
       const tokenData = await tokenResp.json();
       if (tokenData.error) throw new Error("Токен: " + tokenData.error);
 
-      const client = AgoraRTC.createClient({ mode: "live", codec: CODEC });
+      const client = AgoraRTC.createClient({ mode: CLIENT_MODE, codec: CODEC });
       clientRef.current = client;
-      await client.setClientRole("host");
+      if (CLIENT_MODE === "live") await client.setClientRole("host");
 
       await Promise.race([
         client.join(tokenData.appId, s.id, tokenData.token, 1),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("Таймаут подключения 15с. Проверьте интернет-соединение")), 15000)),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Таймаут подключения 30с. Проверьте интернет-соединение")), 30000)),
       ]);
 
       if (audioTrackRef.current && videoTrackRef.current) {
