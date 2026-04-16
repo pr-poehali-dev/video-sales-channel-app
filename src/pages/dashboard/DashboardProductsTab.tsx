@@ -123,21 +123,21 @@ export default function DashboardProductsTab({ warehouses }: Props) {
       const blob = new Blob(chunks, { type: mimeType });
       const blobUrl = URL.createObjectURL(blob);
       setFVideoBlobUrl(blobUrl);
-      // Загружаем на сервер
+      // Загружаем напрямую в S3 через presigned URL
       setCamUploading(true);
       try {
-        const reader = new FileReader();
-        reader.onload = async (ev) => {
-          const dataUrl = ev.target?.result as string;
-          const resp = await fetch(`${STORE_API}?action=upload_video`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ data_url: dataUrl }),
-          });
-          const data = await resp.json();
-          if (data.url) setFVideoUrl(data.url);
-        };
-        reader.readAsDataURL(blob);
+        const urlResp = await fetch(`${STORE_API}?action=get_video_upload_url`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ mime: mimeType }),
+        });
+        const { upload_url, cdn_url } = await urlResp.json();
+        await fetch(upload_url, {
+          method: "PUT",
+          headers: { "Content-Type": mimeType },
+          body: blob,
+        });
+        setFVideoUrl(cdn_url);
       } catch { /* ignore */ }
       finally { setCamUploading(false); }
     };
