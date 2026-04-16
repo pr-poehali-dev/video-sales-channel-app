@@ -109,7 +109,10 @@ export default function DashboardStreamsTab({ setPage }: Props) {
                       playsInline
                       muted
                       loop
+                      preload="auto"
                       src={s.videoUrl}
+                      onLoadedMetadata={e => { (e.currentTarget as HTMLVideoElement).play().catch(() => {}); }}
+                      onCanPlay={e => { (e.currentTarget as HTMLVideoElement).play().catch(() => {}); }}
                     />
                   ) : s.thumbnail ? (
                     <img src={s.thumbnail} className="w-full h-full object-cover" />
