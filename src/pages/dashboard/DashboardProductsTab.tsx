@@ -145,9 +145,9 @@ export default function DashboardProductsTab({ warehouses }: Props) {
       } finally { setCamUploading(false); }
     };
     setCamRecording(true);
-    setCamCountdown(7);
+    setCamCountdown(6);
     recorder.start();
-    let rem = 7;
+    let rem = 6;
     const tick = setInterval(() => {
       rem -= 1;
       setCamCountdown(rem);

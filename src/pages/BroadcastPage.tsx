@@ -260,9 +260,9 @@ export default function BroadcastPage({ setPage, onLiveChange }: BroadcastPagePr
       setVideoCountdown(0);
     };
     setVideoRecording(true);
-    setVideoCountdown(3);
+    setVideoCountdown(6);
     recorder.start();
-    let remaining = 3;
+    let remaining = 6;
     const tick = setInterval(() => {
       remaining -= 1;
       setVideoCountdown(remaining);
