@@ -78,27 +78,29 @@ export default function ProductPage({ productId, addToCart, onBack, onSellerClic
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-6 animate-fade-in">
-      <button
-        onClick={onBack}
-        className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
-      >
-        <Icon name="ArrowLeft" size={16} />
-        Назад
-      </button>
+    <div className="animate-fade-in flex flex-col h-full">
+      {/* Кнопка назад */}
+      <div className="px-4 pt-4 pb-2 flex-shrink-0">
+        <button
+          onClick={onBack}
+          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <Icon name="ArrowLeft" size={16} />
+          Назад
+        </button>
+      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
-        {/* Медиа */}
-        <div>
+      {/* На мобиле — sticky верх (видео + кнопка), прокручивается контент */}
+      <div className="flex flex-col md:grid md:grid-cols-2 md:gap-8 flex-1 overflow-hidden">
+
+        {/* Sticky левая колонка: медиа + кнопка В корзину */}
+        <div className="flex-shrink-0 md:sticky md:top-0 md:self-start md:max-h-screen md:overflow-y-auto px-4 pb-0 md:py-4">
+          {/* Медиа */}
           <div className="aspect-square rounded-2xl overflow-hidden border border-border mb-3 bg-secondary relative">
             {showVideo && videoUrl ? (
               <video
                 src={videoUrl}
-                autoPlay
-                loop
-                muted
-                playsInline
-                controls
+                autoPlay loop muted playsInline controls
                 className="w-full h-full object-cover"
               />
             ) : product.images.length > 0 ? (
@@ -106,19 +108,14 @@ export default function ProductPage({ productId, addToCart, onBack, onSellerClic
                 src={product.images[activeImg]}
                 alt={product.name}
                 className="w-full h-full object-cover"
-                width={800}
-                height={800}
+                width={800} height={800}
                 decoding="async"
                 fetchPriority="high"
               />
             ) : videoUrl ? (
               <video
                 src={videoUrl}
-                autoPlay
-                loop
-                muted
-                playsInline
-                controls
+                autoPlay loop muted playsInline controls
                 className="w-full h-full object-cover"
               />
             ) : (
@@ -128,8 +125,8 @@ export default function ProductPage({ productId, addToCart, onBack, onSellerClic
             )}
           </div>
 
-          {/* Переключатели: фото и видео */}
-          <div className="flex gap-2 flex-wrap">
+          {/* Переключатели фото/видео */}
+          <div className="flex gap-2 flex-wrap mb-4">
             {product.images.map((img, i) => (
               <button
                 key={i}
@@ -152,39 +149,40 @@ export default function ProductPage({ productId, addToCart, onBack, onSellerClic
               </button>
             )}
           </div>
-        </div>
 
-        {/* Инфо */}
-        <div className="flex flex-col">
-          <span className="text-xs font-medium text-primary bg-primary/10 px-2.5 py-1 rounded-full w-fit mb-3">{product.category}</span>
-          <h1 className="font-oswald text-2xl font-semibold text-foreground tracking-wide leading-tight mb-4">{product.name}</h1>
-
-          <div className="flex items-baseline gap-3 mb-6">
-            <span className="font-oswald text-3xl font-bold text-foreground">{product.price.toLocaleString("ru")} ₽</span>
-          </div>
-
-          {product.description && (
-            <p className="text-sm text-muted-foreground leading-relaxed mb-6">{product.description}</p>
-          )}
-
-          <div className="flex gap-3 mt-auto">
+          {/* Кнопка В корзину — sticky снизу на мобиле */}
+          <div className="sticky bottom-0 bg-background pb-3 pt-2 md:static md:pb-0 md:pt-0 md:bg-transparent">
             <button
               onClick={handleAdd}
-              className={`flex-1 flex items-center justify-center gap-2 font-semibold py-3.5 rounded-xl transition-all ${
+              className={`w-full flex items-center justify-center gap-2 font-semibold py-4 rounded-xl transition-all text-base ${
                 added
                   ? "bg-green-500 text-white"
                   : "bg-primary text-primary-foreground hover:opacity-90"
               }`}
             >
-              <Icon name={added ? "Check" : "ShoppingCart"} size={18} />
+              <Icon name={added ? "Check" : "ShoppingCart"} size={20} />
               {added ? "Добавлено в корзину!" : "В корзину"}
             </button>
           </div>
+        </div>
+
+        {/* Прокручиваемая правая колонка: инфо + продавец + ещё от продавца */}
+        <div className="overflow-y-auto px-4 py-4 md:py-4 pb-20 md:pb-6">
+          <span className="text-xs font-medium text-primary bg-primary/10 px-2.5 py-1 rounded-full w-fit mb-3 inline-block">{product.category}</span>
+          <h1 className="font-oswald text-2xl font-semibold text-foreground tracking-wide leading-tight mb-3">{product.name}</h1>
+
+          <div className="flex items-baseline gap-3 mb-4">
+            <span className="font-oswald text-3xl font-bold text-foreground">{product.price.toLocaleString("ru")} ₽</span>
+          </div>
+
+          {product.description && (
+            <p className="text-sm text-muted-foreground leading-relaxed mb-5">{product.description}</p>
+          )}
 
           {/* Продавец */}
           <button
             onClick={() => onSellerClick(product.sellerId)}
-            className="mt-5 flex items-center gap-3 bg-secondary rounded-xl p-4 hover:bg-secondary/70 transition-colors text-left"
+            className="w-full flex items-center gap-3 bg-secondary rounded-xl p-4 hover:bg-secondary/70 transition-colors text-left mb-4"
           >
             <div className="w-10 h-10 rounded-full bg-primary/20 text-primary font-bold text-sm flex items-center justify-center font-oswald flex-shrink-0">
               {product.sellerAvatar}
@@ -196,40 +194,43 @@ export default function ProductPage({ productId, addToCart, onBack, onSellerClic
             <Icon name="ChevronRight" size={16} className="text-muted-foreground flex-shrink-0" />
           </button>
 
-          <div className="mt-4 text-xs text-muted-foreground">Добавлен: {product.createdAt}</div>
+          <div className="mb-6 text-xs text-muted-foreground">Добавлен: {product.createdAt}</div>
+
+          {/* Ещё от продавца */}
+          {sellerProducts.length > 0 && (
+            <div>
+              <h2 className="font-oswald text-lg font-semibold text-foreground tracking-wide mb-4">
+                Ещё от {product.sellerName}
+              </h2>
+              <div className="grid grid-cols-2 gap-4">
+                {sellerProducts.map(p => (
+                  <div
+                    key={p.id}
+                    className="bg-card border border-border rounded-xl overflow-hidden cursor-pointer hover:border-primary/40 transition-all"
+                    onClick={() => onSellerClick(product.sellerId)}
+                  >
+                    <div className="relative aspect-square bg-secondary overflow-hidden">
+                      {p.videoUrl ? (
+                        <VideoPreview src={p.videoUrl} poster={p.images[0]} />
+                      ) : p.images[0] ? (
+                        <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Icon name="Package" size={24} className="text-muted-foreground opacity-30" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-2">
+                      <p className="text-xs font-medium text-foreground line-clamp-1">{p.name}</p>
+                      <p className="font-oswald text-sm font-semibold text-foreground mt-0.5">{p.price.toLocaleString("ru")} ₽</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
-
-      {/* Другие товары продавца */}
-      {sellerProducts.length > 0 && (
-        <div>
-          <h2 className="font-oswald text-lg font-semibold text-foreground tracking-wide mb-4">
-            Ещё от {product.sellerName}
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {sellerProducts.map(p => (
-              <div key={p.id} className="bg-card border border-border rounded-xl overflow-hidden cursor-pointer hover:border-primary/40 transition-all"
-                onClick={() => onSellerClick(product.sellerId)}>
-                <div className="relative aspect-square bg-secondary overflow-hidden">
-                  {p.videoUrl ? (
-                    <VideoPreview src={p.videoUrl} poster={p.images[0]} />
-                  ) : p.images[0] ? (
-                    <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Icon name="Package" size={24} className="text-muted-foreground opacity-30" />
-                    </div>
-                  )}
-                </div>
-                <div className="p-2">
-                  <p className="text-xs font-medium text-foreground line-clamp-1">{p.name}</p>
-                  <p className="font-oswald text-sm font-semibold text-foreground mt-0.5">{p.price.toLocaleString("ru")} ₽</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
