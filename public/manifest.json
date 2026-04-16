@@ -9,13 +9,13 @@
   "orientation": "portrait",
   "icons": [
     {
-      "src": "https://cdn.poehali.dev/projects/a4bacfcf-1dfc-4307-b19f-4266aaeae1d7/files/6b363f09-52ef-4721-a85e-565026afd851.jpg",
+      "src": "https://cdn.poehali.dev/projects/a4bacfcf-1dfc-4307-b19f-4266aaeae1d7/files/23ca51be-62f8-439f-8c4f-a93f7dfe7537.jpg",
       "sizes": "192x192",
       "type": "image/jpeg",
       "purpose": "any"
     },
     {
-      "src": "https://cdn.poehali.dev/projects/a4bacfcf-1dfc-4307-b19f-4266aaeae1d7/files/6b363f09-52ef-4721-a85e-565026afd851.jpg",
+      "src": "https://cdn.poehali.dev/projects/a4bacfcf-1dfc-4307-b19f-4266aaeae1d7/files/23ca51be-62f8-439f-8c4f-a93f7dfe7537.jpg",
       "sizes": "512x512",
       "type": "image/jpeg",
       "purpose": "maskable"
