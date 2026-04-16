@@ -90,7 +90,8 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
   // ── Чат ──────────────────────────────────────────────────────────────────
   const fetchMessages = useCallback(async () => {
     try { setMessages(await getStreamMessages(stream.id)); } catch { /* ignore */ }
-  }, [stream.id, getStreamMessages]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stream.id]);
 
   useEffect(() => {
     fetchMessages();

@@ -48,8 +48,9 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
     setTitle(stream.title);
     streamIdRef.current = stream.id;
     try {
-      if (!audioTrackRef.current || !videoTrackRef.current) {
-        await new Promise(res => setTimeout(res, 800));
+      for (let i = 0; i < 50; i++) {
+        if (audioTrackRef.current && videoTrackRef.current) break;
+        await new Promise(res => setTimeout(res, 200));
       }
       const tokenResp = await fetch(`${AGORA_TOKEN}?channel=${stream.id}&uid=1&role=publisher`);
       const tokenData = await tokenResp.json();
@@ -127,7 +128,8 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
   const refreshChat = useCallback(async () => {
     if (!streamIdRef.current) return;
     try { setChatMessages(await getStreamMessages(streamIdRef.current)); } catch { /* ignore */ }
-  }, [getStreamMessages]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (isLive) {
