@@ -29,7 +29,6 @@ export default function DashboardStreamsTab({ setPage }: Props) {
   const [editStreamTitle, setEditStreamTitle] = useState("");
   const [savingStreamTitle, setSavingStreamTitle] = useState(false);
   const [confirmDeleteStream, setConfirmDeleteStream] = useState<string | null>(null);
-  const [playingStreamId, setPlayingStreamId] = useState<string | null>(null);
 
   const handleStopStream = async (id: string) => {
     setStoppingStream(id);
@@ -101,9 +100,8 @@ export default function DashboardStreamsTab({ setPage }: Props) {
                 {/* Превью */}
                 <div
                   className="w-20 h-14 rounded-lg overflow-hidden bg-black flex-shrink-0 relative cursor-pointer"
-                  onClick={() => !s.isLive && s.videoUrl && setPlayingStreamId(playingStreamId === s.id ? null : s.id)}
                 >
-                  {playingStreamId === s.id && s.videoUrl ? (
+                  {!s.isLive && s.videoUrl ? (
                     <video
                       key={s.videoUrl}
                       className="w-full h-full object-cover"
@@ -125,13 +123,6 @@ export default function DashboardStreamsTab({ setPage }: Props) {
                       <span className="flex items-center gap-1 text-[9px] font-bold text-white bg-red-500 px-1.5 py-0.5 rounded">
                         <span className="w-1 h-1 rounded-full bg-white animate-live-pulse" />LIVE
                       </span>
-                    </div>
-                  )}
-                  {!s.isLive && s.videoUrl && playingStreamId !== s.id && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/30 transition-colors">
-                      <div className="w-6 h-6 rounded-full bg-white/80 flex items-center justify-center">
-                        <Icon name="Play" size={10} className="text-black ml-0.5" />
-                      </div>
                     </div>
                   )}
                 </div>
