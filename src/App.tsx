@@ -107,14 +107,12 @@ function AppInner() {
         {page === "support" && <SupportPage setPage={navSetPage} />}
         {page === "support-admin" && <SupportAdminPage setPage={navSetPage} />}
         {page === "product" && selectedProductId !== null && (
-          <div className="h-[calc(100dvh-4rem)] flex flex-col overflow-hidden">
-            <ProductPage
-              productId={selectedProductId}
-              addToCart={addToCart}
-              onBack={goBack}
-              onSellerClick={openSeller}
-            />
-          </div>
+          <ProductPage
+            productId={selectedProductId}
+            addToCart={addToCart}
+            onBack={goBack}
+            onSellerClick={openSeller}
+          />
         )}
         {page === "seller" && selectedSellerId !== null && (
           <SellerPage
