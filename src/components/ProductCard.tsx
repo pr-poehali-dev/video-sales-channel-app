@@ -39,13 +39,16 @@ export default function ProductCard({ product, addToCart, onClick }: ProductCard
       <div className="relative aspect-square overflow-hidden bg-secondary">
         {videoUrl ? (
           <>
+            {coverImage && (
+              <img src={coverImage} alt={product.name} className="absolute inset-0 w-full h-full object-cover" />
+            )}
             <video
               src={videoUrl}
               autoPlay
               loop
               muted
               playsInline
-              className="w-full h-full object-cover"
+              className="absolute inset-0 w-full h-full object-cover"
             />
             <div className="absolute top-2 right-2 bg-black/60 rounded-full p-1">
               <Icon name="Video" size={11} className="text-white" />
