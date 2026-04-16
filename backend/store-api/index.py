@@ -168,16 +168,15 @@ def handler(event: dict, context) -> dict:
             video_bytes = base64.b64decode(encoded)
             folder = body.get("folder", "products")
             key = f"{folder}/{uuid.uuid4().hex}.{ext}"
-            s3 = get_s3_video()
+            s3 = get_s3()
             s3.put_object(
-                Bucket="strimbazar",
+                Bucket="files",
                 Key=key,
                 Body=video_bytes,
                 ContentType=mime,
                 ContentDisposition="inline",
-                ACL="public-read",
             )
-            cdn_url = f"{REGRU_CDN_BASE}/{key}"
+            cdn_url = f"{CDN_BASE}/{key}"
             stream_id = body.get("stream_id")
             if stream_id:
                 cur.execute("UPDATE streams SET video_url=%s WHERE id=%s", (cdn_url, stream_id))

@@ -278,45 +278,47 @@ export default function BroadcastPage({ setPage, onLiveChange }: BroadcastPagePr
       if (!vid) return;
       const ms = vid.srcObject as MediaStream | null;
       if (!ms) return;
-      const mimeType = MediaRecorder.isTypeSupported("video/mp4")
-        ? "video/mp4"
-        : MediaRecorder.isTypeSupported("video/webm;codecs=vp8")
+      const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp8")
         ? "video/webm;codecs=vp8"
         : MediaRecorder.isTypeSupported("video/webm")
         ? "video/webm"
-        : "video/mp4";
+        : MediaRecorder.isTypeSupported("video/mp4")
+        ? "video/mp4"
+        : "video/webm";
       try {
-        const recorder = new MediaRecorder(ms, { mimeType });
+        const recorder = new MediaRecorder(ms, { mimeType, videoBitsPerSecond: 150000 });
         autoRecorderRef.current = recorder;
         const chunks: Blob[] = [];
         recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
         recorder.onstop = async () => {
           autoRecorderRef.current = null;
           const blob = new Blob(chunks, { type: mimeType });
-          try {
-            const urlResp = await fetch(`${API}?action=get_video_upload_url`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ stream_id: streamId, mime: mimeType }),
-            });
-            const { upload_url, cdn_url } = await urlResp.json();
-            await fetch(upload_url, {
-              method: "PUT",
-              headers: { "Content-Type": mimeType },
-              body: blob,
-            });
-            await fetch(`${API}?action=set_video_url`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ stream_id: streamId, video_url: cdn_url }),
-            });
-          } catch { /* не критично */ }
+          console.log("[autoRecord] blob size:", blob.size, "type:", mimeType);
+          const reader = new FileReader();
+          reader.onload = async () => {
+            const dataUrl = reader.result as string;
+            console.log("[autoRecord] dataUrl length:", dataUrl.length, "streamId:", streamId);
+            try {
+              const resp = await fetch(`${API}?action=upload_video`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ data_url: dataUrl, stream_id: streamId, folder: "streams" }),
+              });
+              const result = await resp.json();
+              console.log("[autoRecord] upload result:", result);
+            } catch (e) {
+              console.error("[autoRecord] upload error:", e);
+            }
+          };
+          reader.readAsDataURL(blob);
         };
         recorder.start();
         setTimeout(() => {
           if (recorder.state === "recording") recorder.stop();
         }, 20000);
-      } catch { /* не критично */ }
+      } catch (e) {
+        console.error("[autoRecord] recorder error:", e);
+      }
     }, 3000);
   }, []);
 
