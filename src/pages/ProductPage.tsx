@@ -1,7 +1,37 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import { useStore } from "@/context/StoreContext";
 import type { CartItem } from "@/App";
+
+function VideoPreview({ src, poster }: { src: string; poster?: string }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.muted = true;
+    const onReady = () => { v.play().catch(() => {}); setReady(true); };
+    v.addEventListener("loadeddata", onReady);
+    return () => v.removeEventListener("loadeddata", onReady);
+  }, [src]);
+  return (
+    <div className="absolute inset-0">
+      {poster && !ready && (
+        <img src={poster} alt="" className="absolute inset-0 w-full h-full object-cover" />
+      )}
+      <video
+        ref={videoRef}
+        src={src}
+        className="absolute inset-0 w-full h-full object-cover"
+        style={{ opacity: ready ? 1 : 0 }}
+        playsInline muted loop autoPlay preload="auto"
+      />
+      <div className="absolute top-2 right-2 bg-black/60 rounded-full p-1">
+        <Icon name="Video" size={11} className="text-white" />
+      </div>
+    </div>
+  );
+}
 
 interface ProductPageProps {
   productId: string;
@@ -180,8 +210,10 @@ export default function ProductPage({ productId, addToCart, onBack, onSellerClic
             {sellerProducts.map(p => (
               <div key={p.id} className="bg-card border border-border rounded-xl overflow-hidden cursor-pointer hover:border-primary/40 transition-all"
                 onClick={() => onSellerClick(product.sellerId)}>
-                <div className="aspect-square bg-secondary">
-                  {p.images[0] ? (
+                <div className="relative aspect-square bg-secondary overflow-hidden">
+                  {p.videoUrl ? (
+                    <VideoPreview src={p.videoUrl} poster={p.images[0]} />
+                  ) : p.images[0] ? (
                     <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
