@@ -99,18 +99,39 @@ export default function DashboardStreamsTab({ setPage }: Props) {
             <div key={s.id} className={`bg-card border rounded-xl overflow-hidden transition-all ${s.isLive ? "border-red-500/40 shadow-[0_0_0_1px_rgba(239,68,68,0.15)]" : "border-border"}`}>
               <div className="flex gap-3 p-3">
                 {/* Превью */}
-                <div className="w-20 h-14 rounded-lg overflow-hidden bg-secondary flex-shrink-0 relative">
-                  {s.thumbnail
-                    ? <img src={s.thumbnail} className="w-full h-full object-cover" />
-                    : <div className="w-full h-full flex items-center justify-center">
-                        <Icon name={s.isLive ? "Radio" : "PlayCircle"} size={20} className={s.isLive ? "text-red-400" : "text-muted-foreground opacity-40"} />
-                      </div>
-                  }
+                <div
+                  className="w-20 h-14 rounded-lg overflow-hidden bg-black flex-shrink-0 relative cursor-pointer"
+                  onClick={() => !s.isLive && s.videoUrl && setPlayingStreamId(playingStreamId === s.id ? null : s.id)}
+                >
+                  {playingStreamId === s.id && s.videoUrl ? (
+                    <video
+                      key={s.videoUrl}
+                      className="w-full h-full object-cover"
+                      autoPlay
+                      playsInline
+                      muted
+                      loop
+                      src={s.videoUrl}
+                    />
+                  ) : s.thumbnail ? (
+                    <img src={s.thumbnail} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-secondary">
+                      <Icon name={s.isLive ? "Radio" : "PlayCircle"} size={20} className={s.isLive ? "text-red-400" : "text-muted-foreground opacity-40"} />
+                    </div>
+                  )}
                   {s.isLive && (
                     <div className="absolute inset-0 flex items-center justify-center bg-black/30">
                       <span className="flex items-center gap-1 text-[9px] font-bold text-white bg-red-500 px-1.5 py-0.5 rounded">
                         <span className="w-1 h-1 rounded-full bg-white animate-live-pulse" />LIVE
                       </span>
+                    </div>
+                  )}
+                  {!s.isLive && s.videoUrl && playingStreamId !== s.id && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/30 transition-colors">
+                      <div className="w-6 h-6 rounded-full bg-white/80 flex items-center justify-center">
+                        <Icon name="Play" size={10} className="text-black ml-0.5" />
+                      </div>
                     </div>
                   )}
                 </div>
@@ -167,30 +188,6 @@ export default function DashboardStreamsTab({ setPage }: Props) {
                 </div>
               </div>
 
-              {/* Встроенный видеоплеер */}
-              {!s.isLive && playingStreamId === s.id && (
-                <div className="border-t border-border bg-black">
-                  {s.videoUrl ? (
-                    <video
-                      key={s.videoUrl}
-                      className="w-full max-h-64 object-contain"
-                      controls
-                      playsInline
-                      autoPlay
-                      poster={s.thumbnail || STREAM_THUMBNAIL}
-                    >
-                      <source src={s.videoUrl} type={s.videoUrl.includes(".mp4") ? "video/mp4" : "video/webm"} />
-                      <source src={s.videoUrl} />
-                    </video>
-                  ) : (
-                    <div className="flex items-center justify-center gap-2 py-4 text-xs text-white/50">
-                      <Icon name="Clock" size={13} />
-                      Запись появится через несколько минут
-                    </div>
-                  )}
-                </div>
-              )}
-
               {/* Кнопки действий */}
               <div className="flex border-t border-border">
                 {s.isLive ? (
@@ -217,11 +214,11 @@ export default function DashboardStreamsTab({ setPage }: Props) {
                 ) : (
                   <>
                     <button
-                      onClick={() => s.videoUrl ? setPlayingStreamId(playingStreamId === s.id ? null : s.id) : setPage("streams")}
+                      onClick={() => setPage("streams")}
                       className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
                     >
-                      <Icon name={playingStreamId === s.id ? "ChevronUp" : "Play"} size={13} />
-                      {playingStreamId === s.id ? "Скрыть" : "Смотреть"}
+                      <Icon name="Play" size={13} />
+                      Смотреть
                     </button>
                     <div className="w-px bg-border" />
                     <button
