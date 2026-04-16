@@ -43,15 +43,17 @@ export default function AdminPage({ setPage }: AdminPageProps) {
       </div>
 
       {/* Вкладки */}
-      <div className="flex gap-1 mb-6 bg-secondary rounded-xl p-1 w-fit">
-        {([["chats", "Чаты"], ["streams", "Эфиры"], ["users", "Пользователи"], ["cdek", "СДЭК"], ["test_order", "Тест-заказ"]] as const).map(([key, label]) => (
-          <button key={key} onClick={() => setActiveTab(key)}
-            className={`px-4 py-2 text-sm rounded-lg font-medium transition-all ${
-              activeTab === key ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-            }`}>
-            {label}
-          </button>
-        ))}
+      <div className="mb-6 -mx-4 px-4 overflow-x-auto scrollbar-none">
+        <div className="flex gap-1 bg-secondary rounded-xl p-1 w-fit">
+          {([["chats", "Чаты"], ["streams", "Эфиры"], ["users", "Пользователи"], ["cdek", "СДЭК"], ["test_order", "Тест-заказ"]] as const).map(([key, label]) => (
+            <button key={key} onClick={() => setActiveTab(key)}
+              className={`px-4 py-2 text-sm rounded-lg font-medium transition-all whitespace-nowrap ${
+                activeTab === key ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              }`}>
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {activeTab === "chats" && <AdminChatsTab />}
