@@ -8,21 +8,33 @@ const UPLOAD_VIDEO_API = "https://functions.poehali.dev/c69feec2-8522-4f96-aca5-
 
 async function grabThumbFromBlob(blobUrl: string): Promise<string | null> {
   return new Promise(resolve => {
+    const timeout = setTimeout(() => resolve(null), 3000);
     const vid = document.createElement("video");
     vid.src = blobUrl;
     vid.muted = true;
     vid.playsInline = true;
     vid.currentTime = 0.5;
+    const done = (result: string | null) => { clearTimeout(timeout); resolve(result); };
     vid.onloadeddata = () => {
       try {
         const canvas = document.createElement("canvas");
-        canvas.width = vid.videoWidth || 640;
-        canvas.height = vid.videoHeight || 640;
+        canvas.width = vid.videoWidth || 320;
+        canvas.height = vid.videoHeight || 320;
         canvas.getContext("2d")?.drawImage(vid, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL("image/jpeg", 0.85));
-      } catch { resolve(null); }
+        done(canvas.toDataURL("image/jpeg", 0.7));
+      } catch { done(null); }
     };
-    vid.onerror = () => resolve(null);
+    vid.onseeked = () => {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = vid.videoWidth || 320;
+        canvas.height = vid.videoHeight || 320;
+        canvas.getContext("2d")?.drawImage(vid, 0, 0, canvas.width, canvas.height);
+        done(canvas.toDataURL("image/jpeg", 0.7));
+      } catch { done(null); }
+    };
+    vid.onerror = () => done(null);
+    vid.load();
   });
 }
 
@@ -50,31 +62,34 @@ export default function QuickVideoProductModal({ videoBlobUrl, sellerId, sellerN
   const [thumbUrl, setThumbUrl] = useState<string | null>(null);
 
   useEffect(() => {
+    // Загружаем превью и видео параллельно независимо друг от друга
+    grabThumbFromBlob(videoBlobUrl).then(thumbDataUrl => {
+      if (!thumbDataUrl) return;
+      fetch(`${API}?action=upload_image`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ data_url: thumbDataUrl }),
+      }).then(r => r.json()).then(d => { if (d.url) setThumbUrl(d.url); }).catch(() => {});
+    });
+
     (async () => {
       try {
-        const thumbDataUrl = await grabThumbFromBlob(videoBlobUrl);
-
-        if (thumbDataUrl) {
-          fetch(`${API}?action=upload_image`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ data_url: thumbDataUrl }),
-          }).then(r => r.json()).then(d => { if (d.url) setThumbUrl(d.url); }).catch(() => {});
-        }
-
         const blob = await fetch(videoBlobUrl).then(r => r.blob());
+        console.log("[quickvideo] blob size KB:", Math.round(blob.size / 1024));
         const dataUrl = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = e => resolve(e.target?.result as string);
           reader.onerror = reject;
           reader.readAsDataURL(blob);
         });
+        console.log("[quickvideo] sending to upload-video, dataUrl KB:", Math.round(dataUrl.length / 1024));
         const resp = await fetch(UPLOAD_VIDEO_API, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ data_url: dataUrl, folder: "products" }),
         });
         const data = await resp.json();
+        console.log("[quickvideo] upload result:", data);
         if (data.url) setVideoUrl(data.url);
       } catch (e) { console.error("[quickvideo] catch:", e); }
     })();
