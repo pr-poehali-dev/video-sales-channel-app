@@ -78,14 +78,24 @@ export default function DashboardOrdersTab() {
   const [filter, setFilter] = useState<SellerStatus | "all">("all");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [updating, setUpdating] = useState<string | null>(null);
+  const [productVideos, setProductVideos] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     if (!user) return;
     setLoading(true);
     try {
-      const r = await fetch(`${STORE_API}?action=get_seller_orders&seller_id=${user.id}`);
-      const data = await r.json();
+      const [ordersRes, productsRes] = await Promise.all([
+        fetch(`${STORE_API}?action=get_seller_orders&seller_id=${user.id}`),
+        fetch(`${STORE_API}?action=get_products&seller_id=${user.id}`),
+      ]);
+      const data = await ordersRes.json();
       setOrders(Array.isArray(data) ? data : []);
+      const prods = await productsRes.json();
+      if (Array.isArray(prods)) {
+        const map: Record<string, string> = {};
+        prods.forEach((p: { id: string; videoUrl?: string }) => { if (p.videoUrl) map[p.id] = p.videoUrl; });
+        setProductVideos(map);
+      }
     } catch {
       setOrders([]);
     } finally {
@@ -243,29 +253,31 @@ export default function DashboardOrdersTab() {
                       const qty = item.qty ?? item.quantity ?? 1;
                       return (
                         <div key={idx} className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-black flex-shrink-0 overflow-hidden">
-                            {item.videoUrl ? (
-                              <video
-                                key={item.videoUrl}
-                                className="w-full h-full object-cover"
-                                autoPlay
-                                playsInline
-                                muted
-                                loop
-                                preload="auto"
-                                src={item.videoUrl}
-                                poster={item.image || item.images?.[0]}
-                                onLoadedMetadata={e => { (e.currentTarget as HTMLVideoElement).play().catch(() => {}); }}
-                                onCanPlay={e => { (e.currentTarget as HTMLVideoElement).play().catch(() => {}); }}
-                              />
-                            ) : (item.image || item.images?.[0]) ? (
-                              <img src={item.image || item.images![0]} alt={item.name} className="w-full h-full object-cover" />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center bg-secondary">
-                                <Icon name="Package" size={14} className="text-muted-foreground opacity-40" />
+                          {(() => {
+                            const videoUrl = item.videoUrl || productVideos[item.id] || "";
+                            const imgUrl = item.image || item.images?.[0] || "";
+                            return (
+                              <div className="w-10 h-10 rounded-lg bg-black flex-shrink-0 overflow-hidden">
+                                {videoUrl ? (
+                                  <video
+                                    key={videoUrl}
+                                    className="w-full h-full object-cover"
+                                    autoPlay playsInline muted loop preload="auto"
+                                    src={videoUrl}
+                                    poster={imgUrl || undefined}
+                                    onLoadedMetadata={e => { (e.currentTarget as HTMLVideoElement).play().catch(() => {}); }}
+                                    onCanPlay={e => { (e.currentTarget as HTMLVideoElement).play().catch(() => {}); }}
+                                  />
+                                ) : imgUrl ? (
+                                  <img src={imgUrl} alt={item.name} className="w-full h-full object-cover" />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center bg-secondary">
+                                    <Icon name="Package" size={14} className="text-muted-foreground opacity-40" />
+                                  </div>
+                                )}
                               </div>
-                            )}
-                          </div>
+                            );
+                          })()}
                           <div className="flex-1 min-w-0">
                             <p className="text-sm text-foreground line-clamp-1">{item.name}</p>
                             <p className="text-xs text-muted-foreground">{qty} шт. × {item.price.toLocaleString("ru-RU")} ₽</p>
