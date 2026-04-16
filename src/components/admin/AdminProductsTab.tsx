@@ -180,23 +180,25 @@ export default function AdminProductsTab() {
       {/* Модалка подтверждения одного товара */}
       {confirmDel && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setConfirmDel(null)}>
-          <div onClick={e => e.stopPropagation()} className="bg-card border border-border rounded-2xl p-6 max-w-sm w-full">
-            <Icon name="AlertTriangle" size={28} className="text-destructive mb-3" />
-            <h3 className="font-oswald text-lg font-semibold mb-2">Удалить товар?</h3>
-            <p className="text-sm text-muted-foreground mb-6">Действие нельзя отменить. Товар исчезнет из каталога.</p>
-            <div className="flex gap-3">
+          <div onClick={e => e.stopPropagation()} className="bg-card border border-border rounded-xl p-4 max-w-[280px] w-full shadow-xl">
+            <div className="flex items-center gap-2 mb-2">
+              <Icon name="AlertTriangle" size={18} className="text-destructive flex-shrink-0" />
+              <h3 className="font-oswald text-base font-semibold">Удалить товар?</h3>
+            </div>
+            <p className="text-xs text-muted-foreground mb-4">Действие нельзя отменить.</p>
+            <div className="flex gap-2">
               <button
                 onClick={() => setConfirmDel(null)}
-                className="flex-1 border border-border py-2.5 rounded-xl text-sm font-medium hover:bg-secondary transition-colors"
+                className="flex-1 border border-border py-2 rounded-lg text-xs font-medium hover:bg-secondary transition-colors"
               >
                 Отмена
               </button>
               <button
                 onClick={() => handleDelete(confirmDel)}
                 disabled={deleting === confirmDel}
-                className="flex-1 bg-destructive text-destructive-foreground py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-1.5"
+                className="flex-1 bg-destructive text-destructive-foreground py-2 rounded-lg text-xs font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-1"
               >
-                {deleting === confirmDel ? <Icon name="Loader" size={13} className="animate-spin" /> : <Icon name="Trash2" size={13} />}
+                {deleting === confirmDel ? <Icon name="Loader" size={12} className="animate-spin" /> : <Icon name="Trash2" size={12} />}
                 Удалить
               </button>
             </div>
@@ -207,22 +209,24 @@ export default function AdminProductsTab() {
       {/* Модалка массового удаления */}
       {bulkConfirm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setBulkConfirm(false)}>
-          <div onClick={e => e.stopPropagation()} className="bg-card border border-border rounded-2xl p-6 max-w-sm w-full">
-            <Icon name="AlertTriangle" size={28} className="text-destructive mb-3" />
-            <h3 className="font-oswald text-lg font-semibold mb-2">Удалить все товары без видео?</h3>
-            <p className="text-sm text-muted-foreground mb-6">Будет удалено <b className="text-foreground">{noVideoCount}</b> товаров. Действие нельзя отменить.</p>
-            <div className="flex gap-3">
+          <div onClick={e => e.stopPropagation()} className="bg-card border border-border rounded-xl p-4 max-w-[280px] w-full shadow-xl">
+            <div className="flex items-center gap-2 mb-2">
+              <Icon name="AlertTriangle" size={18} className="text-destructive flex-shrink-0" />
+              <h3 className="font-oswald text-base font-semibold">Удалить все без видео?</h3>
+            </div>
+            <p className="text-xs text-muted-foreground mb-4">Будет удалено <b className="text-foreground">{noVideoCount}</b> товаров.</p>
+            <div className="flex gap-2">
               <button
                 onClick={() => setBulkConfirm(false)}
-                className="flex-1 border border-border py-2.5 rounded-xl text-sm font-medium hover:bg-secondary transition-colors"
+                className="flex-1 border border-border py-2 rounded-lg text-xs font-medium hover:bg-secondary transition-colors"
               >
                 Отмена
               </button>
               <button
                 onClick={handleBulkDeleteNoVideo}
-                className="flex-1 bg-destructive text-destructive-foreground py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity flex items-center justify-center gap-1.5"
+                className="flex-1 bg-destructive text-destructive-foreground py-2 rounded-lg text-xs font-semibold hover:opacity-90 transition-opacity flex items-center justify-center gap-1"
               >
-                <Icon name="Trash2" size={13} />
+                <Icon name="Trash2" size={12} />
                 Удалить всё
               </button>
             </div>
