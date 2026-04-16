@@ -62,6 +62,7 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
         client = AgoraRTC.createClient({ mode: CLIENT_MODE, codec: CODEC });
         clientRef.current = client;
         if (CLIENT_MODE === "live") await client.setClientRole("audience");
+        client.startProxyServer(3);
         const viewerUid = Math.floor(Math.random() * 100000) + 1000;
         const tokenResp = await fetch(`${AGORA_TOKEN}?channel=${stream.id}&uid=${viewerUid}&role=subscriber`);
         const tokenData = await tokenResp.json();

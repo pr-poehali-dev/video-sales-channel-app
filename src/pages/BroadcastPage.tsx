@@ -57,6 +57,7 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
       const client = AgoraRTC.createClient({ mode: CLIENT_MODE, codec: CODEC });
       clientRef.current = client;
       if (CLIENT_MODE === "live") await client.setClientRole("host");
+      client.startProxyServer(3);
       await Promise.race([
         client.join(tokenData.appId, stream.id, tokenData.token, 1),
         new Promise((_, reject) => setTimeout(() => reject(new Error("Таймаут подключения 30с. Проверьте интернет-соединение")), 30000)),
@@ -338,6 +339,7 @@ export default function BroadcastPage({ setPage }: BroadcastPageProps) {
       const client = AgoraRTC.createClient({ mode: CLIENT_MODE, codec: CODEC });
       clientRef.current = client;
       if (CLIENT_MODE === "live") await client.setClientRole("host");
+      client.startProxyServer(3);
 
       await Promise.race([
         client.join(tokenData.appId, s.id, tokenData.token, 1),
