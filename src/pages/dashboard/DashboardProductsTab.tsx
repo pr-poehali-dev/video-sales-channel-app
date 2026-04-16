@@ -79,7 +79,10 @@ export default function DashboardProductsTab({ warehouses }: Props) {
 
   const openCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30 } },
+        audio: false
+      });
       camStreamRef.current = stream;
       setCamOpen(true);
       document.body.style.overflow = "hidden";
@@ -146,7 +149,7 @@ export default function DashboardProductsTab({ warehouses }: Props) {
     };
     setCamRecording(true);
     setCamCountdown(6);
-    recorder.start();
+    recorder.start(500);
     let rem = 6;
     const tick = setInterval(() => {
       rem -= 1;
