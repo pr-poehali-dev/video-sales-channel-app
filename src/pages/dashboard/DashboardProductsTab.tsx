@@ -111,7 +111,7 @@ export default function DashboardProductsTab({ warehouses }: Props) {
       : MediaRecorder.isTypeSupported("video/webm;codecs=vp8")
       ? "video/webm;codecs=vp8"
       : "video/webm";
-    const recorder = new MediaRecorder(camStreamRef.current, { mimeType, videoBitsPerSecond: 100000 });
+    const recorder = new MediaRecorder(camStreamRef.current, { mimeType, videoBitsPerSecond: 500000 });
     camRecorderRef.current = recorder;
     const chunks: Blob[] = [];
     recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
