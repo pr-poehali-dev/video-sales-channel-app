@@ -160,11 +160,13 @@ def handler(event: dict, context) -> dict:
                 return err("invalid video data")
             header, encoded = data_url.split(",", 1)
             mime = header.split(";")[0].replace("data:", "")
-            ext = mime.split("/")[1].split("+")[0]
-            # mp4 — явно задаём правильный MIME для Safari
-            if ext in ("mp4", "quicktime"):
+            ext = mime.split("/")[1].split("+")[0].split(";")[0]
+            if ext in ("mp4", "quicktime", "x-mp4"):
                 mime = "video/mp4"
                 ext = "mp4"
+            elif ext in ("webm", "x-matroska"):
+                mime = "video/webm"
+                ext = "webm"
             video_bytes = base64.b64decode(encoded)
             folder = body.get("folder", "products")
             key = f"{folder}/{uuid.uuid4().hex}.{ext}"

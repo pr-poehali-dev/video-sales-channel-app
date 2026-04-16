@@ -168,20 +168,24 @@ export default function StreamWatchPage({ stream, setPage, addToCart, onProductC
         {/* Завершён — если есть видео, показываем плеер */}
         {!stream.isLive && stream.videoUrl && (
           <video
-            src={stream.videoUrl}
+            key={stream.videoUrl}
             className="absolute inset-0 w-full h-full object-cover"
             controls
             playsInline
-            autoPlay
+            muted={false}
             loop
             poster={stream.thumbnail || STREAM_THUMBNAIL}
-          />
+            preload="metadata"
+          >
+            <source src={stream.videoUrl} type={stream.videoUrl.includes(".mp4") ? "video/mp4" : "video/webm"} />
+            <source src={stream.videoUrl} />
+          </video>
         )}
         {!stream.isLive && !stream.videoUrl && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/60">
             <div className="text-center">
               <Icon name="PlayCircle" size={40} className="text-white/50 mx-auto mb-2" />
-              <p className="text-white/60 text-sm">Эфир завершён</p>
+              <p className="text-white/60 text-sm">Запись появится через несколько минут</p>
             </div>
           </div>
         )}

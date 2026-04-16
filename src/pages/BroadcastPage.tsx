@@ -278,13 +278,15 @@ export default function BroadcastPage({ setPage, onLiveChange }: BroadcastPagePr
       if (!vid) return;
       const ms = vid.srcObject as MediaStream | null;
       if (!ms) return;
-      const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp8")
+      const mimeType = MediaRecorder.isTypeSupported("video/mp4;codecs=avc1")
+        ? "video/mp4;codecs=avc1"
+        : MediaRecorder.isTypeSupported("video/mp4")
+        ? "video/mp4"
+        : MediaRecorder.isTypeSupported("video/webm;codecs=vp8")
         ? "video/webm;codecs=vp8"
         : MediaRecorder.isTypeSupported("video/webm")
         ? "video/webm"
-        : MediaRecorder.isTypeSupported("video/mp4")
-        ? "video/mp4"
-        : "video/webm";
+        : "video/mp4";
       try {
         const recorder = new MediaRecorder(ms, { mimeType, videoBitsPerSecond: 150000 });
         autoRecorderRef.current = recorder;
