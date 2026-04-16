@@ -87,7 +87,7 @@ function AppInner() {
     <div className="min-h-screen bg-background font-golos">
       <NavBar page={page} setPage={navSetPage} cartCount={cart.reduce((s, c) => s + c.qty, 0)} />
       <LiveBroadcastBar page={page} setPage={navSetPage} />
-      <main className="pb-16 md:pb-0">
+      <main className={page === "product" ? "" : "pb-16 md:pb-0"}>
         {page === "home" && <HomePage setPage={navSetPage} addToCart={addToCart} onProductClick={openProduct} />}
         {page === "streams" && <StreamsPage setPage={navSetPage} addToCart={addToCart} onProductClick={openProduct} />}
         {page === "catalog" && <CatalogPage addToCart={addToCart} onProductClick={openProduct} />}
