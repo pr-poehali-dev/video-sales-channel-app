@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import Icon from "@/components/ui/icon";
 import { useStore } from "@/context/StoreContext";
 
@@ -177,9 +178,8 @@ export default function AdminProductsTab() {
         </div>
       )}
 
-      {/* Модалка подтверждения одного товара */}
-      {confirmDel && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setConfirmDel(null)}>
+      {confirmDel && createPortal(
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4" onClick={() => setConfirmDel(null)}>
           <div onClick={e => e.stopPropagation()} className="bg-card border border-border rounded-xl p-4 max-w-[280px] w-full shadow-xl">
             <div className="flex items-center gap-2 mb-2">
               <Icon name="AlertTriangle" size={18} className="text-destructive flex-shrink-0" />
@@ -187,10 +187,7 @@ export default function AdminProductsTab() {
             </div>
             <p className="text-xs text-muted-foreground mb-4">Действие нельзя отменить.</p>
             <div className="flex gap-2">
-              <button
-                onClick={() => setConfirmDel(null)}
-                className="flex-1 border border-border py-2 rounded-lg text-xs font-medium hover:bg-secondary transition-colors"
-              >
+              <button onClick={() => setConfirmDel(null)} className="flex-1 border border-border py-2 rounded-lg text-xs font-medium hover:bg-secondary transition-colors">
                 Отмена
               </button>
               <button
@@ -203,12 +200,12 @@ export default function AdminProductsTab() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {/* Модалка массового удаления */}
-      {bulkConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setBulkConfirm(false)}>
+      {bulkConfirm && createPortal(
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4" onClick={() => setBulkConfirm(false)}>
           <div onClick={e => e.stopPropagation()} className="bg-card border border-border rounded-xl p-4 max-w-[280px] w-full shadow-xl">
             <div className="flex items-center gap-2 mb-2">
               <Icon name="AlertTriangle" size={18} className="text-destructive flex-shrink-0" />
@@ -216,10 +213,7 @@ export default function AdminProductsTab() {
             </div>
             <p className="text-xs text-muted-foreground mb-4">Будет удалено <b className="text-foreground">{noVideoCount}</b> товаров.</p>
             <div className="flex gap-2">
-              <button
-                onClick={() => setBulkConfirm(false)}
-                className="flex-1 border border-border py-2 rounded-lg text-xs font-medium hover:bg-secondary transition-colors"
-              >
+              <button onClick={() => setBulkConfirm(false)} className="flex-1 border border-border py-2 rounded-lg text-xs font-medium hover:bg-secondary transition-colors">
                 Отмена
               </button>
               <button
@@ -231,7 +225,8 @@ export default function AdminProductsTab() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
     </div>
