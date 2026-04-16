@@ -3,6 +3,7 @@ import Icon from "@/components/ui/icon";
 import { useStore } from "@/context/StoreContext";
 
 const API = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c";
+const UPLOAD_VIDEO_API = "https://functions.poehali.dev/c69feec2-8522-4f96-aca5-363656289751";
 
 
 async function grabThumbFromBlob(blobUrl: string): Promise<string | null> {
@@ -68,7 +69,7 @@ export default function QuickVideoProductModal({ videoBlobUrl, sellerId, sellerN
           reader.onerror = reject;
           reader.readAsDataURL(blob);
         });
-        const resp = await fetch(`${API}?action=upload_video`, {
+        const resp = await fetch(UPLOAD_VIDEO_API, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ data_url: dataUrl, folder: "products" }),

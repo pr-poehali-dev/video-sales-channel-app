@@ -9,6 +9,7 @@ const CATEGORIES = [
 ];
 
 const STORE_API = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c";
+const UPLOAD_VIDEO_API = "https://functions.poehali.dev/c69feec2-8522-4f96-aca5-363656289751";
 const CDEK_API = "https://functions.poehali.dev/937e27f3-191a-445d-b034-61bd84ed5381";
 
 interface CdekCity { code: number; city: string; region: string; }
@@ -129,7 +130,7 @@ export default function DashboardProductsTab({ warehouses }: Props) {
         reader.onload = async (ev) => {
           const dataUrl = ev.target?.result as string;
           console.log("[video] blob size KB:", Math.round(blob.size / 1024), "dataUrl KB:", Math.round(dataUrl.length / 1024));
-          const resp = await fetch(`${STORE_API}?action=upload_video`, {
+          const resp = await fetch(UPLOAD_VIDEO_API, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ data_url: dataUrl, folder: "products" }),

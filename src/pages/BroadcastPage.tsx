@@ -9,6 +9,7 @@ import BroadcastLiveView from "./broadcast/BroadcastLiveView";
 
 const AGORA_TOKEN = "https://functions.poehali.dev/a2751c9f-9c4b-4808-bf97-73f350e873a1";
 const API = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c";
+const UPLOAD_VIDEO_API = "https://functions.poehali.dev/c69feec2-8522-4f96-aca5-363656289751";
 
 AgoraRTC.setLogLevel(3);
 
