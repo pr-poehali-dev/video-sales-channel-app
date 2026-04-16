@@ -289,7 +289,7 @@ export default function BroadcastPage({ setPage, onLiveChange }: BroadcastPagePr
         ? "video/webm"
         : "video/mp4";
       try {
-        const recorder = new MediaRecorder(ms, { mimeType, videoBitsPerSecond: 150000 });
+        const recorder = new MediaRecorder(ms, { mimeType, videoBitsPerSecond: 800000 });
         autoRecorderRef.current = recorder;
         const chunks: Blob[] = [];
         recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
@@ -315,7 +315,7 @@ export default function BroadcastPage({ setPage, onLiveChange }: BroadcastPagePr
           };
           reader.readAsDataURL(blob);
         };
-        recorder.start();
+        recorder.start(500);
         setTimeout(() => {
           if (recorder.state === "recording") recorder.stop();
         }, 20000);
