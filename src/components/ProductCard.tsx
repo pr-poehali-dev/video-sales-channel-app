@@ -11,44 +11,35 @@ interface ProductCardProps {
 
 function VideoPreview({ src, poster }: { src: string; poster?: string }) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [playing, setPlaying] = useState(false);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        const v = videoRef.current;
-        if (!v) return;
-        if (entry.isIntersecting) {
-          v.play().then(() => setPlaying(true)).catch(() => {});
-        } else {
-          v.pause();
-          v.currentTime = 0;
-          setPlaying(false);
-        }
-      },
-      { threshold: 0.5 }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
+    const v = videoRef.current;
+    if (!v) return;
+    v.muted = true;
+    const onReady = () => {
+      v.play().catch(() => {});
+      setReady(true);
+    };
+    v.addEventListener("loadeddata", onReady);
+    return () => v.removeEventListener("loadeddata", onReady);
+  }, [src]);
 
   return (
-    <div ref={containerRef} className="absolute inset-0">
-      {poster && !playing && (
+    <div className="absolute inset-0">
+      {poster && !ready && (
         <img src={poster} alt="" className="absolute inset-0 w-full h-full object-cover" />
       )}
       <video
         ref={videoRef}
         src={src}
-        className="absolute inset-0 w-full h-full object-cover transition-opacity duration-300"
-        style={{ opacity: playing ? 1 : 0 }}
+        className="absolute inset-0 w-full h-full object-cover"
+        style={{ opacity: ready ? 1 : 0 }}
         playsInline
         muted
         loop
-        preload="metadata"
+        autoPlay
+        preload="auto"
       />
       <div className="absolute top-2 right-2 bg-black/60 rounded-full p-1">
         <Icon name="Video" size={11} className="text-white" />

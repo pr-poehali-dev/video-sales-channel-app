@@ -910,7 +910,7 @@ def _fmt_product(r):
         "fittingEnabled": r.get("fitting_enabled", False),
         "fromCityCode":   r.get("from_city_code", 0),
         "fromCityName":   r.get("from_city_name", ""),
-        "videoUrl":       r.get("video_url", "") or "",
+        "videoUrl":       r.get("video_url") or None,
         "createdAt":      r["created_at"].strftime("%d %B %Y") if r["created_at"] else "",
     }
 
