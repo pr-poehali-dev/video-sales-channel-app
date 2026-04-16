@@ -7,33 +7,31 @@ import ProductCard from "@/components/ProductCard";
 
 const StreamWatchPage = lazy(() => import("@/pages/StreamWatchPage"));
 
-function VideoThumb({ src, alt }: { src: string; alt: string }) {
+function VideoPreview({ src }: { src: string }) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [frame, setFrame] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);
   useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-    const onSeeked = () => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      canvas.width = video.videoWidth || 320;
-      canvas.height = video.videoHeight || 180;
-      canvas.getContext("2d")?.drawImage(video, 0, 0, canvas.width, canvas.height);
-      setFrame(canvas.toDataURL("image/jpeg", 0.7));
-    };
-    video.addEventListener("seeked", onSeeked);
-    video.addEventListener("loadedmetadata", () => { video.currentTime = 1; });
-    return () => video.removeEventListener("seeked", onSeeked);
+    const v = videoRef.current;
+    if (!v) return;
+    v.muted = true;
+    const tryPlay = () => { v.play().catch(() => {}); setReady(true); };
+    v.addEventListener("loadedmetadata", tryPlay);
+    return () => v.removeEventListener("loadedmetadata", tryPlay);
   }, [src]);
   return (
     <>
-      <video ref={videoRef} src={src} className="hidden" preload="metadata" playsInline muted crossOrigin="anonymous" />
-      <canvas ref={canvasRef} className="hidden" />
-      {frame
-        ? <img src={frame} alt={alt} className="absolute inset-0 w-full h-full object-cover" />
-        : <div className="absolute inset-0 bg-secondary animate-pulse" />
-      }
+      {!ready && <div className="absolute inset-0 bg-secondary animate-pulse" />}
+      <video
+        ref={videoRef}
+        src={src}
+        className="absolute inset-0 w-full h-full object-cover"
+        style={{ opacity: ready ? 1 : 0 }}
+        preload="auto"
+        playsInline
+        muted
+        loop
+        autoPlay
+      />
     </>
   );
 }
@@ -80,7 +78,7 @@ export default function HomePage({ setPage, addToCart, onProductClick }: HomePag
         {s.thumbnail ? (
           <img src={s.thumbnail} alt={s.title} className="absolute inset-0 w-full h-full object-cover" />
         ) : s.videoUrl ? (
-          <VideoThumb src={s.videoUrl} alt={s.title} />
+          <VideoPreview src={s.videoUrl} />
         ) : (
           <div className="text-center">
             <div className="w-14 h-14 rounded-full bg-primary/20 text-primary text-xl font-bold flex items-center justify-center font-oswald mx-auto mb-2">{s.sellerAvatar}</div>
