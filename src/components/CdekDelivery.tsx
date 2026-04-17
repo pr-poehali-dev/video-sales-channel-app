@@ -188,14 +188,21 @@ export default function DeliverySelector({ weightGrams, fromCityCode = "", selle
         {/* Поиск города */}
         <div className="relative" ref={wrapRef}>
           <div className="relative">
-            <Icon name="MapPin" size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <input
-              value={query}
-              onChange={e => handleInput(e.target.value)}
-              onFocus={() => cities.length > 0 && setShowDropdown(true)}
-              placeholder="Введите город доставки..."
-              className="w-full bg-secondary border border-border rounded-xl pl-9 pr-9 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors"
-            />
+            <Icon name="MapPin" size={15} className={`absolute left-3 flex-shrink-0 text-muted-foreground ${selectedCity ? "top-3.5" : "top-1/2 -translate-y-1/2"}`} />
+            {selectedCity ? (
+              <div className="w-full bg-secondary border border-border rounded-xl pl-9 pr-9 py-2.5 min-h-[42px]">
+                <p className="text-sm text-foreground leading-tight">{selectedCity.city}</p>
+                {selectedCity.region && <p className="text-xs text-muted-foreground leading-tight mt-0.5">{selectedCity.region}</p>}
+              </div>
+            ) : (
+              <input
+                value={query}
+                onChange={e => handleInput(e.target.value)}
+                onFocus={() => cities.length > 0 && setShowDropdown(true)}
+                placeholder="Введите город доставки..."
+                className="w-full bg-secondary border border-border rounded-xl pl-9 pr-9 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors"
+              />
+            )}
             {loadingCities && (
               <div className="absolute right-3 top-1/2 -translate-y-1/2">
                 <div className="w-4 h-4 border-2 border-primary/40 border-t-primary rounded-full animate-spin" />
@@ -204,7 +211,7 @@ export default function DeliverySelector({ weightGrams, fromCityCode = "", selle
             {selectedCity && !loadingCities && (
               <button
                 onClick={() => { setQuery(""); setSelectedCity(null); setTariffs([]); setSelectedTariff(null); setSelectedPvz(null); onSelect(null, null); }}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
               >
                 <Icon name="X" size={14} />
               </button>
@@ -311,7 +318,7 @@ export default function DeliverySelector({ weightGrams, fromCityCode = "", selle
                   {selectedPvz ? (
                     <>
                       <p className="text-xs text-primary font-medium">Пункт выбран</p>
-                      <p className="text-xs text-muted-foreground line-clamp-1">{selectedPvz.address}</p>
+                      <p className="text-xs text-muted-foreground">{selectedPvz.address}</p>
                     </>
                   ) : (
                     <p className="text-sm text-muted-foreground">Выбрать пункт выдачи на карте</p>
