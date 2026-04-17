@@ -106,12 +106,13 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
   const [buyerEmail, setBuyerEmail] = useState(user?.email || "");
   const [deliveryAddress, setDeliveryAddress] = useState("");
 
-  // Пересчёт доставки по каждому продавцу при изменении города или количества
-  const cartQtyKey = cart.map(c => `${c.id}:${c.qty}`).join(",");
+  // Пересчёт доставки только для выбранных продавцов при изменении города или количества
+  const cartQtyKey = cart.map(c => `${c.id}:${c.qty}:${selectedIds.has(c.id) ? 1 : 0}`).join(",");
   useEffect(() => {
     if (!delivery.city) return;
     const groups: Record<string, { fromCityCode: string; sellerId: string; weight: number }> = {};
-    cart.forEach(item => {
+    // Считаем только выбранные товары
+    cart.filter(item => selectedIds.has(item.id)).forEach(item => {
       const sid = item.sellerId || "__unknown__";
       if (!groups[sid]) groups[sid] = { fromCityCode: item.fromCityCode ?? "", sellerId: sid, weight: 0 };
       groups[sid].weight += item.qty * (item.weightG ?? 300);
@@ -119,12 +120,25 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
     Object.values(groups).forEach(g => {
       recalcSellerDelivery(g.sellerId, g.fromCityCode, g.weight, delivery.city!.code, delivery.city!.guid);
     });
+    // Сбрасываем доставку для продавцов у которых нет выбранных товаров
+    const activeSellers = new Set(Object.keys(groups));
+    setSellerDeliveryCosts(prev => {
+      const next = { ...prev };
+      Object.keys(next).forEach(sid => { if (!activeSellers.has(sid)) delete next[sid]; });
+      return next;
+    });
   }, [delivery.city, cartQtyKey, recalcSellerDelivery]);
 
   const goodsTotal = selectedCart.reduce((s, c) => s + getItemPrice(c, mode) * c.qty, 0);
-  const sellerDeliveryTotal = Object.values(sellerDeliveryCosts).reduce<number>((s, v) => s + (v ?? 0), 0);
-  const anySellerLoading = Object.values(sellerDeliveryLoading).some(Boolean);
-  // Итоговая доставка — всегда сумма по продавцам (если город выбран), иначе null
+  // Сумма доставки только по продавцам с выбранными товарами
+  const selectedSellerIds = new Set(selectedCart.map(c => c.sellerId || "__unknown__"));
+  const sellerDeliveryTotal = Object.entries(sellerDeliveryCosts)
+    .filter(([sid]) => selectedSellerIds.has(sid))
+    .reduce<number>((s, [, v]) => s + (v ?? 0), 0);
+  const anySellerLoading = Object.entries(sellerDeliveryLoading)
+    .filter(([sid]) => selectedSellerIds.has(sid))
+    .some(([, v]) => v);
+  // Итоговая доставка — сумма по выбранным продавцам
   const deliveryCost = delivery.city
     ? (anySellerLoading ? null : (sellerDeliveryTotal > 0 ? sellerDeliveryTotal : null))
     : null;
