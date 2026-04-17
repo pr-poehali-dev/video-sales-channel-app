@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Icon from "@/components/ui/icon";
 import type { CartItem } from "@/App";
 import CdekDelivery from "@/components/CdekDelivery";
@@ -68,7 +68,7 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
   const calcTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   // Пересчёт доставки для продавца при изменении города или веса его товаров
-  const recalcSellerDelivery = (sellerId: string, fromCityCode: string, weightG: number, toCityCode: string, toCityGuid?: string) => {
+  const recalcSellerDelivery = useCallback((sellerId: string, fromCityCode: string, weightG: number, toCityCode: string, toCityGuid?: string) => {
     if (!toCityCode) return;
     if (calcTimers.current[sellerId]) clearTimeout(calcTimers.current[sellerId]);
     setSellerDeliveryLoading(prev => ({ ...prev, [sellerId]: true }));
@@ -88,7 +88,8 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
         setSellerDeliveryLoading(prev => ({ ...prev, [sellerId]: false }));
       }
     }, 400);
-  };
+  }, []);
+
   const [deliveryType, setDeliveryType] = useState<DeliveryType>("cdek_pvz");
   const [cdekPvzCode, setCdekPvzCode] = useState<string | undefined>(undefined);
   const [payMethod, setPayMethod] = useState<PaymentMethod>(null);
@@ -118,8 +119,7 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
     Object.values(groups).forEach(g => {
       recalcSellerDelivery(g.sellerId, g.fromCityCode, g.weight, delivery.city!.code, delivery.city!.guid);
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [delivery.city, cartQtyKey]);
+  }, [delivery.city, cartQtyKey, recalcSellerDelivery]);
 
   const goodsTotal = selectedCart.reduce((s, c) => s + getItemPrice(c, mode) * c.qty, 0);
   const sellerDeliveryTotal = Object.values(sellerDeliveryCosts).reduce<number>((s, v) => s + (v ?? 0), 0);
