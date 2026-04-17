@@ -330,8 +330,8 @@ export default function DashboardProductsTab({ warehouses }: Props) {
 
       {/* Форма товара */}
       {showForm && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-card animate-fade-in">
-          <div className="bg-card border border-border rounded-2xl w-full max-w-lg shadow-xl flex flex-col h-full mx-auto">
+        <div className="fixed inset-0 z-50 flex flex-col bg-card animate-fade-in overflow-hidden">
+          <div className="w-full max-w-lg mx-auto flex flex-col" style={{ height: "100dvh" }}>
             <div className="flex items-center justify-between p-5 border-b border-border flex-shrink-0">
               <h3 className="font-oswald text-lg font-semibold text-foreground tracking-wide">
                 {editId ? "Редактировать товар" : "Новый товар"}
@@ -340,7 +340,7 @@ export default function DashboardProductsTab({ warehouses }: Props) {
                 <Icon name="X" size={15} className="text-muted-foreground" />
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+            <div className="flex-1 min-h-0 overflow-y-auto p-5 space-y-4">
 
               {/* Видео товара */}
               <div>
