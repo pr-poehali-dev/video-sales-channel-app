@@ -33,6 +33,33 @@ function getItemPrice(item: CartItem, mode: "retail" | "wholesale"): number {
 export default function CartPage({ cart, removeFromCart, updateQty }: CartPageProps) {
   const { user } = useAuth();
   const { mode } = usePriceMode();
+
+  // Выбор товаров (по умолчанию все выбраны)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set(cart.map(c => c.id)));
+
+  const toggleItem = (id: string) => setSelectedIds(prev => {
+    const next = new Set(prev);
+    if (next.has(id)) { next.delete(id); } else { next.add(id); }
+    return next;
+  });
+
+  const toggleSeller = (sellerItems: CartItem[]) => {
+    const ids = sellerItems.map(i => i.id);
+    const allSelected = ids.every(id => selectedIds.has(id));
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      ids.forEach(id => allSelected ? next.delete(id) : next.add(id));
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    if (selectedIds.size === cart.length) setSelectedIds(new Set());
+    else setSelectedIds(new Set(cart.map(c => c.id)));
+  };
+
+  const selectedCart = cart.filter(c => selectedIds.has(c.id));
+
   const [delivery, setDelivery] = useState<SelectedDelivery>({ tariff: null, city: null });
   const [deliveryType, setDeliveryType] = useState<DeliveryType>("cdek_pvz");
   const [cdekPvzCode, setCdekPvzCode] = useState<string | undefined>(undefined);
@@ -50,11 +77,11 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
   const [buyerEmail, setBuyerEmail] = useState(user?.email || "");
   const [deliveryAddress, setDeliveryAddress] = useState("");
 
-  const goodsTotal = cart.reduce((s, c) => s + getItemPrice(c, mode) * c.qty, 0);
+  const goodsTotal = selectedCart.reduce((s, c) => s + getItemPrice(c, mode) * c.qty, 0);
   const deliveryCost = delivery.tariff?.price ?? null;
   const orderTotal = goodsTotal + (deliveryCost ?? 0);
-  const totalWeight = cart.reduce((s, c) => s + c.qty * (c.weightG ?? 300), 0);
-  const fromCityCode = cart[0]?.fromCityCode ?? "";
+  const totalWeight = selectedCart.reduce((s, c) => s + c.qty * (c.weightG ?? 300), 0);
+  const fromCityCode = (selectedCart[0] ?? cart[0])?.fromCityCode ?? "";
   const sellerIdForDelivery = cart[0]?.sellerId ?? "";
 
   const contactFilled = buyerName.trim() && buyerPhone.trim();
@@ -77,7 +104,7 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
         delivery_tariff_name: delivery.tariff?.name || "",
         delivery_cost: deliveryCost || 0,
         cdek_pvz_code: cdekPvzCode || "",
-        items: cart.map(c => ({ id: c.id, name: c.name, price: getItemPrice(c, mode), qty: c.qty, image: c.image, videoUrl: c.videoUrl || "" })),
+        items: selectedCart.map(c => ({ id: c.id, name: c.name, price: getItemPrice(c, mode), qty: c.qty, image: c.image, videoUrl: c.videoUrl || "" })),
         payment_method: payMethod || "",
         goods_total: goodsTotal,
         order_total: orderTotal,
@@ -238,6 +265,22 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
             );
           })()}
 
+          {/* Выбрать все */}
+          <div className="flex items-center gap-3 px-1">
+            <button onClick={toggleAll} className="flex items-center gap-2 group">
+              <span className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                selectedIds.size === cart.length ? "bg-primary border-primary" : selectedIds.size > 0 ? "border-primary bg-primary/20" : "border-muted-foreground"
+              }`}>
+                {selectedIds.size === cart.length && <Icon name="Check" size={11} className="text-white" />}
+                {selectedIds.size > 0 && selectedIds.size < cart.length && <div className="w-2 h-0.5 bg-primary rounded-full" />}
+              </span>
+              <span className="text-sm text-foreground font-medium">Выбрать все</span>
+            </button>
+            {selectedIds.size > 0 && selectedIds.size < cart.length && (
+              <span className="text-xs text-muted-foreground">({selectedIds.size} из {cart.length})</span>
+            )}
+          </div>
+
           {/* Товары сгруппированы по продавцам */}
           {(() => {
             const groups: { sellerId: string; sellerName: string; items: CartItem[] }[] = [];
@@ -251,59 +294,80 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
             return (
               <div className="space-y-4">
                 {groups.map(group => {
-                  const groupTotal = group.items.reduce((s, c) => s + getItemPrice(c, mode) * c.qty, 0);
+                  const allSellerSelected = group.items.every(i => selectedIds.has(i.id));
+                  const someSellerSelected = group.items.some(i => selectedIds.has(i.id));
+                  const selectedGroupTotal = group.items
+                    .filter(i => selectedIds.has(i.id))
+                    .reduce((s, c) => s + getItemPrice(c, mode) * c.qty, 0);
                   return (
                     <div key={group.sellerId} className="bg-card border border-border rounded-xl overflow-hidden">
                       {/* Шапка продавца */}
-                      <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-secondary/40">
-                        <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0">
-                            <Icon name="Store" size={12} className="text-primary" />
-                          </div>
-                          <span className="text-sm font-semibold text-foreground">{group.sellerName}</span>
+                      <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-secondary/40">
+                        <button onClick={() => toggleSeller(group.items)} className="flex-shrink-0">
+                          <span className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
+                            allSellerSelected ? "bg-primary border-primary" : someSellerSelected ? "border-primary bg-primary/20" : "border-muted-foreground"
+                          }`}>
+                            {allSellerSelected && <Icon name="Check" size={11} className="text-white" />}
+                            {!allSellerSelected && someSellerSelected && <div className="w-2 h-0.5 bg-primary rounded-full" />}
+                          </span>
+                        </button>
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <Icon name="Store" size={13} className="text-primary flex-shrink-0" />
+                          <span className="text-sm font-semibold text-foreground truncate">{group.sellerName}</span>
                         </div>
-                        <span className="text-xs text-muted-foreground font-medium">
-                          {groupTotal.toLocaleString("ru")} ₽ · {group.items.reduce((s, c) => s + c.qty, 0)} шт.
+                        <span className="text-xs text-muted-foreground font-medium flex-shrink-0">
+                          {selectedGroupTotal.toLocaleString("ru")} ₽
                         </span>
                       </div>
                       {/* Товары продавца */}
                       <div className="divide-y divide-border">
-                        {group.items.map(item => (
-                          <div key={item.id} className="p-4 flex gap-4 items-center">
-                            <div className="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 bg-secondary">
-                              {item.videoUrl ? (
-                                <video src={item.videoUrl} autoPlay loop muted playsInline className="w-full h-full object-cover" />
-                              ) : item.image ? (
-                                <img src={item.image} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center text-muted-foreground opacity-30">
-                                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-foreground line-clamp-2">{item.name}</p>
-                              <p className="font-oswald text-base font-semibold text-foreground mt-0.5">
-                                {getItemPrice(item, mode).toLocaleString("ru")} ₽
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-2 flex-shrink-0">
-                              <button onClick={() => updateQty(item.id, item.qty - 1)}
-                                className="w-7 h-7 rounded-lg bg-secondary flex items-center justify-center hover:bg-secondary/70 transition-colors">
-                                <Icon name="Minus" size={13} />
+                        {group.items.map(item => {
+                          const isSelected = selectedIds.has(item.id);
+                          return (
+                            <div key={item.id} className={`p-4 flex gap-3 items-center transition-opacity ${isSelected ? "" : "opacity-50"}`}>
+                              {/* Чекбокс товара */}
+                              <button onClick={() => toggleItem(item.id)} className="flex-shrink-0">
+                                <span className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
+                                  isSelected ? "bg-primary border-primary" : "border-muted-foreground"
+                                }`}>
+                                  {isSelected && <Icon name="Check" size={11} className="text-white" />}
+                                </span>
                               </button>
-                              <span className="w-6 text-center text-sm font-medium text-foreground">{item.qty}</span>
-                              <button onClick={() => updateQty(item.id, item.qty + 1)}
-                                className="w-7 h-7 rounded-lg bg-secondary flex items-center justify-center hover:bg-secondary/70 transition-colors">
-                                <Icon name="Plus" size={13} />
-                              </button>
-                              <button onClick={() => removeFromCart(item.id)}
-                                className="w-7 h-7 rounded-lg ml-1 flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors">
-                                <Icon name="Trash2" size={14} />
-                              </button>
+                              <div className="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 bg-secondary">
+                                {item.videoUrl ? (
+                                  <video src={item.videoUrl} autoPlay loop muted playsInline className="w-full h-full object-cover" />
+                                ) : item.image ? (
+                                  <img src={item.image} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-muted-foreground opacity-30">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-foreground line-clamp-2">{item.name}</p>
+                                <p className="font-oswald text-base font-semibold text-foreground mt-0.5">
+                                  {getItemPrice(item, mode).toLocaleString("ru")} ₽
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-1.5 flex-shrink-0">
+                                <button onClick={() => updateQty(item.id, item.qty - 1)}
+                                  className="w-7 h-7 rounded-lg bg-secondary flex items-center justify-center hover:bg-secondary/70 transition-colors">
+                                  <Icon name="Minus" size={13} />
+                                </button>
+                                <span className="w-6 text-center text-sm font-medium text-foreground">{item.qty}</span>
+                                <button onClick={() => updateQty(item.id, item.qty + 1)}
+                                  className="w-7 h-7 rounded-lg bg-secondary flex items-center justify-center hover:bg-secondary/70 transition-colors">
+                                  <Icon name="Plus" size={13} />
+                                </button>
+                                <button onClick={() => removeFromCart(item.id)}
+                                  className="w-7 h-7 rounded-lg ml-1 flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors">
+                                  <Icon name="Trash2" size={14} />
+                                </button>
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   );
@@ -388,7 +452,7 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
           <div className="bg-card border border-border rounded-xl p-4">
             <div className="space-y-2 mb-4">
               <div className="flex justify-between text-sm text-muted-foreground">
-                <span>Товары ({cart.reduce((s, c) => s + c.qty, 0)} шт.)</span>
+                <span>Товары ({selectedCart.reduce((s, c) => s + c.qty, 0)} шт.)</span>
                 <span>{goodsTotal.toLocaleString("ru")} ₽</span>
               </div>
               <div className="flex justify-between text-sm">
