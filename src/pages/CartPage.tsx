@@ -4,6 +4,7 @@ import type { CartItem } from "@/App";
 import CdekDelivery from "@/components/CdekDelivery";
 import SbpPayment from "@/components/SbpPayment";
 import { useAuth } from "@/context/AuthContext";
+import { usePriceMode } from "@/context/PriceModeContext";
 
 const STORE_API = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c";
 const CDEK_API = "https://functions.poehali.dev/a73e197d-7da4-4945-bd28-4d0de6b02bb7";
@@ -22,8 +23,16 @@ interface SelectedDelivery {
 type PaymentMethod = "sbp" | "card" | null;
 type DeliveryType = "cdek_pvz" | "cdek_courier";
 
+function getItemPrice(item: CartItem, mode: "retail" | "wholesale"): number {
+  const hasWholesale = item.wholesalePrice != null && item.wholesalePrice > 0;
+  if (!hasWholesale) return item.price;
+  if (mode === "wholesale") return item.wholesalePrice!;
+  return Math.round(item.wholesalePrice! * (1 + (item.retailMarkupPct ?? 0) / 100));
+}
+
 export default function CartPage({ cart, removeFromCart, updateQty }: CartPageProps) {
   const { user } = useAuth();
+  const { mode } = usePriceMode();
   const [delivery, setDelivery] = useState<SelectedDelivery>({ tariff: null, city: null });
   const [deliveryType, setDeliveryType] = useState<DeliveryType>("cdek_pvz");
   const [cdekPvzCode, setCdekPvzCode] = useState<string | undefined>(undefined);
@@ -41,7 +50,7 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
   const [buyerEmail, setBuyerEmail] = useState(user?.email || "");
   const [deliveryAddress, setDeliveryAddress] = useState("");
 
-  const goodsTotal = cart.reduce((s, c) => s + c.price * c.qty, 0);
+  const goodsTotal = cart.reduce((s, c) => s + getItemPrice(c, mode) * c.qty, 0);
   const deliveryCost = delivery.tariff?.price ?? null;
   const orderTotal = goodsTotal + (deliveryCost ?? 0);
   const totalWeight = cart.reduce((s, c) => s + c.qty * (c.weightG ?? 300), 0);
@@ -68,7 +77,7 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
         delivery_tariff_name: delivery.tariff?.name || "",
         delivery_cost: deliveryCost || 0,
         cdek_pvz_code: cdekPvzCode || "",
-        items: cart.map(c => ({ id: c.id, name: c.name, price: c.price, qty: c.qty, image: c.image, videoUrl: c.videoUrl || "" })),
+        items: cart.map(c => ({ id: c.id, name: c.name, price: getItemPrice(c, mode), qty: c.qty, image: c.image, videoUrl: c.videoUrl || "" })),
         payment_method: payMethod || "",
         goods_total: goodsTotal,
         order_total: orderTotal,
@@ -210,7 +219,7 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-foreground line-clamp-2">{item.name}</p>
                   <p className="font-oswald text-base font-semibold text-foreground mt-1">
-                    {item.price.toLocaleString("ru")} ₽
+                    {getItemPrice(item, mode).toLocaleString("ru")} ₽
                   </p>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">

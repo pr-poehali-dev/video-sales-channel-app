@@ -76,6 +76,8 @@ export default function ProductCard({ product, addToCart, onClick }: ProductCard
       fromCityCode: product.fromCityCode ?? 0,
       weightG: product.weightG ?? 500,
       videoUrl: product.videoUrl,
+      wholesalePrice: product.wholesalePrice,
+      retailMarkupPct: product.retailMarkupPct,
     });
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);

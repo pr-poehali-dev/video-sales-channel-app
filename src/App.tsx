@@ -37,6 +37,8 @@ export interface CartItem {
   fromCityCode?: string;
   weightG?: number;
   videoUrl?: string;
+  wholesalePrice?: number | null;
+  retailMarkupPct?: number;
 }
 
 function AppInner() {

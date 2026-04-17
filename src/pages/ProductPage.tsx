@@ -82,6 +82,8 @@ export default function ProductPage({ productId, addToCart, onBack, onSellerClic
       fromCityCode: product.fromCityCode ?? 0,
       weightG: product.weightG ?? 500,
       videoUrl: product.videoUrl,
+      wholesalePrice: product.wholesalePrice,
+      retailMarkupPct: product.retailMarkupPct,
     });
     setAdded(true);
     setTimeout(() => setAdded(false), 1800);
