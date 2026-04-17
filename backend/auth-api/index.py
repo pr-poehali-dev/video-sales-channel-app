@@ -55,6 +55,10 @@ def fmt_user(r: dict) -> dict:
         "avatar": r["avatar"] or "",
         "joinedAt": r["joined_at"] or "",
         "isBlocked": r["is_blocked"],
+        "shopName": r.get("shop_name") or "",
+        "shopCityCode": r.get("shop_city_code") or "",
+        "shopCityName": r.get("shop_city_name") or "",
+        "shopCityGuid": r.get("shop_city_guid") or "",
     }
 
 ADMIN_EMAIL = "admin@yugastore.ru"
@@ -69,6 +73,10 @@ ADMIN_USER = {
     "avatar": "АД",
     "joinedAt": "январь 2024",
     "isBlocked": False,
+    "shopName": "",
+    "shopCityCode": "",
+    "shopCityName": "",
+    "shopCityGuid": "",
 }
 
 def handler(event: dict, context) -> dict:
@@ -181,6 +189,10 @@ def handler(event: dict, context) -> dict:
             name = (body.get("name") or "").strip()
             phone = (body.get("phone") or "").strip()
             city = (body.get("city") or "").strip()
+            shop_name = (body.get("shop_name") or "").strip()
+            shop_city_code = (body.get("shop_city_code") or "").strip()
+            shop_city_name = (body.get("shop_city_name") or "").strip()
+            shop_city_guid = (body.get("shop_city_guid") or "").strip()
 
             if not name:
                 return err("Имя не может быть пустым")
@@ -188,11 +200,15 @@ def handler(event: dict, context) -> dict:
             avatar = make_avatar(name)
 
             cur.execute(
-                "UPDATE users SET name='%s', phone='%s', city='%s', avatar='%s' WHERE id='%s'" % (
+                "UPDATE users SET name='%s', phone='%s', city='%s', avatar='%s', shop_name='%s', shop_city_code='%s', shop_city_name='%s', shop_city_guid='%s' WHERE id='%s'" % (
                     name.replace("'", "''"),
                     phone.replace("'", "''"),
                     city.replace("'", "''"),
                     avatar.replace("'", "''"),
+                    shop_name.replace("'", "''"),
+                    shop_city_code.replace("'", "''"),
+                    shop_city_name.replace("'", "''"),
+                    shop_city_guid.replace("'", "''"),
                     user_id.replace("'", "''"),
                 )
             )

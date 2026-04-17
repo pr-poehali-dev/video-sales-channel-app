@@ -19,6 +19,10 @@ export interface User {
   avatar: string;
   city: string;
   savedPvz?: SavedPvz | null;
+  shopName?: string;
+  shopCityCode?: string;
+  shopCityName?: string;
+  shopCityGuid?: string;
   joinedAt: string;
   isBlocked?: boolean;
 }
@@ -112,6 +116,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         name: updateData.name ?? user.name,
         phone: updateData.phone ?? user.phone,
         city: updateData.city ?? user.city,
+        shop_name: updateData.shopName ?? user.shopName ?? "",
+        shop_city_code: updateData.shopCityCode ?? user.shopCityCode ?? "",
+        shop_city_name: updateData.shopCityName ?? user.shopCityName ?? "",
+        shop_city_guid: updateData.shopCityGuid ?? user.shopCityGuid ?? "",
       });
       if (!data.error) {
         saveSession({ ...data.user, savedPvz: updateData.savedPvz !== undefined ? updateData.savedPvz : user.savedPvz });

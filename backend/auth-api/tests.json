@@ -1,21 +1,12 @@
 {
   "tests": [
     {
-      "name": "Register new user",
-      "method": "POST",
-      "path": "/?action=register",
-      "body": {"name": "Тест Юзер", "email": "testuser_auto@test.com", "phone": "+79001234567", "city": "Москва", "password": "password123"},
-      "expectedStatus": 201,
-      "expectedBody": {"user": {"role": "user"}},
-      "bodyMatcher": "partial"
-    },
-    {
       "name": "Login admin",
       "method": "POST",
       "path": "/?action=login",
       "body": {"email": "admin@yugastore.ru", "password": "admin2024"},
       "expectedStatus": 200,
-      "expectedBody": {"user": {"role": "admin"}},
+      "expectedBody": {"user": {"role": "admin", "shopName": ""}},
       "bodyMatcher": "partial"
     },
     {

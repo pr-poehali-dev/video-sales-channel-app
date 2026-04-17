@@ -7,13 +7,14 @@ import DashboardProductsTab from "./dashboard/DashboardProductsTab";
 import DashboardStreamsTab from "./dashboard/DashboardStreamsTab";
 import DashboardWarehousesTab, { type Warehouse } from "./dashboard/DashboardWarehousesTab";
 import DashboardOrdersTab from "./dashboard/DashboardOrdersTab";
+import DashboardShopTab from "./dashboard/DashboardShopTab";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 
 interface DashboardPageProps {
   setPage: (p: Page) => void;
 }
 
-const TABS = ["Заказы", "Товары", "Склады", "Мои эфиры", "Статистика"];
+const TABS = ["Заказы", "Товары", "Магазин", "Мои эфиры", "Статистика"];
 const STORE_API = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c";
 
 export default function DashboardPage({ setPage }: DashboardPageProps) {
@@ -88,7 +89,10 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="font-oswald text-2xl font-semibold text-foreground tracking-wide">Мой кабинет</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">{user.name}{user.city ? ` · ${user.city}` : ""}</p>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {user.shopName || user.name}
+            {user.shopCityName ? ` · ${user.shopCityName}` : user.city ? ` · ${user.city}` : ""}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -180,7 +184,7 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
 
       {tab === "Заказы" && <DashboardOrdersTab />}
       {tab === "Товары" && <DashboardProductsTab warehouses={warehouses} />}
-      {tab === "Склады" && <DashboardWarehousesTab warehouses={warehouses} setWarehouses={setWarehouses} whLoading={whLoading} />}
+      {tab === "Магазин" && <DashboardShopTab />}
       {tab === "Мои эфиры" && <DashboardStreamsTab setPage={setPage} />}
       {tab === "Статистика" && (
         <div className="animate-fade-in text-center py-16">
