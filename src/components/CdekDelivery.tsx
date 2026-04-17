@@ -145,11 +145,31 @@ export default function DeliverySelector({ weightGrams, fromCityCode = "", selle
     onSelect(t, selectedCity, undefined);
   };
 
+  const [deliveryMode, setDeliveryMode] = useState<"pvz" | "courier">("pvz");
+
   const isPvz = (t: Tariff) => t.delivery_to === "pvz";
 
-  // Группируем тарифы по типу
-  const pvzTariffs = tariffs.filter(isPvz);
-  const courierTariffs = tariffs.filter(t => !isPvz(t));
+  // Группируем тарифы по типу, берём только самый дешёвый
+  const pvzTariffs = tariffs.filter(isPvz).sort((a, b) => a.price - b.price);
+  const courierTariffs = tariffs.filter(t => !isPvz(t)).sort((a, b) => a.price - b.price);
+  const cheapestPvz = pvzTariffs[0] ?? null;
+  const cheapestCourier = courierTariffs[0] ?? null;
+
+  const hasPvz = pvzTariffs.length > 0;
+  const hasCourier = courierTariffs.length > 0;
+
+  // Выбранный режим с учётом доступности
+  const activeMode = hasPvz && deliveryMode === "pvz" ? "pvz" : hasCourier ? "courier" : hasPvz ? "pvz" : "pvz";
+  const activeTariff = activeMode === "pvz" ? cheapestPvz : cheapestCourier;
+
+  // Авто-выбор самого дешёвого тарифа при загрузке
+  useEffect(() => {
+    if (tariffs.length === 0) return;
+    const mode = hasPvz ? "pvz" : "courier";
+    setDeliveryMode(mode);
+    const best = mode === "pvz" ? cheapestPvz : cheapestCourier;
+    if (best) selectTariff(best);
+  }, [tariffs]);
 
   return (
     <>
@@ -223,92 +243,60 @@ export default function DeliverySelector({ weightGrams, fromCityCode = "", selle
 
         {tariffs.length > 0 && (
           <div className="space-y-3">
-            {/* ПВЗ / самовывоз */}
-            {pvzTariffs.length > 0 && (
-              <div>
-                <p className="text-xs text-muted-foreground font-medium mb-1.5 flex items-center gap-1.5">
-                  <Icon name="Store" size={12} />
-                  Самовывоз из пункта
-                </p>
-                <div className="space-y-1.5">
-                  {pvzTariffs.map(t => (
-                    <button
-                      key={`${t.code}_${t.days_min}`}
-                      onClick={() => selectTariff(t)}
-                      className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all text-left ${
-                        selectedTariff?.code === t.code && selectedTariff?.delivery_to === t.delivery_to
-                          ? "border-primary bg-primary/8"
-                          : "border-border bg-secondary hover:border-primary/30"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
-                          selectedTariff?.code === t.code && selectedTariff?.delivery_to === t.delivery_to ? "border-primary" : "border-muted-foreground"
-                        }`}>
-                          {selectedTariff?.code === t.code && selectedTariff?.delivery_to === t.delivery_to && (
-                            <div className="w-2 h-2 rounded-full bg-primary" />
-                          )}
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-foreground leading-tight">
-                            {providerLabel(t.provider)}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {cleanTariffName(t.name)} · {t.days_min === t.days_max ? `${t.days_min}` : `${t.days_min}–${t.days_max}`} дн.
-                          </p>
-                        </div>
-                      </div>
-                      <span className="font-oswald text-base font-semibold text-foreground flex-shrink-0">{t.price.toLocaleString("ru")} ₽</span>
-                    </button>
-                  ))}
+            {/* Табы: Самовывоз / Курьер */}
+            <div className="flex gap-2">
+              {hasPvz && (
+                <button
+                  onClick={() => {
+                    setDeliveryMode("pvz");
+                    if (cheapestPvz) selectTariff(cheapestPvz);
+                  }}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-sm font-medium border transition-all ${
+                    activeMode === "pvz"
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-secondary text-muted-foreground border-border hover:border-primary/30"
+                  }`}
+                >
+                  <Icon name="Store" size={14} />
+                  Самовывоз
+                </button>
+              )}
+              {hasCourier && (
+                <button
+                  onClick={() => {
+                    setDeliveryMode("courier");
+                    if (cheapestCourier) selectTariff(cheapestCourier);
+                  }}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-sm font-medium border transition-all ${
+                    activeMode === "courier"
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-secondary text-muted-foreground border-border hover:border-primary/30"
+                  }`}
+                >
+                  <Icon name="Truck" size={14} />
+                  Курьер
+                </button>
+              )}
+            </div>
+
+            {/* Один самый дешёвый тариф */}
+            {activeTariff && (
+              <div className="flex items-center justify-between px-4 py-3 rounded-xl border border-primary bg-primary/8">
+                <div>
+                  <p className="text-sm font-medium text-foreground leading-tight">
+                    {providerLabel(activeTariff.provider)}
+                    <span className="ml-1.5 text-xs text-muted-foreground font-normal">
+                      · {activeTariff.days_min === activeTariff.days_max ? `${activeTariff.days_min}` : `${activeTariff.days_min}–${activeTariff.days_max}`} дн.
+                    </span>
+                  </p>
+                  <p className="text-xs text-muted-foreground">{cleanTariffName(activeTariff.name)}</p>
                 </div>
+                <span className="font-oswald text-base font-semibold text-foreground flex-shrink-0">{activeTariff.price.toLocaleString("ru")} ₽</span>
               </div>
             )}
 
-            {/* Курьер */}
-            {courierTariffs.length > 0 && (
-              <div>
-                <p className="text-xs text-muted-foreground font-medium mb-1.5 flex items-center gap-1.5">
-                  <Icon name="Truck" size={12} />
-                  Курьер до двери
-                </p>
-                <div className="space-y-1.5">
-                  {courierTariffs.map(t => (
-                    <button
-                      key={`${t.code}_${t.days_min}_courier`}
-                      onClick={() => selectTariff(t)}
-                      className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all text-left ${
-                        selectedTariff?.code === t.code && selectedTariff?.delivery_to === t.delivery_to
-                          ? "border-primary bg-primary/8"
-                          : "border-border bg-secondary hover:border-primary/30"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
-                          selectedTariff?.code === t.code && selectedTariff?.delivery_to === t.delivery_to ? "border-primary" : "border-muted-foreground"
-                        }`}>
-                          {selectedTariff?.code === t.code && selectedTariff?.delivery_to === t.delivery_to && (
-                            <div className="w-2 h-2 rounded-full bg-primary" />
-                          )}
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-foreground leading-tight">
-                            {providerLabel(t.provider)}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {cleanTariffName(t.name)} · {t.days_min === t.days_max ? `${t.days_min}` : `${t.days_min}–${t.days_max}`} дн.
-                          </p>
-                        </div>
-                      </div>
-                      <span className="font-oswald text-base font-semibold text-foreground flex-shrink-0">{t.price.toLocaleString("ru")} ₽</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Кнопка выбора ПВЗ (если выбран тариф с самовывозом) */}
-            {selectedTariff && isPvz(selectedTariff) && selectedCity && (
+            {/* Кнопка выбора ПВЗ (если активный режим — самовывоз) */}
+            {activeMode === "pvz" && activeTariff && selectedCity && (
               <button
                 onClick={() => setShowPvzMap(true)}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition-all ${
