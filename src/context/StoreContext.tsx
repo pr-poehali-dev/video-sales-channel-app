@@ -39,7 +39,7 @@ export interface StoreProduct {
   cdekEnabled?: boolean;
   nalogEnabled?: boolean;
   fittingEnabled?: boolean;
-  fromCityCode?: number;
+  fromCityCode?: string;
   fromCityName?: string;
   videoUrl?: string;
 }
@@ -156,7 +156,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       cdek_enabled: (data as { cdekEnabled?: boolean }).cdekEnabled,
       nalog_enabled: (data as { nalogEnabled?: boolean }).nalogEnabled,
       fitting_enabled: (data as { fittingEnabled?: boolean }).fittingEnabled,
-      from_city_code: (data as { fromCityCode?: number }).fromCityCode,
+      from_city_code: (data as { fromCityCode?: string }).fromCityCode,
       from_city_name: (data as { fromCityName?: string }).fromCityName,
       video_url: data.videoUrl ?? "",
     });

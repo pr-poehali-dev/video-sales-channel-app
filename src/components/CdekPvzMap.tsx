@@ -14,7 +14,7 @@ interface PvzPoint {
 }
 
 interface CdekPvzMapProps {
-  cityCode: number;
+  cityCode: string;
   cityName: string;
   onSelect: (pvz: PvzPoint) => void;
   onClose: () => void;

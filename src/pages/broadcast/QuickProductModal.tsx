@@ -9,7 +9,7 @@ interface QuickProductModalProps {
   sellerId: string;
   sellerName: string;
   sellerAvatar: string;
-  defaultWarehouse?: { cityCode: number; cityName: string; name: string } | null;
+  defaultWarehouse?: { cityCode: string; cityName: string; name: string } | null;
   onClose: () => void;
   onSaved: () => void;
 }
@@ -59,7 +59,7 @@ export default function QuickProductModal({ imageDataUrl, sellerId, sellerName, 
         widthCm: parseInt(widthCm) || 15,
         heightCm: parseInt(heightCm) || 10,
         cdekEnabled: !!defaultWarehouse,
-        fromCityCode: defaultWarehouse?.cityCode ?? 0,
+        fromCityCode: defaultWarehouse?.cityCode ?? "",
         fromCityName: defaultWarehouse?.cityName ?? "",
       } as never);
       onSaved();

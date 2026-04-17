@@ -5,17 +5,19 @@ import CdekPvzMap from "@/components/CdekPvzMap";
 const CDEK_URL = "https://functions.poehali.dev/a73e197d-7da4-4945-bd28-4d0de6b02bb7";
 
 interface City {
-  code: number;
+  code: string;
   city: string;
   region: string;
 }
 
 interface Tariff {
-  code: number;
+  code: string;
   name: string;
   price: number;
   days_min: number;
   days_max: number;
+  provider?: string;
+  delivery_to?: "pvz" | "courier";
 }
 
 interface PvzPoint {
@@ -30,12 +32,12 @@ interface PvzPoint {
 
 interface CdekDeliveryProps {
   weightGrams: number;
-  fromCityCode?: number;
+  fromCityCode?: string;
   sellerId?: string;
   onSelect: (tariff: Tariff | null, city: City | null, pvzCode?: string, pvzAddress?: string) => void;
 }
 
-export default function CdekDelivery({ weightGrams, fromCityCode = 0, sellerId = "", onSelect }: CdekDeliveryProps) {
+export default function CdekDelivery({ weightGrams, fromCityCode = "", sellerId = "", onSelect }: CdekDeliveryProps) {
   const [query, setQuery] = useState("");
   const [cities, setCities] = useState<City[]>([]);
   const [selectedCity, setSelectedCity] = useState<City | null>(null);

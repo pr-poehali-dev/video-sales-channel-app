@@ -118,13 +118,13 @@ export default function BroadcastPage({ setPage, onLiveChange }: BroadcastPagePr
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const autoRecorderRef = useRef<MediaRecorder | null>(null);
   const autoRecordTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [defaultWarehouse, setDefaultWarehouse] = useState<{ cityCode: number; cityName: string; name: string } | null>(null);
+  const [defaultWarehouse, setDefaultWarehouse] = useState<{ cityCode: string; cityName: string; name: string } | null>(null);
 
   useEffect(() => {
     if (!user) return;
     fetch(`${API}?action=get_warehouses&seller_id=${user.id}`)
       .then(r => r.json())
-      .then((list: Array<{ cityCode: number; cityName: string; name: string; isDefault: boolean }>) => {
+      .then((list: Array<{ cityCode: string; cityName: string; name: string; isDefault: boolean }>) => {
         const def = list.find(w => w.isDefault) ?? list[0] ?? null;
         setDefaultWarehouse(def);
       })

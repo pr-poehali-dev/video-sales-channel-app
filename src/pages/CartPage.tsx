@@ -15,8 +15,8 @@ interface CartPageProps {
 }
 
 interface SelectedDelivery {
-  tariff: { code: number; name: string; price: number; days_min: number; days_max: number } | null;
-  city: { code: number; city: string; region: string } | null;
+  tariff: { code: string; name: string; price: number; days_min: number; days_max: number; provider?: string; delivery_to?: "pvz" | "courier" } | null;
+  city: { code: string; city: string; region: string } | null;
 }
 
 type PaymentMethod = "sbp" | "card" | null;
@@ -45,7 +45,7 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
   const deliveryCost = delivery.tariff?.price ?? null;
   const orderTotal = goodsTotal + (deliveryCost ?? 0);
   const totalWeight = cart.reduce((s, c) => s + c.qty * (c.weightG ?? 300), 0);
-  const fromCityCode = cart[0]?.fromCityCode ?? 0;
+  const fromCityCode = cart[0]?.fromCityCode ?? "";
   const sellerIdForDelivery = cart[0]?.sellerId ?? "";
 
   const contactFilled = buyerName.trim() && buyerPhone.trim();
@@ -289,7 +289,7 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
               onSelect={(tariff, city, pvzCode, pvzAddress) => {
                 setDelivery({ tariff, city });
                 setCdekPvzCode(pvzCode);
-                setDeliveryType(tariff?.code === 136 ? "cdek_pvz" : "cdek_courier");
+                setDeliveryType(tariff?.delivery_to === "pvz" ? "cdek_pvz" : "cdek_courier");
                 if (pvzAddress) setDeliveryAddress(pvzAddress);
               }}
             />

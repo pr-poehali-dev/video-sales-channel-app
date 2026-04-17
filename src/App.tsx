@@ -33,7 +33,7 @@ export interface CartItem {
   price: number;
   image: string;
   qty: number;
-  fromCityCode?: number;
+  fromCityCode?: string;
   weightG?: number;
   videoUrl?: string;
 }

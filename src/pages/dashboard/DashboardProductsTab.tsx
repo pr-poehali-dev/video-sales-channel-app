@@ -12,10 +12,10 @@ const STORE_API = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b63
 const UPLOAD_VIDEO_API = "https://functions.poehali.dev/c69feec2-8522-4f96-aca5-363656289751";
 const CDEK_API = "https://functions.poehali.dev/a73e197d-7da4-4945-bd28-4d0de6b02bb7";
 
-interface CdekCity { code: number; city: string; region: string; }
+interface CdekCity { code: string; city: string; region: string; }
 
 interface Props {
-  warehouses: { id: string; cityCode: number; cityName: string; isDefault: boolean; }[];
+  warehouses: { id: string; cityCode: string; cityName: string; isDefault: boolean; }[];
 }
 
 export default function DashboardProductsTab({ warehouses }: Props) {
@@ -42,7 +42,7 @@ export default function DashboardProductsTab({ warehouses }: Props) {
   const [fNalog, setFNalog] = useState(false);
   const [fFitting, setFFitting] = useState(false);
   const [fInStock, setFInStock] = useState("1");
-  const [fFromCityCode, setFFromCityCode] = useState(0);
+  const [fFromCityCode, setFFromCityCode] = useState("");
   const [fFromCityName, setFFromCityName] = useState("");
   const [fCityQuery, setFCityQuery] = useState("");
   const [fCitySuggestions, setFCitySuggestions] = useState<CdekCity[]>([]);
@@ -162,7 +162,7 @@ export default function DashboardProductsTab({ warehouses }: Props) {
     setFName(""); setFPrice(""); setFCategory(CATEGORIES[0]); setFDesc(""); setFImages([]); setFError(null);
     setFWeightG("500"); setFLengthCm("20"); setFWidthCm("15"); setFHeightCm("10");
     setFCdek(true); setFNalog(false); setFFitting(false);
-    setFInStock("1"); setFFromCityCode(0); setFFromCityName(""); setFCityQuery(""); setFCitySuggestions([]);
+    setFInStock("1"); setFFromCityCode(""); setFFromCityName(""); setFCityQuery(""); setFCitySuggestions([]);
     setFVideoUrl(null);
     if (fVideoBlobUrl) { URL.revokeObjectURL(fVideoBlobUrl); setFVideoBlobUrl(null); }
   };
@@ -194,7 +194,7 @@ export default function DashboardProductsTab({ warehouses }: Props) {
     setFFitting((p as { fittingEnabled?: boolean }).fittingEnabled ?? false);
     const stock = (p as { inStock?: number }).inStock ?? 1;
     setFInStock(String(stock));
-    const cityCode = (p as { fromCityCode?: number }).fromCityCode ?? 0;
+    const cityCode = (p as { fromCityCode?: string }).fromCityCode ?? "";
     const cityName = (p as { fromCityName?: string }).fromCityName ?? "";
     setFFromCityCode(cityCode);
     setFFromCityName(cityName);
@@ -424,7 +424,7 @@ export default function DashboardProductsTab({ warehouses }: Props) {
                   <div className="relative">
                     <input
                       value={fCityQuery}
-                      onChange={e => { setFCityQuery(e.target.value); setFFromCityCode(0); setFFromCityName(""); }}
+                      onChange={e => { setFCityQuery(e.target.value); setFFromCityCode(""); setFFromCityName(""); }}
                       placeholder="Например: Москва"
                       className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors pr-8"
                     />

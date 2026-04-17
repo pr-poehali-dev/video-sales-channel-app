@@ -167,6 +167,19 @@ def create_apiship_order(order: dict) -> dict:
         phone = "+" + phone.lstrip("8").lstrip("+")
 
     is_pvz = order.get("delivery_type") == "cdek_pvz" or order.get("delivery_to") == "pvz"
+    weight_g = int(order.get("weight_g", 500))
+    items_count = max(len(order.get("items", [])), 1)
+
+    city_code = str(order.get("delivery_city_code", ""))
+    address_to = {"address": order.get("delivery_address", "")}
+    if "-" in city_code:
+        address_to["cityGuid"] = city_code
+    elif city_code.isdigit():
+        address_to["cityId"] = int(city_code)
+    else:
+        address_to["cityName"] = city_code or "Москва"
+    if is_pvz and order.get("cdek_pvz_code"):
+        address_to["pointOutId"] = order["cdek_pvz_code"]
 
     payload = {
         "clientNumber": str(order.get("order_id", "")),
@@ -181,16 +194,12 @@ def create_apiship_order(order: dict) -> dict:
             "cityName": FROM_CITY_NAME,
             "address": FROM_ADDRESS,
         },
-        "addressTo": {
-            "cityId": int(order["delivery_city_code"]) if str(order.get("delivery_city_code", "")).isdigit() else None,
-            "address": order.get("delivery_address", ""),
-            "pointOutId": order.get("cdek_pvz_code") if is_pvz else None,
-        },
+        "addressTo": address_to,
         "places": [{
-            "weight": max(order.get("weight_g", 500) / 1000.0, 0.1),
-            "height": order.get("height_cm", 10),
-            "width": order.get("width_cm", 15),
-            "length": order.get("length_cm", 20),
+            "weight": max(weight_g, 100),
+            "height": int(order.get("height_cm", 10)),
+            "width": int(order.get("width_cm", 15)),
+            "length": int(order.get("length_cm", 20)),
             "items": [
                 {
                     "description": item.get("name", "Товар")[:255],
@@ -198,14 +207,12 @@ def create_apiship_order(order: dict) -> dict:
                     "quantity": int(item.get("qty", 1)),
                     "assessedCost": float(item.get("price", 0)),
                     "cost": float(item.get("price", 0)),
-                    "weight": max(order.get("weight_g", 500) / 1000.0 / max(len(order.get("items", [])), 1), 0.1),
+                    "weight": max(weight_g // items_count, 100),
                 }
                 for i, item in enumerate(order.get("items", []))
             ],
         }],
     }
-    # Чистим None
-    payload["addressTo"] = {k: v for k, v in payload["addressTo"].items() if v is not None}
     if payload["tariffId"] is None:
         payload.pop("tariffId")
 

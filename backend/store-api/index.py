@@ -777,7 +777,7 @@ def handler(event: dict, context) -> dict:
             cur.execute("""
                 INSERT INTO warehouses (id, seller_id, name, city_code, city_name, address, is_default)
                 VALUES (%s,%s,%s,%s,%s,%s,%s) RETURNING *
-            """, (wid, seller_id, name, int(city_code), city_name, address, is_first))
+            """, (wid, seller_id, name, str(city_code), city_name, address, is_first))
             conn.commit()
             return ok(_fmt_warehouse(cur.fetchone()), 201)
 
