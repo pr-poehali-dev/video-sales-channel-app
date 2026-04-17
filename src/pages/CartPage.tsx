@@ -142,32 +142,32 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
         {cdekTrack ? (
           <div className="bg-card border border-border rounded-2xl p-5 mb-4 text-left">
             <div className="flex items-center gap-2 mb-3">
-              <Icon name="Truck" size={18} className="text-[#00AAFF]" />
-              <span className="text-sm font-semibold text-foreground">Доставка СДЭК</span>
+              <Icon name="Truck" size={18} className="text-primary" />
+              <span className="text-sm font-semibold text-foreground">Информация о доставке</span>
             </div>
             <div className="bg-secondary rounded-xl px-4 py-3 mb-3">
               <p className="text-xs text-muted-foreground mb-0.5">Трек-номер</p>
               <p className="font-oswald text-xl font-semibold text-foreground tracking-widest">{cdekTrack}</p>
             </div>
             <a
-              href={`https://www.cdek.ru/ru/tracking?order_id=${cdekTrack}`}
+              href={`https://apiship.ru/tracking/${cdekTrack}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 w-full bg-[#00AAFF]/10 text-[#00AAFF] font-semibold py-2.5 rounded-xl hover:bg-[#00AAFF]/20 transition-colors text-sm"
+              className="flex items-center justify-center gap-2 w-full bg-primary/10 text-primary font-semibold py-2.5 rounded-xl hover:bg-primary/20 transition-colors text-sm"
             >
               <Icon name="ExternalLink" size={15} />
-              Отследить на сайте СДЭК
+              Отследить посылку
             </a>
           </div>
         ) : (
           <div className="bg-secondary rounded-xl px-4 py-3 mb-4 text-sm text-muted-foreground">
             <Icon name="Clock" size={14} className="inline mr-1.5 mb-0.5" />
-            Трек-номер СДЭК появится в течение нескольких минут
+            Трек-номер появится в течение нескольких минут
           </div>
         )}
 
         <p className="text-muted-foreground text-sm">
-          Ожидайте SMS с уведомлением о передаче посылки в СДЭК.
+          Ожидайте SMS или email с уведомлением о передаче посылки в службу доставки.
         </p>
       </div>
     );
@@ -260,22 +260,6 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
             </div>
           </div>
 
-          {/* Тип доставки */}
-          <div className="bg-card border border-border rounded-xl p-4 space-y-3">
-            <p className="text-sm font-semibold text-foreground flex items-center gap-2">
-              <Icon name="Truck" size={15} className="text-muted-foreground" />
-              Способ получения
-            </p>
-            <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-primary bg-primary/8">
-              <div className="w-4 h-4 rounded-full border-2 border-primary flex-shrink-0 flex items-center justify-center">
-                <div className="w-2 h-2 rounded-full bg-primary" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-foreground">ПВЗ СДЭК</p>
-                <p className="text-xs text-muted-foreground">Самовывоз из пункта</p>
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* Правая колонка: расчёт + оплата */}
@@ -336,16 +320,20 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
                 )}
               </div>
               {delivery.city && delivery.tariff && (
-                <div className="bg-secondary rounded-lg px-3 py-2 text-xs text-muted-foreground">
-                  <div className="flex items-center gap-1.5 mb-0.5">
+                <div className="bg-secondary rounded-lg px-3 py-2 text-xs text-muted-foreground space-y-0.5">
+                  <div className="flex items-center gap-1.5">
                     <Icon name="MapPin" size={11} />
                     {delivery.city.city}{delivery.city.region ? `, ${delivery.city.region}` : ""}
                   </div>
                   <div className="flex items-center gap-1.5">
+                    <Icon name={delivery.tariff.delivery_to === "pvz" ? "Store" : "Truck"} size={11} />
+                    {delivery.tariff.delivery_to === "pvz" ? "Самовывоз из пункта" : "Курьер до двери"}
+                  </div>
+                  <div className="flex items-center gap-1.5">
                     <Icon name="Clock" size={11} />
                     {delivery.tariff.days_min === delivery.tariff.days_max
-                      ? `${delivery.tariff.days_min} дней`
-                      : `${delivery.tariff.days_min}–${delivery.tariff.days_max} дней`}
+                      ? `${delivery.tariff.days_min} дн.`
+                      : `${delivery.tariff.days_min}–${delivery.tariff.days_max} дн.`}
                   </div>
                 </div>
               )}
