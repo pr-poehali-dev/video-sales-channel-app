@@ -78,11 +78,11 @@ export default function ProductPage({ productId, addToCart, onBack, onSellerClic
   };
 
   return (
-    /* Весь экран: верхние 50% — медиа+кнопка, нижние 50% — скролл */
-    <div className="fixed inset-x-0 top-14 bottom-0 flex flex-col animate-fade-in" style={{ bottom: "4rem" }}>
+    /* Мобильный: fixed full-screen; Десктоп: обычный поток с max-w */
+    <div className="md:static md:inset-auto fixed inset-x-0 top-14 bottom-0 flex flex-col animate-fade-in md:max-w-2xl md:mx-auto md:pb-8" style={{ bottom: "4rem" }}>
 
       {/* ── ВЕРХНЯЯ ПОЛОВИНА: видео + кнопка ── */}
-      <div className="flex-shrink-0 bg-background" style={{ height: "50%" }}>
+      <div className="flex-shrink-0 bg-background md:h-auto" style={{ height: "50%" }}>
         {/* Кнопка назад */}
         <div className="px-4 pt-2 pb-1">
           <button
@@ -94,9 +94,9 @@ export default function ProductPage({ productId, addToCart, onBack, onSellerClic
           </button>
         </div>
 
-        {/* Медиа — занимает всё оставшееся место в верхней половине */}
-        <div className="px-4 relative" style={{ height: "calc(100% - 5.5rem)" }}>
-          <div className="w-full h-full rounded-xl overflow-hidden bg-secondary relative border border-border">
+        {/* Медиа */}
+        <div className="px-4 relative md:h-auto" style={{ height: "calc(100% - 5.5rem)" }}>
+          <div className="w-full h-full md:h-auto md:aspect-[4/3] md:max-h-[480px] rounded-xl overflow-hidden bg-secondary relative border border-border">
             {showVideo && videoUrl ? (
               <video src={videoUrl} autoPlay loop muted playsInline controls className="w-full h-full object-cover" />
             ) : product.images.length > 0 ? (
@@ -144,7 +144,7 @@ export default function ProductPage({ productId, addToCart, onBack, onSellerClic
       </div>
 
       {/* ── НИЖНЯЯ ПОЛОВИНА: скролл ── */}
-      <div className="flex-1 overflow-y-auto bg-background border-t border-border">
+      <div className="flex-1 overflow-y-auto md:overflow-visible bg-background border-t border-border">
         <div className="px-4 py-3 pb-6">
           {/* Название и цена */}
           <div className="flex items-start justify-between gap-2 mb-3">
