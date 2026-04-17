@@ -63,11 +63,16 @@ export default function ProductPage({ productId, addToCart, onBack, onSellerClic
     .filter(p => p.id !== product.id)
     .slice(0, 4);
 
-  const handleAdd = () => {
+  const hasWholesale = product.wholesalePrice != null && product.wholesalePrice > 0;
+  const retailPrice = hasWholesale
+    ? Math.round(product.wholesalePrice! * (1 + (product.retailMarkupPct ?? 0) / 100))
+    : product.price;
+
+  const handleAdd = (priceOverride?: number) => {
     addToCart({
       id: product.id,
       name: product.name,
-      price: product.price,
+      price: priceOverride ?? product.price,
       image: product.images[0] ?? "",
       fromCityCode: product.fromCityCode ?? 0,
       weightG: product.weightG ?? 500,
@@ -129,17 +134,44 @@ export default function ProductPage({ productId, addToCart, onBack, onSellerClic
           </div>
         </div>
 
-        {/* Кнопка В корзину */}
-        <div className="px-4 pt-2 pb-1">
-          <button
-            onClick={handleAdd}
-            className={`w-full flex items-center justify-center gap-2 font-semibold py-3 rounded-xl transition-all ${
-              added ? "bg-green-500 text-white" : "bg-primary text-primary-foreground hover:opacity-90"
-            }`}
-          >
-            <Icon name={added ? "Check" : "ShoppingCart"} size={18} />
-            {added ? "Добавлено в корзину!" : "В корзину"}
-          </button>
+        {/* Кнопки В корзину */}
+        <div className="px-4 pt-2 pb-1 space-y-2">
+          {hasWholesale ? (
+            <>
+              <button
+                onClick={() => handleAdd(product.wholesalePrice!)}
+                className={`w-full flex items-center justify-between px-5 py-3 rounded-xl font-semibold transition-all ${
+                  added ? "bg-green-500 text-white" : "bg-primary text-primary-foreground hover:opacity-90"
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  <Icon name={added ? "Check" : "ShoppingBag"} size={18} />
+                  {added ? "Добавлено!" : "Купить оптом"}
+                </span>
+                <span className="font-oswald text-lg">{product.wholesalePrice!.toLocaleString("ru")} ₽</span>
+              </button>
+              <button
+                onClick={() => handleAdd(retailPrice)}
+                className="w-full flex items-center justify-between px-5 py-3 rounded-xl font-semibold border border-border bg-secondary text-foreground hover:border-primary/40 transition-all"
+              >
+                <span className="flex items-center gap-2 text-sm">
+                  <Icon name="ShoppingCart" size={16} />
+                  Купить в розницу
+                </span>
+                <span className="font-oswald text-lg">{retailPrice.toLocaleString("ru")} ₽</span>
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => handleAdd()}
+              className={`w-full flex items-center justify-center gap-2 font-semibold py-3 rounded-xl transition-all ${
+                added ? "bg-green-500 text-white" : "bg-primary text-primary-foreground hover:opacity-90"
+              }`}
+            >
+              <Icon name={added ? "Check" : "ShoppingCart"} size={18} />
+              {added ? "Добавлено в корзину!" : "В корзину"}
+            </button>
+          )}
         </div>
       </div>
 
@@ -152,7 +184,18 @@ export default function ProductPage({ productId, addToCart, onBack, onSellerClic
               <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full inline-block mb-1">{product.category}</span>
               <h1 className="font-oswald text-xl font-semibold text-foreground leading-tight">{product.name}</h1>
             </div>
-            <span className="font-oswald text-2xl font-bold text-foreground flex-shrink-0">{product.price.toLocaleString("ru")} ₽</span>
+            <div className="flex-shrink-0 text-right">
+              {hasWholesale ? (
+                <>
+                  <div className="text-xs text-muted-foreground">опт / розница</div>
+                  <span className="font-oswald text-xl font-bold text-foreground">
+                    {product.wholesalePrice!.toLocaleString("ru")} / {retailPrice.toLocaleString("ru")} ₽
+                  </span>
+                </>
+              ) : (
+                <span className="font-oswald text-2xl font-bold text-foreground">{product.price.toLocaleString("ru")} ₽</span>
+              )}
+            </div>
           </div>
 
           {product.description && (

@@ -48,6 +48,9 @@ export default function DashboardProductsTab({ warehouses }: Props) {
   const [fCitySuggestions, setFCitySuggestions] = useState<CdekCity[]>([]);
   const [fCityLoading, setFCityLoading] = useState(false);
 
+  const [fWholesalePrice, setFWholesalePrice] = useState("");
+  const [fRetailMarkup, setFRetailMarkup] = useState("0");
+
   // Видео-товар
   const [fVideoUrl, setFVideoUrl] = useState<string | null>(null);
   const [fVideoBlobUrl, setFVideoBlobUrl] = useState<string | null>(null);
@@ -163,6 +166,7 @@ export default function DashboardProductsTab({ warehouses }: Props) {
     setFWeightG("500"); setFLengthCm("20"); setFWidthCm("15"); setFHeightCm("10");
     setFCdek(true); setFNalog(false); setFFitting(false);
     setFInStock("1"); setFFromCityCode(""); setFFromCityName(""); setFCityQuery(""); setFCitySuggestions([]);
+    setFWholesalePrice(""); setFRetailMarkup("0");
     setFVideoUrl(null);
     if (fVideoBlobUrl) { URL.revokeObjectURL(fVideoBlobUrl); setFVideoBlobUrl(null); }
   };
@@ -201,6 +205,8 @@ export default function DashboardProductsTab({ warehouses }: Props) {
     setFCityQuery(cityName);
     setFCitySuggestions([]);
     setFVideoUrl((p as { videoUrl?: string }).videoUrl ?? null);
+    setFWholesalePrice(p.wholesalePrice != null ? String(p.wholesalePrice) : "");
+    setFRetailMarkup(String(p.retailMarkupPct ?? 0));
     setFVideoBlobUrl(null);
     setShowForm(true);
   };
@@ -212,6 +218,7 @@ export default function DashboardProductsTab({ warehouses }: Props) {
     if (!fPrice.trim() || isNaN(priceNum) || priceNum <= 0) { setFError("Введите корректную цену"); return; }
     if (fCdek && !fFromCityCode) { setFError("Укажите склад отправления для доставки СДЭК"); return; }
 
+    const wholesaleNum = fWholesalePrice.trim() ? Number(fWholesalePrice.replace(/\s/g, "").replace(",", ".")) : null;
     const extraFields = {
       weightG: Number(fWeightG) || 500,
       lengthCm: Number(fLengthCm) || 20,
@@ -223,6 +230,8 @@ export default function DashboardProductsTab({ warehouses }: Props) {
       fromCityCode: fFromCityCode,
       fromCityName: fFromCityName,
       inStock: Number(fInStock) || 1,
+      wholesalePrice: wholesaleNum,
+      retailMarkupPct: Number(fRetailMarkup) || 0,
     };
 
     if (editId) {
@@ -396,6 +405,35 @@ export default function DashboardProductsTab({ warehouses }: Props) {
                     {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
+              </div>
+
+              {/* Оптовые цены */}
+              <div className="bg-secondary/60 border border-border rounded-xl p-3 space-y-3">
+                <p className="text-xs font-medium text-foreground flex items-center gap-1.5">
+                  <Icon name="Layers" size={13} className="text-primary" />
+                  Оптовые цены (необязательно)
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Оптовая цена, ₽</label>
+                    <input value={fWholesalePrice} onChange={e => setFWholesalePrice(e.target.value)}
+                      placeholder="Не указана" inputMode="decimal"
+                      className="w-full bg-card border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Наценка для розницы, %</label>
+                    <input value={fRetailMarkup} onChange={e => setFRetailMarkup(e.target.value.replace(/\D/g, ""))}
+                      placeholder="0" inputMode="numeric"
+                      className="w-full bg-card border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors" />
+                  </div>
+                </div>
+                {fWholesalePrice && Number(fRetailMarkup) > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Розничная цена: <span className="text-foreground font-medium">
+                      {Math.round(Number(fWholesalePrice.replace(/\s/g, "").replace(",", ".")) * (1 + Number(fRetailMarkup) / 100)).toLocaleString("ru")} ₽
+                    </span>
+                  </p>
+                )}
               </div>
 
               {/* Описание */}

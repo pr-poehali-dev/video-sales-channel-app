@@ -42,6 +42,8 @@ export interface StoreProduct {
   fromCityCode?: string;
   fromCityName?: string;
   videoUrl?: string;
+  wholesalePrice?: number | null;
+  retailMarkupPct?: number;
 }
 
 export interface StoreStream {

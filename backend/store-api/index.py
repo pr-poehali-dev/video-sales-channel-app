@@ -365,8 +365,8 @@ def handler(event: dict, context) -> dict:
             cur.execute("""
                 INSERT INTO products (id,name,price,category,description,images,seller_id,seller_name,seller_avatar,
                     in_stock,weight_g,length_cm,width_cm,height_cm,cdek_enabled,nalog_enabled,fitting_enabled,
-                    from_city_code,from_city_name,video_url)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING *
+                    from_city_code,from_city_name,video_url,wholesale_price,retail_markup_pct)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING *
             """, (pid, body["name"], body["price"], body.get("category",""),
                   body.get("description",""), safe_images,
                   body["seller_id"], body["seller_name"], body.get("seller_avatar",""),
@@ -376,7 +376,9 @@ def handler(event: dict, context) -> dict:
                   body.get("cdek_enabled",True), body.get("nalog_enabled",False),
                   body.get("fitting_enabled",False),
                   body.get("from_city_code",0), body.get("from_city_name",""),
-                  body.get("video_url","")))
+                  body.get("video_url",""),
+                  body.get("wholesale_price") or None,
+                  body.get("retail_markup_pct", 0)))
             conn.commit()
             return ok(_fmt_product(cur.fetchone()), 201)
 
@@ -386,7 +388,8 @@ def handler(event: dict, context) -> dict:
             for f in ("name","price","category","description","images","in_stock",
                       "weight_g","length_cm","width_cm","height_cm",
                       "cdek_enabled","nalog_enabled","fitting_enabled",
-                      "from_city_code","from_city_name","video_url"):
+                      "from_city_code","from_city_name","video_url",
+                      "wholesale_price","retail_markup_pct"):
                 if f in body:
                     fields.append(f"{f}=%s")
                     vals.append(body[f])
@@ -912,8 +915,10 @@ def _fmt_product(r):
         "fittingEnabled": r.get("fitting_enabled", False),
         "fromCityCode":   r.get("from_city_code", 0),
         "fromCityName":   r.get("from_city_name", ""),
-        "videoUrl":       r.get("video_url") or None,
-        "createdAt":      r["created_at"].strftime("%d %B %Y") if r["created_at"] else "",
+        "videoUrl":          r.get("video_url") or None,
+        "wholesalePrice":    float(r["wholesale_price"]) if r.get("wholesale_price") is not None else None,
+        "retailMarkupPct":   r.get("retail_markup_pct") or 0,
+        "createdAt":         r["created_at"].strftime("%d %B %Y") if r["created_at"] else "",
     }
 
 def _fmt_stream(r):

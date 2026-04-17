@@ -55,12 +55,17 @@ export default function ProductCard({ product, addToCart, onClick }: ProductCard
   const videoUrl = product.videoUrl || null;
   const inStock = product.inStock ?? 99;
 
-  const handleAdd = (e: React.MouseEvent) => {
+  const hasWholesale = product.wholesalePrice != null && product.wholesalePrice > 0;
+  const retailPrice = hasWholesale
+    ? Math.round(product.wholesalePrice! * (1 + (product.retailMarkupPct ?? 0) / 100))
+    : product.price;
+
+  const handleAdd = (e: React.MouseEvent, priceOverride?: number) => {
     e.stopPropagation();
     addToCart({
       id: product.id,
       name: product.name,
-      price: product.price,
+      price: priceOverride ?? product.price,
       image: coverImage ?? "",
       fromCityCode: product.fromCityCode ?? 0,
       weightG: product.weightG ?? 500,
@@ -109,23 +114,44 @@ export default function ProductCard({ product, addToCart, onClick }: ProductCard
         <p className="text-sm font-medium text-foreground line-clamp-2 leading-snug mb-1">{product.name}</p>
         <p className="text-xs text-muted-foreground mb-2">{product.sellerName}</p>
 
-        <div className="flex items-center justify-between">
-          <span className="font-oswald text-base font-semibold text-foreground">
-            {product.price.toLocaleString("ru")} ₽
-          </span>
-          <button
-            onClick={handleAdd}
-            disabled={inStock === 0}
-            className={`flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
-              added
-                ? "bg-green-500/20 text-green-600"
-                : "bg-primary/15 text-primary hover:bg-primary hover:text-primary-foreground"
-            }`}
-          >
-            <Icon name={added ? "Check" : "Plus"} size={13} />
-            {added ? "Добавлено" : inStock === 0 ? "Нет в наличии" : "В корзину"}
-          </button>
-        </div>
+        {hasWholesale ? (
+          <div className="space-y-1.5" onClick={e => e.stopPropagation()}>
+            <button
+              onClick={e => handleAdd(e, product.wholesalePrice!)}
+              disabled={inStock === 0}
+              className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-primary/10 hover:bg-primary hover:text-primary-foreground transition-all disabled:opacity-40 disabled:cursor-not-allowed group/btn"
+            >
+              <span className="text-xs font-medium text-primary group-hover/btn:text-primary-foreground">{added ? "Добавлено!" : "Оптом"}</span>
+              <span className="font-oswald text-sm font-semibold text-foreground group-hover/btn:text-primary-foreground">{product.wholesalePrice!.toLocaleString("ru")} ₽</span>
+            </button>
+            <button
+              onClick={e => handleAdd(e, retailPrice)}
+              disabled={inStock === 0}
+              className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-secondary hover:bg-primary hover:text-primary-foreground transition-all disabled:opacity-40 disabled:cursor-not-allowed group/btn2"
+            >
+              <span className="text-xs font-medium text-muted-foreground group-hover/btn2:text-primary-foreground">{added ? "Добавлено!" : "В розницу"}</span>
+              <span className="font-oswald text-sm font-semibold text-foreground group-hover/btn2:text-primary-foreground">{retailPrice.toLocaleString("ru")} ₽</span>
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between">
+            <span className="font-oswald text-base font-semibold text-foreground">
+              {product.price.toLocaleString("ru")} ₽
+            </span>
+            <button
+              onClick={handleAdd}
+              disabled={inStock === 0}
+              className={`flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
+                added
+                  ? "bg-green-500/20 text-green-600"
+                  : "bg-primary/15 text-primary hover:bg-primary hover:text-primary-foreground"
+              }`}
+            >
+              <Icon name={added ? "Check" : "Plus"} size={13} />
+              {added ? "Добавлено" : inStock === 0 ? "Нет в наличии" : "В корзину"}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
