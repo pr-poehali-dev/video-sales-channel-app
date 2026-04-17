@@ -214,11 +214,10 @@ export default function DashboardProductsTab({ warehouses }: Props) {
   const handleSave = () => {
     setFError(null);
     if (!fName.trim()) { setFError("Введите название товара"); return; }
-    const priceNum = Number(fPrice.replace(/\s/g, "").replace(",", "."));
-    if (!fPrice.trim() || isNaN(priceNum) || priceNum <= 0) { setFError("Введите корректную цену"); return; }
-    if (fCdek && !fFromCityCode) { setFError("Укажите склад отправления для доставки СДЭК"); return; }
-
     const wholesaleNum = fWholesalePrice.trim() ? Number(fWholesalePrice.replace(/\s/g, "").replace(",", ".")) : null;
+    if (!wholesaleNum || wholesaleNum <= 0) { setFError("Введите оптовую цену"); return; }
+    const priceNum = Number(fPrice.replace(/\s/g, "").replace(",", ".")) || wholesaleNum;
+    if (fCdek && !fFromCityCode) { setFError("Укажите склад отправления для доставки СДЭК"); return; }
     const extraFields = {
       weightG: Number(fWeightG) || 500,
       lengthCm: Number(fLengthCm) || 20,
@@ -390,50 +389,65 @@ export default function DashboardProductsTab({ warehouses }: Props) {
                   className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors" />
               </div>
 
-              {/* Цена и категория */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Цена, ₽ *</label>
-                  <input value={fPrice} onChange={e => setFPrice(e.target.value)}
-                    placeholder="1990" inputMode="decimal"
-                    className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors" />
-                </div>
-                <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Категория</label>
-                  <select value={fCategory} onChange={e => setFCategory(e.target.value)}
-                    className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground outline-none focus:border-primary/50 transition-colors">
-                    {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                </div>
+              {/* Категория */}
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Категория</label>
+                <select value={fCategory} onChange={e => setFCategory(e.target.value)}
+                  className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground outline-none focus:border-primary/50 transition-colors">
+                  {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
               </div>
 
-              {/* Оптовые цены */}
+              {/* Цены */}
               <div className="bg-secondary/60 border border-border rounded-xl p-3 space-y-3">
                 <p className="text-xs font-medium text-foreground flex items-center gap-1.5">
                   <Icon name="Layers" size={13} className="text-primary" />
-                  Оптовые цены (необязательно)
+                  Цены
                 </p>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">Оптовая цена, ₽</label>
-                    <input value={fWholesalePrice} onChange={e => setFWholesalePrice(e.target.value)}
-                      placeholder="Не указана" inputMode="decimal"
+                    <label className="text-xs text-muted-foreground mb-1 block">Оптовая цена, ₽ *</label>
+                    <input value={fWholesalePrice} onChange={e => {
+                      setFWholesalePrice(e.target.value);
+                      if (!fRetailMarkup || fRetailMarkup === "0") {
+                        setFPrice(e.target.value);
+                      } else {
+                        const w = Number(e.target.value.replace(/\s/g, "").replace(",", "."));
+                        if (w > 0) setFPrice(String(Math.round(w * (1 + Number(fRetailMarkup) / 100))));
+                      }
+                    }}
+                      placeholder="400" inputMode="decimal"
                       className="w-full bg-card border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors" />
                   </div>
                   <div>
                     <label className="text-xs text-muted-foreground mb-1 block">Наценка для розницы, %</label>
-                    <input value={fRetailMarkup} onChange={e => setFRetailMarkup(e.target.value.replace(/\D/g, ""))}
+                    <input value={fRetailMarkup} onChange={e => {
+                      const v = e.target.value.replace(/\D/g, "");
+                      setFRetailMarkup(v);
+                      const w = Number(fWholesalePrice.replace(/\s/g, "").replace(",", "."));
+                      if (w > 0) {
+                        setFPrice(String(Math.round(w * (1 + Number(v) / 100))));
+                      }
+                    }}
                       placeholder="0" inputMode="numeric"
                       className="w-full bg-card border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors" />
                   </div>
                 </div>
-                {fWholesalePrice && Number(fRetailMarkup) > 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    Розничная цена: <span className="text-foreground font-medium">
-                      {Math.round(Number(fWholesalePrice.replace(/\s/g, "").replace(",", ".")) * (1 + Number(fRetailMarkup) / 100)).toLocaleString("ru")} ₽
-                    </span>
-                  </p>
-                )}
+                {/* Итоговые цены — превью */}
+                <div className="flex gap-2">
+                  <div className="flex-1 bg-card rounded-lg px-3 py-2 text-center">
+                    <p className="text-[10px] text-muted-foreground mb-0.5">Оптом</p>
+                    <p className="font-oswald text-base font-semibold text-foreground">
+                      {fWholesalePrice ? `${Number(fWholesalePrice.replace(/\s/g,"").replace(",",".")).toLocaleString("ru")} ₽` : "—"}
+                    </p>
+                  </div>
+                  <div className="flex-1 bg-primary/10 rounded-lg px-3 py-2 text-center">
+                    <p className="text-[10px] text-muted-foreground mb-0.5">В розницу</p>
+                    <p className="font-oswald text-base font-semibold text-primary">
+                      {fPrice && Number(fPrice) > 0 ? `${Number(fPrice).toLocaleString("ru")} ₽` : "—"}
+                    </p>
+                  </div>
+                </div>
               </div>
 
               {/* Описание */}
