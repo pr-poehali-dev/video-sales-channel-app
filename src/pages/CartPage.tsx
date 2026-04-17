@@ -23,10 +23,28 @@ interface SelectedDelivery {
 type PaymentMethod = "sbp" | "card" | null;
 type DeliveryType = "cdek_pvz" | "cdek_courier";
 
+const WHOLESALE_MIN = 5000;
+
 function getItemPrice(item: CartItem, mode: "retail" | "wholesale"): number {
   const hasWholesale = item.wholesalePrice != null && item.wholesalePrice > 0;
   if (!hasWholesale) return item.price;
   if (mode === "wholesale") return item.wholesalePrice!;
+  return Math.round(item.wholesalePrice! * (1 + (item.retailMarkupPct ?? 0) / 100));
+}
+
+// Достигнут ли оптовый минимум у продавца (по оптовым ценам всех его товаров)
+function isSellerWholesaleReached(items: CartItem[]): boolean {
+  const total = items.reduce((s, c) => {
+    const wp = c.wholesalePrice;
+    return s + (wp != null && wp > 0 ? wp : c.price) * c.qty;
+  }, 0);
+  return total >= WHOLESALE_MIN;
+}
+
+function getEffectiveItemPrice(item: CartItem, sellerWholesaleReached: boolean): number {
+  const hasWholesale = item.wholesalePrice != null && item.wholesalePrice > 0;
+  if (!hasWholesale) return item.price;
+  if (sellerWholesaleReached) return item.wholesalePrice!;
   return Math.round(item.wholesalePrice! * (1 + (item.retailMarkupPct ?? 0) / 100));
 }
 
@@ -129,7 +147,19 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
     });
   }, [delivery.city, cartQtyKey, recalcSellerDelivery]);
 
-  const goodsTotal = selectedCart.reduce((s, c) => s + getItemPrice(c, mode) * c.qty, 0);
+  // goodsTotal с учётом оптовых цен по каждому продавцу
+  const goodsTotal = (() => {
+    const byseller: Record<string, CartItem[]> = {};
+    selectedCart.forEach(c => {
+      const sid = c.sellerId || "__unknown__";
+      if (!byseller[sid]) byseller[sid] = [];
+      byseller[sid].push(c);
+    });
+    return Object.entries(byseller).reduce((total, [, items]) => {
+      const wr = isSellerWholesaleReached(items);
+      return total + items.reduce((s, c) => s + getEffectiveItemPrice(c, wr) * c.qty, 0);
+    }, 0);
+  })();
   // Сумма доставки только по продавцам с выбранными товарами
   const selectedSellerIds = new Set(selectedCart.map(c => c.sellerId || "__unknown__"));
   const sellerDeliveryTotal = Object.entries(sellerDeliveryCosts)
@@ -355,9 +385,10 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
                 {groups.map(group => {
                   const allSellerSelected = group.items.every(i => selectedIds.has(i.id));
                   const someSellerSelected = group.items.some(i => selectedIds.has(i.id));
+                  const wholesaleReached = isSellerWholesaleReached(group.items);
                   const selectedGroupTotal = group.items
                     .filter(i => selectedIds.has(i.id))
-                    .reduce((s, c) => s + getItemPrice(c, mode) * c.qty, 0);
+                    .reduce((s, c) => s + getEffectiveItemPrice(c, wholesaleReached) * c.qty, 0);
                   return (
                     <div key={group.sellerId} className="bg-card border border-border rounded-xl overflow-hidden">
                       {/* Шапка продавца */}
@@ -380,14 +411,13 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
                       </div>
                       {/* Оптовый минимум по продавцу */}
                       {(() => {
-                        const WHOLESALE_MIN = 5000;
                         const sellerWholesaleTotal = group.items.reduce((s, c) => {
                           const wp = c.wholesalePrice;
                           return s + (wp != null && wp > 0 ? wp : c.price) * c.qty;
                         }, 0);
                         const remaining = WHOLESALE_MIN - sellerWholesaleTotal;
                         const pct = Math.min(100, Math.round((sellerWholesaleTotal / WHOLESALE_MIN) * 100));
-                        const reached = remaining <= 0;
+                        const reached = wholesaleReached;
                         return (
                           <div className={`px-4 py-2 border-b border-border flex items-center gap-3 ${reached ? "bg-primary/5" : "bg-secondary/30"}`}>
                             <Icon name="Layers" size={12} className={reached ? "text-primary flex-shrink-0" : "text-muted-foreground flex-shrink-0"} />
@@ -436,9 +466,14 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
                               </div>
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium text-foreground line-clamp-2">{item.name}</p>
-                                <p className="font-oswald text-base font-semibold text-foreground mt-0.5">
-                                  {getItemPrice(item, mode).toLocaleString("ru")} ₽
-                                </p>
+                                <div className="flex items-baseline gap-1.5 mt-0.5">
+                                  <p className="font-oswald text-base font-semibold text-foreground">
+                                    {getEffectiveItemPrice(item, wholesaleReached).toLocaleString("ru")} ₽
+                                  </p>
+                                  {wholesaleReached && item.wholesalePrice != null && item.wholesalePrice > 0 && (
+                                    <span className="text-[10px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">опт</span>
+                                  )}
+                                </div>
                               </div>
                               <div className="flex items-center gap-1.5 flex-shrink-0">
                                 <button onClick={() => updateQty(item.id, item.qty - 1)}
@@ -464,7 +499,7 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
                       {(() => {
                         const sellerGoods = group.items
                           .filter(i => selectedIds.has(i.id))
-                          .reduce((s, c) => s + getItemPrice(c, mode) * c.qty, 0);
+                          .reduce((s, c) => s + getEffectiveItemPrice(c, wholesaleReached) * c.qty, 0);
                         const sellerWeightG = group.items
                           .filter(i => selectedIds.has(i.id))
                           .reduce((s, c) => s + c.qty * (c.weightG ?? 300), 0);
