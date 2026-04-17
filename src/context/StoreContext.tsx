@@ -161,6 +161,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       from_city_code: (data as { fromCityCode?: string }).fromCityCode,
       from_city_name: (data as { fromCityName?: string }).fromCityName,
       video_url: data.videoUrl ?? "",
+      wholesale_price: (data as { wholesalePrice?: number | null }).wholesalePrice ?? null,
+      retail_markup_pct: (data as { retailMarkupPct?: number }).retailMarkupPct ?? 0,
     });
     setProducts(prev => [p, ...prev]);
     return p;
@@ -186,6 +188,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ...(d.fromCityCode !== undefined && { from_city_code: d.fromCityCode }),
       ...(d.fromCityName !== undefined && { from_city_name: d.fromCityName }),
       ...(d.videoUrl !== undefined && { video_url: d.videoUrl }),
+      ...(d.wholesalePrice !== undefined && { wholesale_price: d.wholesalePrice }),
+      ...(d.retailMarkupPct !== undefined && { retail_markup_pct: d.retailMarkupPct }),
     });
     setProducts(prev => prev.map(p => p.id === id ? updated : p));
   }, []);
