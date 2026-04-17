@@ -95,27 +95,20 @@ def search_cities(query: str) -> list:
 
 FROM_CITY_GUID = "7dfa745e-aa19-4688-b121-b655c11e482f"  # Краснодар ФИАС
 
-def calc_tariffs(city_code: str, weight_g: int, from_city_code: str = "", from_city_guid: str = "") -> list:
+def calc_tariffs(city_code: str, weight_g: int, from_city_code: str = "", from_city_guid: str = "", city_guid: str = "") -> list:
     """Расчёт доставки через ApiShip.
-    city_code = название города назначения.
-    ApiShip требует cityGuid (ФИАС) для from и to.
+    ApiShip принимает ТОЛЬКО cityGuid (ФИАС UUID) — строковые названия городов не работают.
+    from_city_guid: GUID склада продавца (или Краснодара по умолчанию).
+    city_guid: GUID города назначения.
     """
-    def addr_block(name: str, guid: str = "", default_name: str = "", default_guid: str = "") -> dict:
-        n = name.strip() if name else ""
-        g = guid.strip() if guid else ""
-        if not n and not g:
-            n = default_name
-            g = default_guid
-        b = {}
-        if g:
-            b["cityGuid"] = g
-        if n and not g:
-            b["city"] = n
-        return b
+    # from: GUID склада или Краснодар по умолчанию
+    from_block = {"cityGuid": from_city_guid.strip() if from_city_guid and from_city_guid.strip() else FROM_CITY_GUID}
 
-    # from: используем сохранённый GUID склада, или GUID Краснодара по умолчанию
-    from_block = addr_block(from_city_code, from_city_guid, FROM_CITY_NAME, FROM_CITY_GUID)
-    to_block = addr_block(city_code, "", "", "")
+    # to: GUID города назначения (обязателен)
+    to_guid = city_guid.strip() if city_guid and city_guid.strip() else ""
+    if not to_guid:
+        return []
+    to_block = {"cityGuid": to_guid}
 
     payload = {
         "from": from_block,
@@ -350,7 +343,16 @@ def handler(event: dict, context) -> dict:
                 except Exception:
                     pass
 
-            tariffs = calc_tariffs(city_code, weight_g, from_city, from_guid)
+            # Если GUID склада не сохранён — ищем его через API по названию города
+            if not from_guid and from_city:
+                try:
+                    cities = search_cities(from_city)
+                    if cities:
+                        from_guid = cities[0].get("guid", "")
+                except Exception:
+                    pass
+
+            tariffs = calc_tariffs(city_code, weight_g, from_city, from_guid, city_guid)
             return {"statusCode": 200, "headers": headers, "body": json.dumps(tariffs, ensure_ascii=False)}
 
         if action == "get_pvz":
