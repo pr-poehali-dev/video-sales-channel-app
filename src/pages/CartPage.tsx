@@ -201,6 +201,43 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
       <div className="flex flex-col lg:flex-row gap-6">
         {/* Левая колонка: товары + контакты + доставка */}
         <div className="flex-1 space-y-4">
+
+          {/* Баннер оптового минимума */}
+          {(() => {
+            const WHOLESALE_MIN = 5000;
+            const wholesaleTotal = cart.reduce((s, c) => {
+              const wp = c.wholesalePrice;
+              return s + (wp != null && wp > 0 ? wp : c.price) * c.qty;
+            }, 0);
+            const remaining = WHOLESALE_MIN - wholesaleTotal;
+            const pct = Math.min(100, Math.round((wholesaleTotal / WHOLESALE_MIN) * 100));
+            const reached = remaining <= 0;
+            return (
+              <div className={`rounded-xl border px-4 py-3 ${reached ? "bg-primary/10 border-primary/30" : "bg-card border-border"}`}>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-1.5">
+                    <Icon name="Layers" size={14} className={reached ? "text-primary" : "text-muted-foreground"} />
+                    <span className={`text-xs font-semibold ${reached ? "text-primary" : "text-foreground"}`}>
+                      {reached ? "Оптовый минимум достигнут!" : `До оптового заказа осталось ${remaining.toLocaleString("ru")} ₽`}
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-muted-foreground font-medium">{pct}%</span>
+                </div>
+                <div className="w-full bg-secondary rounded-full h-1.5 overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${reached ? "bg-primary" : "bg-primary/50"}`}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+                {!reached && (
+                  <p className="text-[10px] text-muted-foreground mt-1.5">
+                    Минимальная сумма оптового заказа — {WHOLESALE_MIN.toLocaleString("ru")} ₽
+                  </p>
+                )}
+              </div>
+            );
+          })()}
+
           {/* Товары */}
           <div className="space-y-3">
             {cart.map(item => (
