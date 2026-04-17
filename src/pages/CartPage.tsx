@@ -281,6 +281,7 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
               fromCityCode={fromCityCode}
               sellerId={sellerIdForDelivery}
               savedCity={user?.city || ""}
+              savedPvz={user?.savedPvz}
               onSelect={(tariff, city, pvzCode, pvzAddress) => {
                 setDelivery({ tariff, city });
                 setCdekPvzCode(pvzCode);
@@ -290,6 +291,15 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
                   const cityLabel = `${city.city}${city.region ? ", " + city.region : ""}`;
                   updateUser({ city: cityLabel });
                 }
+              }}
+              onClearCity={() => {
+                if (user) updateUser({ city: "", savedPvz: null });
+              }}
+              onClearPvz={() => {
+                if (user) updateUser({ savedPvz: null });
+              }}
+              onSavePvz={(pvz) => {
+                if (user) updateUser({ savedPvz: pvz });
               }}
             />
           </div>

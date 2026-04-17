@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import Icon from "@/components/ui/icon";
 import CdekPvzMap from "@/components/CdekPvzMap";
+import type { SavedPvz } from "@/context/AuthContext";
 
 const APISHIP_URL = "https://functions.poehali.dev/a73e197d-7da4-4945-bd28-4d0de6b02bb7";
 
@@ -36,10 +37,13 @@ interface DeliveryProps {
   fromCityCode?: string;
   sellerId?: string;
   savedCity?: string;
+  savedPvz?: SavedPvz | null;
   onSelect: (tariff: Tariff | null, city: City | null, pvzCode?: string, pvzAddress?: string) => void;
+  onClearCity?: () => void;
+  onClearPvz?: () => void;
+  onSavePvz?: (pvz: SavedPvz) => void;
 }
 
-// Убираем дубли тарифов с одинаковым кодом+именем, берём с наименьшими сроками
 function dedupTariffs(tariffs: Tariff[]): Tariff[] {
   const map = new Map<string, Tariff>();
   for (const t of tariffs) {
@@ -52,18 +56,26 @@ function dedupTariffs(tariffs: Tariff[]): Tariff[] {
   return Array.from(map.values());
 }
 
-// Красивое имя провайдера
 function providerLabel(provider?: string): string {
   const map: Record<string, string> = { cdek: "СДЭК", boxberry: "Boxberry", dpd: "DPD", pochta: "Почта России", iml: "IML", pek: "ПЭК" };
   return map[provider?.toLowerCase() || ""] || (provider?.toUpperCase() ?? "");
 }
 
-// Чистое название тарифа (убираем prefix "CDEK: " и т.п.)
 function cleanTariffName(name: string): string {
   return name.replace(/^[A-Z]+:\s*/i, "").trim();
 }
 
-export default function DeliverySelector({ weightGrams, fromCityCode = "", sellerId = "", savedCity = "", onSelect }: DeliveryProps) {
+export default function DeliverySelector({
+  weightGrams,
+  fromCityCode = "",
+  sellerId = "",
+  savedCity = "",
+  savedPvz = null,
+  onSelect,
+  onClearCity,
+  onClearPvz,
+  onSavePvz,
+}: DeliveryProps) {
   const [query, setQuery] = useState(savedCity || "");
   const [cities, setCities] = useState<City[]>([]);
   const [selectedCity, setSelectedCity] = useState<City | null>(null);
@@ -75,6 +87,7 @@ export default function DeliverySelector({ weightGrams, fromCityCode = "", selle
   const [error, setError] = useState("");
   const [selectedPvz, setSelectedPvz] = useState<PvzPoint | null>(null);
   const [showPvzMap, setShowPvzMap] = useState(false);
+  const [changingCity, setChangingCity] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
 
@@ -98,13 +111,23 @@ export default function DeliverySelector({ weightGrams, fromCityCode = "", selle
       .then(data => {
         const list: City[] = Array.isArray(data) ? data : [];
         if (list.length === 0) return;
-        // Берём первый совпадающий (по имени города)
         const match = list.find(c => savedCity.startsWith(c.city)) ?? list[0];
         selectCity(match);
       })
       .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Восстановление сохранённого ПВЗ после загрузки тарифов
+  useEffect(() => {
+    if (!savedPvz || !selectedCity || selectedPvz) return;
+    if (savedPvz.cityCode !== selectedCity.code) return;
+    setSelectedPvz({ code: savedPvz.code, name: savedPvz.name, address: savedPvz.address, work_time: "", lat: 0, lon: 0, phones: [] });
+    if (selectedTariff) {
+      onSelect(selectedTariff, selectedCity, savedPvz.code, savedPvz.address);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tariffs, savedPvz, selectedCity]);
 
   const searchCities = (q: string) => {
     if (q.length < 2) { setCities([]); setShowDropdown(false); return; }
@@ -137,12 +160,12 @@ export default function DeliverySelector({ weightGrams, fromCityCode = "", selle
     setSelectedCity(city);
     setQuery(`${city.city}${city.region ? ", " + city.region : ""}`);
     setShowDropdown(false);
+    setChangingCity(false);
     setTariffs([]);
     setSelectedTariff(null);
     setSelectedPvz(null);
     setLoadingTariffs(true);
     setError("");
-    // Сообщаем родителю о выбранном городе сразу — для пересчёта доставки по продавцам
     onSelect(null, city);
     const fromParam = fromCityCode ? `&from_city_code=${encodeURIComponent(fromCityCode)}` : "";
     const sellerParam = sellerId ? `&seller_id=${sellerId}` : "";
@@ -160,6 +183,17 @@ export default function DeliverySelector({ weightGrams, fromCityCode = "", selle
       .finally(() => setLoadingTariffs(false));
   };
 
+  const clearCity = () => {
+    setQuery("");
+    setSelectedCity(null);
+    setTariffs([]);
+    setSelectedTariff(null);
+    setSelectedPvz(null);
+    setChangingCity(false);
+    onSelect(null, null);
+    onClearCity?.();
+  };
+
   const selectTariff = (t: Tariff) => {
     setSelectedTariff(t);
     setSelectedPvz(null);
@@ -170,7 +204,6 @@ export default function DeliverySelector({ weightGrams, fromCityCode = "", selle
 
   const isPvz = (t: Tariff) => t.delivery_to === "pvz";
 
-  // Группируем тарифы по типу, берём только самый дешёвый
   const pvzTariffs = tariffs.filter(isPvz).sort((a, b) => a.price - b.price);
   const courierTariffs = tariffs.filter(t => !isPvz(t)).sort((a, b) => a.price - b.price);
   const cheapestPvz = pvzTariffs[0] ?? null;
@@ -179,18 +212,19 @@ export default function DeliverySelector({ weightGrams, fromCityCode = "", selle
   const hasPvz = pvzTariffs.length > 0;
   const hasCourier = courierTariffs.length > 0;
 
-  // Выбранный режим с учётом доступности
   const activeMode = hasPvz && deliveryMode === "pvz" ? "pvz" : hasCourier ? "courier" : hasPvz ? "pvz" : "pvz";
   const activeTariff = activeMode === "pvz" ? cheapestPvz : cheapestCourier;
 
-  // Авто-выбор самого дешёвого тарифа при загрузке
   useEffect(() => {
     if (tariffs.length === 0) return;
     const mode = hasPvz ? "pvz" : "courier";
     setDeliveryMode(mode);
     const best = mode === "pvz" ? cheapestPvz : cheapestCourier;
     if (best) selectTariff(best);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tariffs]);
+
+  const showCityInput = !selectedCity || changingCity;
 
   return (
     <>
@@ -203,57 +237,76 @@ export default function DeliverySelector({ weightGrams, fromCityCode = "", selle
           <span className="text-sm font-medium text-foreground">Доставка</span>
         </div>
 
-        {/* Поиск города */}
-        <div className="relative" ref={wrapRef}>
-          <div className="relative">
-            <Icon name="MapPin" size={15} className={`absolute left-3 flex-shrink-0 text-muted-foreground ${selectedCity ? "top-3.5" : "top-1/2 -translate-y-1/2"}`} />
-            {selectedCity ? (
-              <div className="w-full bg-secondary border border-border rounded-xl pl-9 pr-9 py-2.5 min-h-[42px]">
-                <p className="text-sm text-foreground leading-tight">{selectedCity.city}</p>
-                {selectedCity.region && <p className="text-xs text-muted-foreground leading-tight mt-0.5">{selectedCity.region}</p>}
-              </div>
-            ) : (
+        {/* Город — показываем карточку если выбран, иначе input */}
+        {selectedCity && !changingCity ? (
+          <div className="flex items-start gap-3 bg-secondary border border-border rounded-xl px-4 py-3">
+            <Icon name="MapPin" size={15} className="text-muted-foreground flex-shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-foreground leading-tight">{selectedCity.city}</p>
+              {selectedCity.region && <p className="text-xs text-muted-foreground leading-tight mt-0.5">{selectedCity.region}</p>}
+            </div>
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <button
+                onClick={() => { setChangingCity(true); setQuery(""); }}
+                className="text-xs text-primary hover:text-primary/80 transition-colors px-2 py-1 rounded-lg hover:bg-primary/10"
+              >
+                Сменить
+              </button>
+              <button
+                onClick={clearCity}
+                className="text-muted-foreground hover:text-destructive transition-colors p-1 rounded-lg hover:bg-destructive/10"
+                title="Удалить город"
+              >
+                <Icon name="Trash2" size={13} />
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="relative" ref={wrapRef}>
+            <div className="relative">
+              <Icon name="MapPin" size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <input
                 value={query}
                 onChange={e => handleInput(e.target.value)}
                 onFocus={() => cities.length > 0 && setShowDropdown(true)}
                 placeholder="Введите город доставки..."
+                autoFocus={changingCity}
                 className="w-full bg-secondary border border-border rounded-xl pl-9 pr-9 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors"
               />
-            )}
-            {loadingCities && (
-              <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                <div className="w-4 h-4 border-2 border-primary/40 border-t-primary rounded-full animate-spin" />
+              {loadingCities && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <div className="w-4 h-4 border-2 border-primary/40 border-t-primary rounded-full animate-spin" />
+                </div>
+              )}
+              {changingCity && !loadingCities && (
+                <button
+                  onClick={() => { setChangingCity(false); }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <Icon name="X" size={14} />
+                </button>
+              )}
+            </div>
+
+            {showDropdown && cities.length > 0 && (
+              <div className="absolute z-50 top-full mt-1 w-full bg-card border border-border rounded-xl shadow-xl overflow-hidden animate-scale-in">
+                {cities.map(city => (
+                  <button
+                    key={city.code}
+                    onMouseDown={() => selectCity(city)}
+                    className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-secondary transition-colors text-left"
+                  >
+                    <Icon name="MapPin" size={13} className="text-muted-foreground flex-shrink-0" />
+                    <div>
+                      <span className="text-sm text-foreground">{city.city}</span>
+                      {city.region && <span className="text-xs text-muted-foreground ml-1.5">{city.region}</span>}
+                    </div>
+                  </button>
+                ))}
               </div>
             )}
-            {selectedCity && !loadingCities && (
-              <button
-                onClick={() => { setQuery(""); setSelectedCity(null); setTariffs([]); setSelectedTariff(null); setSelectedPvz(null); onSelect(null, null); }}
-                className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
-              >
-                <Icon name="X" size={14} />
-              </button>
-            )}
           </div>
-
-          {showDropdown && cities.length > 0 && (
-            <div className="absolute z-50 top-full mt-1 w-full bg-card border border-border rounded-xl shadow-xl overflow-hidden animate-scale-in">
-              {cities.map(city => (
-                <button
-                  key={city.code}
-                  onMouseDown={() => selectCity(city)}
-                  className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-secondary transition-colors text-left"
-                >
-                  <Icon name="MapPin" size={13} className="text-muted-foreground flex-shrink-0" />
-                  <div>
-                    <span className="text-sm text-foreground">{city.city}</span>
-                    {city.region && <span className="text-xs text-muted-foreground ml-1.5">{city.region}</span>}
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        )}
 
         {loadingTariffs && (
           <div className="flex items-center gap-2 py-3 text-sm text-muted-foreground">
@@ -307,7 +360,7 @@ export default function DeliverySelector({ weightGrams, fromCityCode = "", selle
               )}
             </div>
 
-            {/* Один самый дешёвый тариф */}
+            {/* Тариф */}
             {activeTariff && (
               <div className="flex items-center justify-between px-4 py-3 rounded-xl border border-primary bg-primary/8">
                 <div>
@@ -323,27 +376,45 @@ export default function DeliverySelector({ weightGrams, fromCityCode = "", selle
               </div>
             )}
 
-            {/* Кнопка выбора ПВЗ (если активный режим — самовывоз) */}
+            {/* ПВЗ — кнопка выбора или карточка выбранного */}
             {activeMode === "pvz" && activeTariff && selectedCity && (
-              <button
-                onClick={() => setShowPvzMap(true)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition-all ${
-                  selectedPvz ? "border-primary bg-primary/8" : "border-dashed border-border hover:border-primary/40"
-                }`}
-              >
-                <Icon name="MapPin" size={16} className={selectedPvz ? "text-primary" : "text-muted-foreground"} />
-                <div className="flex-1 text-left">
-                  {selectedPvz ? (
-                    <>
-                      <p className="text-xs text-primary font-medium">Пункт выбран</p>
-                      <p className="text-xs text-muted-foreground">{selectedPvz.address}</p>
-                    </>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">Выбрать пункт выдачи на карте</p>
-                  )}
+              selectedPvz ? (
+                <div className="flex items-start gap-3 px-4 py-3 rounded-xl border border-primary bg-primary/8">
+                  <Icon name="MapPin" size={16} className="text-primary flex-shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-primary font-medium">Пункт выбран</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{selectedPvz.address}</p>
+                  </div>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <button
+                      onClick={() => setShowPvzMap(true)}
+                      className="text-xs text-primary hover:text-primary/80 transition-colors px-2 py-1 rounded-lg hover:bg-primary/10"
+                    >
+                      Сменить
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedPvz(null);
+                        if (selectedTariff) onSelect(selectedTariff, selectedCity, undefined);
+                        onClearPvz?.();
+                      }}
+                      className="text-muted-foreground hover:text-destructive transition-colors p-1 rounded-lg hover:bg-destructive/10"
+                      title="Удалить ПВЗ"
+                    >
+                      <Icon name="Trash2" size={13} />
+                    </button>
+                  </div>
                 </div>
-                <Icon name="ChevronRight" size={14} className="text-muted-foreground flex-shrink-0" />
-              </button>
+              ) : (
+                <button
+                  onClick={() => setShowPvzMap(true)}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-dashed border-border hover:border-primary/40 transition-all"
+                >
+                  <Icon name="MapPin" size={16} className="text-muted-foreground" />
+                  <p className="flex-1 text-left text-sm text-muted-foreground">Выбрать пункт выдачи на карте</p>
+                  <Icon name="ChevronRight" size={14} className="text-muted-foreground flex-shrink-0" />
+                </button>
+              )
             )}
           </div>
         )}
@@ -358,6 +429,13 @@ export default function DeliverySelector({ weightGrams, fromCityCode = "", selle
             setSelectedPvz(pvz);
             setShowPvzMap(false);
             if (selectedTariff) onSelect(selectedTariff, selectedCity, pvz.code, pvz.address);
+            onSavePvz?.({
+              code: pvz.code,
+              name: pvz.name,
+              address: pvz.address,
+              cityCode: selectedCity.code,
+              cityName: `${selectedCity.city}${selectedCity.region ? ", " + selectedCity.region : ""}`,
+            });
           }}
           onClose={() => setShowPvzMap(false)}
         />

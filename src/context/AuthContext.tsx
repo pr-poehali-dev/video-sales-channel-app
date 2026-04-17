@@ -2,6 +2,14 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from "
 
 export type UserRole = "user" | "admin";
 
+export interface SavedPvz {
+  code: string;
+  address: string;
+  name: string;
+  cityCode: string;
+  cityName: string;
+}
+
 export interface User {
   id: string;
   name: string;
@@ -10,6 +18,7 @@ export interface User {
   role: UserRole;
   avatar: string;
   city: string;
+  savedPvz?: SavedPvz | null;
   joinedAt: string;
   isBlocked?: boolean;
 }
@@ -94,14 +103,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const updateUser = async (updateData: Partial<User>) => {
     if (!user) return;
-    const data = await authFetch("update_profile", {
-      user_id: user.id,
-      name: updateData.name ?? user.name,
-      phone: updateData.phone ?? user.phone,
-      city: updateData.city ?? user.city,
-    });
-    if (!data.error) {
-      saveSession(data.user);
+    // Поля которые хранятся только локально (не на сервере)
+    const localOnlyFields = ["savedPvz"];
+    const hasServerFields = Object.keys(updateData).some(k => !localOnlyFields.includes(k));
+    if (hasServerFields) {
+      const data = await authFetch("update_profile", {
+        user_id: user.id,
+        name: updateData.name ?? user.name,
+        phone: updateData.phone ?? user.phone,
+        city: updateData.city ?? user.city,
+      });
+      if (!data.error) {
+        saveSession({ ...data.user, savedPvz: updateData.savedPvz !== undefined ? updateData.savedPvz : user.savedPvz });
+        return;
+      }
+    } else {
+      saveSession({ ...user, ...updateData });
     }
   };
 
