@@ -119,8 +119,8 @@ export default function CartSellerGroup({
         {items.map(item => {
           const isSelected = selectedIds.has(item.id);
           return (
-            <div key={item.id} className={`p-4 flex gap-3 items-center transition-all ${isSelected ? "" : "opacity-40"}`}>
-              <button onClick={() => onToggleItem(item.id)} className="flex-shrink-0">
+            <div key={item.id} className={`p-4 flex gap-3 items-start transition-all ${isSelected ? "" : "opacity-40"}`}>
+              <button onClick={() => onToggleItem(item.id)} className="flex-shrink-0 mt-1">
                 <span className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
                   isSelected ? "bg-primary border-primary" : "border-muted-foreground"
                 }`}>
@@ -141,30 +141,32 @@ export default function CartSellerGroup({
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground line-clamp-2">{item.name}</p>
-                <div className="flex items-baseline gap-1.5 mt-0.5">
-                  <p className="font-oswald text-base font-semibold text-foreground">
-                    {getEffectiveItemPrice(item, wholesaleReached).toLocaleString("ru")} ₽
-                  </p>
-                  {wholesaleReached && item.wholesalePrice != null && item.wholesalePrice > 0 && (
-                    <span className="text-[10px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">опт</span>
-                  )}
+                <p className="text-sm font-medium text-foreground leading-snug mb-1">{item.name}</p>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-baseline gap-1.5">
+                    <p className="font-oswald text-base font-semibold text-foreground">
+                      {getEffectiveItemPrice(item, wholesaleReached).toLocaleString("ru")} ₽
+                    </p>
+                    {wholesaleReached && item.wholesalePrice != null && item.wholesalePrice > 0 && (
+                      <span className="text-[10px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">опт</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <button onClick={() => onUpdateQty(item.id, item.qty - 1)}
+                      className="w-7 h-7 rounded-lg bg-secondary flex items-center justify-center hover:bg-secondary/70 transition-colors">
+                      <Icon name="Minus" size={13} />
+                    </button>
+                    <span className="w-6 text-center text-sm font-medium text-foreground">{item.qty}</span>
+                    <button onClick={() => onUpdateQty(item.id, item.qty + 1)}
+                      className="w-7 h-7 rounded-lg bg-secondary flex items-center justify-center hover:bg-secondary/70 transition-colors">
+                      <Icon name="Plus" size={13} />
+                    </button>
+                    <button onClick={() => onRemove(item.id)}
+                      className="w-7 h-7 rounded-lg ml-0.5 flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors">
+                      <Icon name="Trash2" size={14} />
+                    </button>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-1.5 flex-shrink-0">
-                <button onClick={() => onUpdateQty(item.id, item.qty - 1)}
-                  className="w-7 h-7 rounded-lg bg-secondary flex items-center justify-center hover:bg-secondary/70 transition-colors">
-                  <Icon name="Minus" size={13} />
-                </button>
-                <span className="w-6 text-center text-sm font-medium text-foreground">{item.qty}</span>
-                <button onClick={() => onUpdateQty(item.id, item.qty + 1)}
-                  className="w-7 h-7 rounded-lg bg-secondary flex items-center justify-center hover:bg-secondary/70 transition-colors">
-                  <Icon name="Plus" size={13} />
-                </button>
-                <button onClick={() => onRemove(item.id)}
-                  className="w-7 h-7 rounded-lg ml-1 flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors">
-                  <Icon name="Trash2" size={14} />
-                </button>
               </div>
             </div>
           );
