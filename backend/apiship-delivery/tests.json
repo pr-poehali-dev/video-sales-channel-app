@@ -19,7 +19,7 @@
       "method": "POST",
       "path": "/?action=test_auth",
       "expectedStatus": 200,
-      "expectedBody": {"ok": "boolean"},
+      "expectedBody": {"ok": true},
       "bodyMatcher": "partial"
     }
   ]

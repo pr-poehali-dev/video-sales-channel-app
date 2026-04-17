@@ -1,7 +1,7 @@
 import { useState } from "react";
 import Icon from "@/components/ui/icon";
 
-const CDEK_API = "https://functions.poehali.dev/937e27f3-191a-445d-b034-61bd84ed5381";
+const CDEK_API = "https://functions.poehali.dev/a73e197d-7da4-4945-bd28-4d0de6b02bb7";
 
 export default function AdminCdekTab() {
   const [cdekId, setCdekId] = useState("aKDJq0vBV0kRgFKQsJY5vZ77OZfFmP9T");

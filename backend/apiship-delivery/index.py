@@ -11,7 +11,7 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 
 
-APISHIP_API = os.environ.get("APISHIP_URL", "https://api.apiship.ru/v1").rstrip("/")
+APISHIP_API = "https://api.apiship.ru/v1"
 APISHIP_TOKEN = os.environ.get("APISHIP_TOKEN", "")
 
 FROM_CITY_NAME = "Краснодар"
@@ -26,20 +26,37 @@ def get_conn():
 
 
 def apiship_request(path: str, payload: dict = None, method: str = "GET") -> dict:
+    """Запрос к ApiShip. Пробуем разные варианты заголовка авторизации."""
     data = json.dumps(payload).encode() if payload else None
-    req = urllib.request.Request(
-        f"{APISHIP_API}{path}",
-        data=data,
-        headers={
-            "Authorization": APISHIP_TOKEN,
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-        },
-        method=method,
-    )
-    with urllib.request.urlopen(req, timeout=20) as resp:
-        raw = resp.read()
-        return json.loads(raw) if raw else {}
+    last_err = None
+    for auth_header in [
+        {"Authorization": APISHIP_TOKEN},
+        {"Authorization": f"Bearer {APISHIP_TOKEN}"},
+        {"X-API-KEY": APISHIP_TOKEN},
+        {"Platform-Token": APISHIP_TOKEN},
+    ]:
+        req = urllib.request.Request(
+            f"{APISHIP_API}{path}",
+            data=data,
+            headers={
+                **auth_header,
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            },
+            method=method,
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=20) as resp:
+                raw = resp.read()
+                return json.loads(raw) if raw else {}
+        except urllib.error.HTTPError as e:
+            if e.code == 401:
+                last_err = e
+                continue
+            raise
+    if last_err:
+        raise last_err
+    return {}
 
 
 def search_cities(query: str) -> list:
