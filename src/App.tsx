@@ -34,6 +34,8 @@ export interface CartItem {
   price: number;
   image: string;
   qty: number;
+  sellerId?: string;
+  sellerName?: string;
   fromCityCode?: string;
   weightG?: number;
   videoUrl?: string;

@@ -79,6 +79,8 @@ export default function ProductPage({ productId, addToCart, onBack, onSellerClic
       name: product.name,
       price: displayPrice,
       image: product.images[0] ?? "",
+      sellerId: product.sellerId,
+      sellerName: product.sellerName,
       fromCityCode: product.fromCityCode ?? 0,
       weightG: product.weightG ?? 500,
       videoUrl: product.videoUrl,

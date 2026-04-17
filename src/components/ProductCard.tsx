@@ -73,6 +73,8 @@ export default function ProductCard({ product, addToCart, onClick }: ProductCard
       name: product.name,
       price: displayPrice,
       image: coverImage ?? "",
+      sellerId: product.sellerId,
+      sellerName: product.sellerName,
       fromCityCode: product.fromCityCode ?? 0,
       weightG: product.weightG ?? 500,
       videoUrl: product.videoUrl,

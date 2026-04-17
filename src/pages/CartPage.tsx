@@ -238,45 +238,79 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
             );
           })()}
 
-          {/* Товары */}
-          <div className="space-y-3">
-            {cart.map(item => (
-              <div key={item.id} className="bg-card border border-border rounded-xl p-4 flex gap-4 items-center animate-fade-in">
-                <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-secondary">
-                  {item.videoUrl ? (
-                    <video src={item.videoUrl} autoPlay loop muted playsInline className="w-full h-full object-cover" />
-                  ) : item.image ? (
-                    <img src={item.image} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-muted-foreground opacity-30">
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+          {/* Товары сгруппированы по продавцам */}
+          {(() => {
+            const groups: { sellerId: string; sellerName: string; items: CartItem[] }[] = [];
+            cart.forEach(item => {
+              const sid = item.sellerId || "__unknown__";
+              const sname = item.sellerName || "Продавец";
+              const existing = groups.find(g => g.sellerId === sid);
+              if (existing) existing.items.push(item);
+              else groups.push({ sellerId: sid, sellerName: sname, items: [item] });
+            });
+            return (
+              <div className="space-y-4">
+                {groups.map(group => {
+                  const groupTotal = group.items.reduce((s, c) => s + getItemPrice(c, mode) * c.qty, 0);
+                  return (
+                    <div key={group.sellerId} className="bg-card border border-border rounded-xl overflow-hidden">
+                      {/* Шапка продавца */}
+                      <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-secondary/40">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0">
+                            <Icon name="Store" size={12} className="text-primary" />
+                          </div>
+                          <span className="text-sm font-semibold text-foreground">{group.sellerName}</span>
+                        </div>
+                        <span className="text-xs text-muted-foreground font-medium">
+                          {groupTotal.toLocaleString("ru")} ₽ · {group.items.reduce((s, c) => s + c.qty, 0)} шт.
+                        </span>
+                      </div>
+                      {/* Товары продавца */}
+                      <div className="divide-y divide-border">
+                        {group.items.map(item => (
+                          <div key={item.id} className="p-4 flex gap-4 items-center">
+                            <div className="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 bg-secondary">
+                              {item.videoUrl ? (
+                                <video src={item.videoUrl} autoPlay loop muted playsInline className="w-full h-full object-cover" />
+                              ) : item.image ? (
+                                <img src={item.image} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-muted-foreground opacity-30">
+                                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-foreground line-clamp-2">{item.name}</p>
+                              <p className="font-oswald text-base font-semibold text-foreground mt-0.5">
+                                {getItemPrice(item, mode).toLocaleString("ru")} ₽
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <button onClick={() => updateQty(item.id, item.qty - 1)}
+                                className="w-7 h-7 rounded-lg bg-secondary flex items-center justify-center hover:bg-secondary/70 transition-colors">
+                                <Icon name="Minus" size={13} />
+                              </button>
+                              <span className="w-6 text-center text-sm font-medium text-foreground">{item.qty}</span>
+                              <button onClick={() => updateQty(item.id, item.qty + 1)}
+                                className="w-7 h-7 rounded-lg bg-secondary flex items-center justify-center hover:bg-secondary/70 transition-colors">
+                                <Icon name="Plus" size={13} />
+                              </button>
+                              <button onClick={() => removeFromCart(item.id)}
+                                className="w-7 h-7 rounded-lg ml-1 flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors">
+                                <Icon name="Trash2" size={14} />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground line-clamp-2">{item.name}</p>
-                  <p className="font-oswald text-base font-semibold text-foreground mt-1">
-                    {getItemPrice(item, mode).toLocaleString("ru")} ₽
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <button onClick={() => updateQty(item.id, item.qty - 1)}
-                    className="w-7 h-7 rounded-lg bg-secondary flex items-center justify-center hover:bg-secondary/70 transition-colors">
-                    <Icon name="Minus" size={13} />
-                  </button>
-                  <span className="w-6 text-center text-sm font-medium text-foreground">{item.qty}</span>
-                  <button onClick={() => updateQty(item.id, item.qty + 1)}
-                    className="w-7 h-7 rounded-lg bg-secondary flex items-center justify-center hover:bg-secondary/70 transition-colors">
-                    <Icon name="Plus" size={13} />
-                  </button>
-                  <button onClick={() => removeFromCart(item.id)}
-                    className="w-7 h-7 rounded-lg ml-1 flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors">
-                    <Icon name="Trash2" size={14} />
-                  </button>
-                </div>
+                  );
+                })}
               </div>
-            ))}
-          </div>
+            );
+          })()}
 
           {/* Контактные данные */}
           <div className="bg-card border border-border rounded-xl p-4 space-y-3">
