@@ -450,18 +450,28 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
                         const sellerGoods = group.items
                           .filter(i => selectedIds.has(i.id))
                           .reduce((s, c) => s + getItemPrice(c, mode) * c.qty, 0);
+                        const sellerWeightG = group.items
+                          .filter(i => selectedIds.has(i.id))
+                          .reduce((s, c) => s + c.qty * (c.weightG ?? 300), 0);
                         const sid = group.sellerId;
                         const deliveryCostForSeller = sellerDeliveryCosts[sid] ?? null;
                         const isLoadingDelivery = sellerDeliveryLoading[sid] ?? false;
+                        const weightLabel = sellerWeightG >= 1000
+                          ? `${(sellerWeightG / 1000).toFixed(sellerWeightG % 1000 === 0 ? 0 : 1)} кг`
+                          : `${sellerWeightG} г`;
                         return (
-                          <div className="grid grid-cols-2 divide-x divide-border border-t border-border">
-                            <div className="px-4 py-3">
+                          <div className="grid grid-cols-3 divide-x divide-border border-t border-border">
+                            <div className="px-3 py-3">
                               <p className="text-[10px] text-muted-foreground mb-0.5">Товары</p>
                               <p className="font-oswald text-sm font-semibold text-foreground">
                                 {sellerGoods.toLocaleString("ru")} ₽
                               </p>
                             </div>
-                            <div className="px-4 py-3">
+                            <div className="px-3 py-3">
+                              <p className="text-[10px] text-muted-foreground mb-0.5">Вес</p>
+                              <p className="font-oswald text-sm font-semibold text-foreground">{weightLabel}</p>
+                            </div>
+                            <div className="px-3 py-3">
                               <p className="text-[10px] text-muted-foreground mb-0.5">Доставка (мин.)</p>
                               {isLoadingDelivery ? (
                                 <div className="flex items-center gap-1.5">
