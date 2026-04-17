@@ -60,31 +60,46 @@ def apiship_request(path: str, payload: dict = None, method: str = "GET") -> dic
 
 
 def search_cities(query: str) -> list:
-    """Поиск населённых пунктов по названию через ApiShip."""
-    params = urllib.parse.urlencode({"name": query, "limit": 10, "country": "RU"})
-    try:
-        data = apiship_request(f"/lists/points?{params}")
-    except urllib.error.HTTPError:
-        try:
-            data = apiship_request(f"/lists/cities?{params}")
-        except Exception:
-            return []
-    rows = data.get("rows") or data.get("items") or data.get("data") or []
+    """Поиск населённых пунктов по названию через ApiShip.
+    Формат фильтра ApiShip: filter=name~Москва (name с префиксом, тильда = LIKE).
+    """
     out = []
     seen = set()
-    for c in rows:
-        city = c.get("name") or c.get("city") or ""
-        region = c.get("regionName") or c.get("region") or ""
-        code = str(c.get("id") or c.get("code") or c.get("cityId") or "")
-        if not code or code in seen:
+    # Пробуем несколько вариантов фильтрации, т.к. формат может различаться
+    filter_variants = [
+        f"filter=name~{urllib.parse.quote(query)}&limit=15",
+        f"filter=name={urllib.parse.quote(query)}&limit=15",
+        f"name={urllib.parse.quote(query)}&limit=15",
+    ]
+    for fv in filter_variants:
+        try:
+            data = apiship_request(f"/lists/cities?{fv}")
+        except urllib.error.HTTPError as e:
+            print(f"[APISHIP] cities variant '{fv}' HTTP {e.code}")
             continue
-        seen.add(code)
-        out.append({
-            "code": code,
-            "city": city,
-            "region": region,
-            "country": c.get("countryCode", "RU"),
-        })
+        except Exception as e:
+            print(f"[APISHIP] cities variant '{fv}' err: {e}")
+            continue
+        rows = data.get("rows") or data.get("items") or data.get("data") or []
+        if not rows and isinstance(data, list):
+            rows = data
+        print(f"[APISHIP] cities '{fv}' rows={len(rows)} sample={json.dumps(rows[:1], ensure_ascii=False)[:300]}")
+        if rows:
+            for c in rows:
+                city = c.get("name") or c.get("city") or ""
+                region = c.get("regionName") or c.get("region") or ""
+                code = str(c.get("id") or c.get("code") or c.get("cityId") or "")
+                if not code or code in seen:
+                    continue
+                seen.add(code)
+                out.append({
+                    "code": code,
+                    "city": city,
+                    "region": region,
+                    "country": c.get("countryCode", "RU"),
+                })
+            if out:
+                return out
     return out
 
 
@@ -224,6 +239,30 @@ def handler(event: dict, context) -> dict:
         return {"statusCode": 200, "headers": headers, "body": json.dumps([])}
 
     try:
+        if action == "debug_cities":
+            query = qs.get("q", "Москва")
+            q_enc = urllib.parse.quote(query)
+            attempts = []
+            for path in [
+                f"/cities?filter=name~{q_enc}&limit=5",
+                f"/cities?name={q_enc}&limit=5",
+                f"/lists/settlements?filter=name~{q_enc}&limit=5",
+                f"/lists/settlements?name={q_enc}&limit=5",
+                f"/suggests/cities?query={q_enc}&limit=5",
+                f"/lists/suggests/cities?query={q_enc}",
+                f"/lists/regions?limit=3",
+                f"/lists/points?filter=cityName~{q_enc}&limit=3",
+            ]:
+                try:
+                    d = apiship_request(path)
+                    attempts.append({"path": path, "data": d if isinstance(d, list) else {k: (v if not isinstance(v, list) else v[:2]) for k, v in d.items()}})
+                except urllib.error.HTTPError as e:
+                    raw = e.read().decode() if hasattr(e, "read") else ""
+                    attempts.append({"path": path, "error": f"{e.code}: {raw[:200]}"})
+                except Exception as e:
+                    attempts.append({"path": path, "error": str(e)[:200]})
+            return {"statusCode": 200, "headers": headers, "body": json.dumps(attempts, ensure_ascii=False)}
+
         if action == "test_auth":
             results = []
             for path in ["/lists/providers", "/lists/cities?limit=1", "/lists/statuses", "/providers"]:
