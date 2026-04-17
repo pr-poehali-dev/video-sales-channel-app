@@ -31,7 +31,7 @@ function getItemPrice(item: CartItem, mode: "retail" | "wholesale"): number {
 }
 
 export default function CartPage({ cart, removeFromCart, updateQty }: CartPageProps) {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const { mode } = usePriceMode();
 
   // Выбор товаров (по умолчанию все выбраны)
@@ -229,6 +229,26 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
         {/* Левая колонка: товары + контакты + доставка */}
         <div className="flex-1 space-y-4">
 
+          {/* Доставка — вверху */}
+          <div className="bg-card border border-border rounded-xl p-4">
+            <CdekDelivery
+              weightGrams={totalWeight}
+              fromCityCode={fromCityCode}
+              sellerId={sellerIdForDelivery}
+              savedCity={user?.city || ""}
+              onSelect={(tariff, city, pvzCode, pvzAddress) => {
+                setDelivery({ tariff, city });
+                setCdekPvzCode(pvzCode);
+                setDeliveryType(tariff?.delivery_to === "pvz" ? "cdek_pvz" : "cdek_courier");
+                if (pvzAddress) setDeliveryAddress(pvzAddress);
+                if (city && user) {
+                  const cityLabel = `${city.city}${city.region ? ", " + city.region : ""}`;
+                  updateUser({ city: cityLabel });
+                }
+              }}
+            />
+          </div>
+
           {/* Баннер оптового минимума */}
           {(() => {
             const WHOLESALE_MIN = 5000;
@@ -408,21 +428,6 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
 
         {/* Правая колонка: расчёт + оплата */}
         <div className="w-full lg:w-72 flex-shrink-0 space-y-4">
-          {/* CDEK */}
-          <div className="bg-card border border-border rounded-xl p-4">
-            <CdekDelivery
-              weightGrams={totalWeight}
-              fromCityCode={fromCityCode}
-              sellerId={sellerIdForDelivery}
-              onSelect={(tariff, city, pvzCode, pvzAddress) => {
-                setDelivery({ tariff, city });
-                setCdekPvzCode(pvzCode);
-                setDeliveryType(tariff?.delivery_to === "pvz" ? "cdek_pvz" : "cdek_courier");
-                if (pvzAddress) setDeliveryAddress(pvzAddress);
-              }}
-            />
-          </div>
-
           {/* Способ оплаты */}
           <div className="bg-card border border-border rounded-xl p-4 space-y-3">
             <p className="text-sm font-semibold text-foreground">Способ оплаты</p>

@@ -35,6 +35,7 @@ interface DeliveryProps {
   weightGrams: number;
   fromCityCode?: string;
   sellerId?: string;
+  savedCity?: string;
   onSelect: (tariff: Tariff | null, city: City | null, pvzCode?: string, pvzAddress?: string) => void;
 }
 
@@ -62,8 +63,8 @@ function cleanTariffName(name: string): string {
   return name.replace(/^[A-Z]+:\s*/i, "").trim();
 }
 
-export default function DeliverySelector({ weightGrams, fromCityCode = "", sellerId = "", onSelect }: DeliveryProps) {
-  const [query, setQuery] = useState("");
+export default function DeliverySelector({ weightGrams, fromCityCode = "", sellerId = "", savedCity = "", onSelect }: DeliveryProps) {
+  const [query, setQuery] = useState(savedCity || "");
   const [cities, setCities] = useState<City[]>([]);
   const [selectedCity, setSelectedCity] = useState<City | null>(null);
   const [tariffs, setTariffs] = useState<Tariff[]>([]);
