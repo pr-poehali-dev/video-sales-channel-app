@@ -322,41 +322,7 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
             />
           </div>
 
-          {/* Баннер оптового минимума */}
-          {(() => {
-            const WHOLESALE_MIN = 5000;
-            const wholesaleTotal = cart.reduce((s, c) => {
-              const wp = c.wholesalePrice;
-              return s + (wp != null && wp > 0 ? wp : c.price) * c.qty;
-            }, 0);
-            const remaining = WHOLESALE_MIN - wholesaleTotal;
-            const pct = Math.min(100, Math.round((wholesaleTotal / WHOLESALE_MIN) * 100));
-            const reached = remaining <= 0;
-            return (
-              <div className={`rounded-xl border px-4 py-3 ${reached ? "bg-primary/10 border-primary/30" : "bg-card border-border"}`}>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-1.5">
-                    <Icon name="Layers" size={14} className={reached ? "text-primary" : "text-muted-foreground"} />
-                    <span className={`text-xs font-semibold ${reached ? "text-primary" : "text-foreground"}`}>
-                      {reached ? "Оптовый минимум достигнут!" : `До оптового заказа осталось ${remaining.toLocaleString("ru")} ₽`}
-                    </span>
-                  </div>
-                  <span className="text-[10px] text-muted-foreground font-medium">{pct}%</span>
-                </div>
-                <div className="w-full bg-secondary rounded-full h-1.5 overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all duration-500 ${reached ? "bg-primary" : "bg-primary/50"}`}
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-                {!reached && (
-                  <p className="text-[10px] text-muted-foreground mt-1.5">
-                    Минимальная сумма оптового заказа — {WHOLESALE_MIN.toLocaleString("ru")} ₽
-                  </p>
-                )}
-              </div>
-            );
-          })()}
+
 
           {/* Выбрать все */}
           <div className="flex items-center gap-3 px-1">
@@ -412,6 +378,37 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
                           {selectedGroupTotal.toLocaleString("ru")} ₽
                         </span>
                       </div>
+                      {/* Оптовый минимум по продавцу */}
+                      {(() => {
+                        const WHOLESALE_MIN = 5000;
+                        const sellerWholesaleTotal = group.items.reduce((s, c) => {
+                          const wp = c.wholesalePrice;
+                          return s + (wp != null && wp > 0 ? wp : c.price) * c.qty;
+                        }, 0);
+                        const remaining = WHOLESALE_MIN - sellerWholesaleTotal;
+                        const pct = Math.min(100, Math.round((sellerWholesaleTotal / WHOLESALE_MIN) * 100));
+                        const reached = remaining <= 0;
+                        return (
+                          <div className={`px-4 py-2 border-b border-border flex items-center gap-3 ${reached ? "bg-primary/5" : "bg-secondary/30"}`}>
+                            <Icon name="Layers" size={12} className={reached ? "text-primary flex-shrink-0" : "text-muted-foreground flex-shrink-0"} />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-2 mb-1">
+                                <span className={`text-[10px] font-medium truncate ${reached ? "text-primary" : "text-muted-foreground"}`}>
+                                  {reached ? "Оптовый минимум достигнут!" : `До опта ${remaining.toLocaleString("ru")} ₽`}
+                                </span>
+                                <span className="text-[10px] text-muted-foreground flex-shrink-0">{pct}%</span>
+                              </div>
+                              <div className="w-full bg-border rounded-full h-1 overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full transition-all duration-500 ${reached ? "bg-primary" : "bg-primary/40"}`}
+                                  style={{ width: `${pct}%` }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
+
                       {/* Товары продавца */}
                       <div className="divide-y divide-border">
                         {group.items.map(item => {
