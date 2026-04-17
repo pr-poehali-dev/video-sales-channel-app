@@ -1,4 +1,5 @@
 {
+  "apiship-delivery": "https://functions.poehali.dev/a73e197d-7da4-4945-bd28-4d0de6b02bb7",
   "upload-video": "https://functions.poehali.dev/c69feec2-8522-4f96-aca5-363656289751",
   "auth-api": "https://functions.poehali.dev/f78c2cf9-b718-4a63-9473-a8f6bcff11f4",
   "push-notify": "https://functions.poehali.dev/843759f9-8a03-41bd-a539-41e0cdb187cc",

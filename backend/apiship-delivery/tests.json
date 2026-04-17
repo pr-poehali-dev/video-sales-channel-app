@@ -1,0 +1,26 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS CORS preflight",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Cities short query returns empty",
+      "method": "GET",
+      "path": "/?action=cities&q=a",
+      "expectedStatus": 200,
+      "expectedBody": [],
+      "bodyMatcher": "exact"
+    },
+    {
+      "name": "Test auth with real token",
+      "method": "POST",
+      "path": "/?action=test_auth",
+      "expectedStatus": 200,
+      "expectedBody": {"ok": "boolean"},
+      "bodyMatcher": "partial"
+    }
+  ]
+}
