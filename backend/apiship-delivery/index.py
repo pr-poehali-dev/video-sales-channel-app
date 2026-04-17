@@ -60,65 +60,60 @@ def apiship_request(path: str, payload: dict = None, method: str = "GET") -> dic
 
 
 def search_cities(query: str) -> list:
-    """Поиск населённых пунктов по названию через ApiShip.
-    Формат фильтра ApiShip: filter=name~Москва (name с префиксом, тильда = LIKE).
-    """
-    out = []
-    seen = set()
-    # Пробуем несколько вариантов фильтрации, т.к. формат может различаться
-    filter_variants = [
-        f"filter=name~{urllib.parse.quote(query)}&limit=15",
-        f"filter=name={urllib.parse.quote(query)}&limit=15",
-        f"name={urllib.parse.quote(query)}&limit=15",
-    ]
-    for fv in filter_variants:
-        try:
-            data = apiship_request(f"/lists/cities?{fv}")
-        except urllib.error.HTTPError as e:
-            print(f"[APISHIP] cities variant '{fv}' HTTP {e.code}")
+    """Поиск городов через агрегацию ПВЗ ApiShip (точное совпадение по city)."""
+    q = query.strip()
+    if not q:
+        return []
+    try:
+        params = urllib.parse.urlencode({"filter": f"city={q}", "limit": 100})
+        data = apiship_request(f"/lists/points?{params}")
+    except Exception:
+        return []
+    rows = data.get("rows") or []
+    seen = {}
+    for p in rows:
+        city = p.get("city") or ""
+        region = p.get("region") or ""
+        guid = p.get("cityGuid") or ""
+        if not city or not guid:
             continue
-        except Exception as e:
-            print(f"[APISHIP] cities variant '{fv}' err: {e}")
+        key = guid
+        if key in seen:
             continue
-        rows = data.get("rows") or data.get("items") or data.get("data") or []
-        if not rows and isinstance(data, list):
-            rows = data
-        print(f"[APISHIP] cities '{fv}' rows={len(rows)} sample={json.dumps(rows[:1], ensure_ascii=False)[:300]}")
-        if rows:
-            for c in rows:
-                city = c.get("name") or c.get("city") or ""
-                region = c.get("regionName") or c.get("region") or ""
-                code = str(c.get("id") or c.get("code") or c.get("cityId") or "")
-                if not code or code in seen:
-                    continue
-                seen.add(code)
-                out.append({
-                    "code": code,
-                    "city": city,
-                    "region": region,
-                    "country": c.get("countryCode", "RU"),
-                })
-            if out:
-                return out
-    return out
+        seen[key] = {
+            "code": guid,
+            "city": city,
+            "region": region,
+            "country": p.get("countryCode", "RU"),
+        }
+    return list(seen.values())[:15]
 
 
 def calc_tariffs(city_code: str, weight_g: int, from_city_code: str = "") -> list:
-    """Расчёт доставки через ApiShip для всех поддерживаемых провайдеров."""
+    """Расчёт доставки через ApiShip. city_code — это cityGuid (ФИАС)."""
+    def addr_block(code: str, default_name: str = None):
+        b = {}
+        if code:
+            if "-" in code:  # похоже на GUID
+                b["cityGuid"] = code
+            elif code.isdigit():
+                b["cityId"] = int(code)
+            else:
+                b["cityName"] = code
+        if default_name and not b:
+            b["cityName"] = default_name
+        return b
+
     payload = {
-        "from": {"cityId": int(from_city_code) if str(from_city_code).isdigit() else None, "cityName": FROM_CITY_NAME if not from_city_code else None},
-        "to": {"cityId": int(city_code) if str(city_code).isdigit() else None},
+        "from": addr_block(from_city_code, FROM_CITY_NAME),
+        "to": addr_block(city_code),
         "places": [{
-            "weight": max(weight_g / 1000.0, 0.1),
+            "weight": max(int(weight_g), 100),
             "height": 10,
             "width": 15,
             "length": 20,
         }],
-        "providerKeys": None,  # все доступные
     }
-    # Удаляем None-поля
-    payload["from"] = {k: v for k, v in payload["from"].items() if v is not None}
-    payload["to"] = {k: v for k, v in payload["to"].items() if v is not None}
 
     try:
         result = apiship_request("/calculator", payload, "POST")
@@ -130,27 +125,38 @@ def calc_tariffs(city_code: str, weight_g: int, from_city_code: str = "") -> lis
         print(f"[APISHIP] calc error: {e}")
         return []
 
-    print(f"[APISHIP] calc raw: {json.dumps(result)[:500]}")
+    # ApiShip формат: {deliveryToDoor: [{providerKey, tariffs:[...]}], deliveryToPoint: [...]}
+    to_door = result.get("deliveryToDoor") or [] if isinstance(result, dict) else []
+    to_point = result.get("deliveryToPoint") or [] if isinstance(result, dict) else []
+    # Помечаем тип доставки в каждом провайдере
+    providers_list = []
+    for p in to_door:
+        providers_list.append({**p, "_delivery_to": "courier"})
+    for p in to_point:
+        providers_list.append({**p, "_delivery_to": "pvz"})
+    if not providers_list and isinstance(result, list):
+        providers_list = result
     out = []
-    offers = result.get("offers") or result.get("rows") or result.get("data") or []
-    for o in offers:
-        delivery = o.get("deliveryCost") or o.get("cost") or o.get("totalPrice") or 0
-        if not delivery:
-            continue
-        provider = o.get("providerKey") or o.get("providerName") or "Доставка"
-        tariff_name = o.get("tariffName") or o.get("name") or ""
-        point_type = o.get("pointTypeTo") or o.get("deliveryType") or ""
-        is_pvz = "POSTAMAT" in str(point_type).upper() or "PVZ" in str(point_type).upper() or "TERMINAL" in str(point_type).upper()
-
-        out.append({
-            "code": str(o.get("tariffId") or o.get("id") or f"{provider}_{tariff_name}"),
-            "name": f"{provider}: {tariff_name}" if tariff_name else str(provider),
-            "price": int(float(delivery)),
-            "days_min": int(o.get("daysMin", 1)),
-            "days_max": int(o.get("daysMax", 7)),
-            "provider": str(provider),
-            "delivery_to": "pvz" if is_pvz else "courier",
-        })
+    for prov in providers_list:
+        default_dt = prov.get("_delivery_to", "courier")
+        provider_key = prov.get("providerKey", "")
+        for t in prov.get("tariffs") or []:
+            cost = t.get("deliveryCost") or 0
+            if not cost:
+                continue
+            tariff_name = t.get("tariffName", "")
+            # Тип доставки берём из контейнера (deliveryToDoor/deliveryToPoint)
+            delivery_to = default_dt
+            out.append({
+                "code": str(t.get("tariffId") or ""),
+                "name": f"{provider_key.upper()}: {tariff_name}",
+                "price": int(float(cost)),
+                "days_min": int(t.get("daysMin", 1)),
+                "days_max": int(t.get("daysMax", 7)),
+                "provider": provider_key,
+                "delivery_to": delivery_to,
+                "point_ids": t.get("pointIds") or [],
+            })
     return sorted(out, key=lambda x: x["price"])
 
 
@@ -244,14 +250,16 @@ def handler(event: dict, context) -> dict:
             q_enc = urllib.parse.quote(query)
             attempts = []
             for path in [
-                f"/cities?filter=name~{q_enc}&limit=5",
-                f"/cities?name={q_enc}&limit=5",
-                f"/lists/settlements?filter=name~{q_enc}&limit=5",
-                f"/lists/settlements?name={q_enc}&limit=5",
-                f"/suggests/cities?query={q_enc}&limit=5",
-                f"/lists/suggests/cities?query={q_enc}",
-                f"/lists/regions?limit=3",
-                f"/lists/points?filter=cityName~{q_enc}&limit=3",
+                f"/lists/points?filter=city={q_enc}&limit=3",
+                f"/lists/points?filter=cityGuid={q_enc}&limit=3",
+                f"/lists/tariffs?limit=2",
+                f"/lists/services?limit=2",
+                f"/lists/countries?limit=3",
+                f"/lists/timezones?limit=3",
+                f"/lists/tariffTypes?limit=3",
+                f"/addresses/cities?q={q_enc}",
+                f"/addresses/searchAddresses?q={q_enc}",
+                f"/addresses?q={q_enc}",
             ]:
                 try:
                     d = apiship_request(path)
@@ -326,20 +334,28 @@ def handler(event: dict, context) -> dict:
             if not city_code:
                 return {"statusCode": 400, "headers": headers, "body": json.dumps({"error": "city_code required"})}
 
-            params = {"cityId": city_code, "limit": 200}
+            # city_code может быть: cityGuid (с "-"), cityName, или cityId
+            filters = []
+            if "-" in str(city_code):
+                filters.append(f"cityGuid={city_code}")
+            elif str(city_code).isdigit():
+                filters.append(f"cityId={city_code}")
+            else:
+                filters.append(f"city={city_code}")
             if provider:
-                params["providerKey"] = provider
+                filters.append(f"providerKey={provider}")
+            params = {"filter": ";".join(filters), "limit": 500}
             query = urllib.parse.urlencode(params)
             data = apiship_request(f"/lists/points?{query}")
             items = data.get("rows") or data.get("data") or []
             points = []
             for p in items:
-                lat = p.get("latitude") or p.get("lat")
-                lon = p.get("longitude") or p.get("lon")
+                lat = p.get("lat") or p.get("latitude")
+                lon = p.get("lng") or p.get("lon") or p.get("longitude")
                 if not lat or not lon:
                     continue
                 points.append({
-                    "code": str(p.get("id") or p.get("code") or ""),
+                    "code": str(p.get("code") or p.get("id") or ""),
                     "name": p.get("name") or p.get("address") or "",
                     "address": p.get("address") or "",
                     "work_time": p.get("timetable") or p.get("workTime") or "",
