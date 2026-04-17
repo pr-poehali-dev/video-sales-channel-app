@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Icon from "@/components/ui/icon";
 import type { CartItem } from "@/App";
 import CdekDelivery from "@/components/CdekDelivery";
@@ -61,6 +61,34 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
   const selectedCart = cart.filter(c => selectedIds.has(c.id));
 
   const [delivery, setDelivery] = useState<SelectedDelivery>({ tariff: null, city: null });
+
+  // Стоимость доставки отдельно для каждого продавца
+  const [sellerDeliveryCosts, setSellerDeliveryCosts] = useState<Record<string, number | null>>({});
+  const [sellerDeliveryLoading, setSellerDeliveryLoading] = useState<Record<string, boolean>>({});
+  const calcTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  // Пересчёт доставки для продавца при изменении города или веса его товаров
+  const recalcSellerDelivery = (sellerId: string, fromCityCode: string, weightG: number, toCityCode: string, toCityGuid?: string) => {
+    if (!toCityCode) return;
+    if (calcTimers.current[sellerId]) clearTimeout(calcTimers.current[sellerId]);
+    setSellerDeliveryLoading(prev => ({ ...prev, [sellerId]: true }));
+    calcTimers.current[sellerId] = setTimeout(async () => {
+      try {
+        const guidParam = toCityGuid ? `&city_guid=${toCityGuid}` : "";
+        const fromParam = fromCityCode ? `&from_city_code=${encodeURIComponent(fromCityCode)}` : "";
+        const sellerParam = sellerId ? `&seller_id=${sellerId}` : "";
+        const res = await fetch(`${CDEK_API}?action=calc&city_code=${encodeURIComponent(toCityCode)}&weight=${weightG}${guidParam}${fromParam}${sellerParam}`);
+        const data = await res.json();
+        const tariffs: { price: number }[] = data.tariffs ?? [];
+        const minPrice = tariffs.length > 0 ? Math.min(...tariffs.map(t => t.price)) : null;
+        setSellerDeliveryCosts(prev => ({ ...prev, [sellerId]: minPrice }));
+      } catch {
+        setSellerDeliveryCosts(prev => ({ ...prev, [sellerId]: null }));
+      } finally {
+        setSellerDeliveryLoading(prev => ({ ...prev, [sellerId]: false }));
+      }
+    }, 400);
+  };
   const [deliveryType, setDeliveryType] = useState<DeliveryType>("cdek_pvz");
   const [cdekPvzCode, setCdekPvzCode] = useState<string | undefined>(undefined);
   const [payMethod, setPayMethod] = useState<PaymentMethod>(null);
@@ -77,8 +105,25 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
   const [buyerEmail, setBuyerEmail] = useState(user?.email || "");
   const [deliveryAddress, setDeliveryAddress] = useState("");
 
+  // Пересчёт доставки по каждому продавцу при изменении города или количества
+  const cartQtyKey = cart.map(c => `${c.id}:${c.qty}`).join(",");
+  useEffect(() => {
+    if (!delivery.city) return;
+    const groups: Record<string, { fromCityCode: string; sellerId: string; weight: number }> = {};
+    cart.forEach(item => {
+      const sid = item.sellerId || "__unknown__";
+      if (!groups[sid]) groups[sid] = { fromCityCode: item.fromCityCode ?? "", sellerId: sid, weight: 0 };
+      groups[sid].weight += item.qty * (item.weightG ?? 300);
+    });
+    Object.values(groups).forEach(g => {
+      recalcSellerDelivery(g.sellerId, g.fromCityCode, g.weight, delivery.city!.code, (delivery.city as { code: string; city: string; region: string; guid?: string })?.guid);
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [delivery.city, cartQtyKey]);
+
   const goodsTotal = selectedCart.reduce((s, c) => s + getItemPrice(c, mode) * c.qty, 0);
-  const deliveryCost = delivery.tariff?.price ?? null;
+  const sellerDeliveryTotal = Object.values(sellerDeliveryCosts).reduce<number>((s, v) => s + (v ?? 0), 0);
+  const deliveryCost = delivery.city ? sellerDeliveryTotal || null : (delivery.tariff?.price ?? null);
   const orderTotal = goodsTotal + (deliveryCost ?? 0);
   const totalWeight = selectedCart.reduce((s, c) => s + c.qty * (c.weightG ?? 300), 0);
   const fromCityCode = (selectedCart[0] ?? cart[0])?.fromCityCode ?? "";
@@ -395,9 +440,9 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
                         const sellerGoods = group.items
                           .filter(i => selectedIds.has(i.id))
                           .reduce((s, c) => s + getItemPrice(c, mode) * c.qty, 0);
-                        const deliveryPerSeller = delivery.tariff
-                          ? Math.round(delivery.tariff.price / Math.max(groups.length, 1))
-                          : null;
+                        const sid = group.sellerId;
+                        const deliveryCostForSeller = sellerDeliveryCosts[sid] ?? null;
+                        const isLoadingDelivery = sellerDeliveryLoading[sid] ?? false;
                         return (
                           <div className="grid grid-cols-2 divide-x divide-border border-t border-border">
                             <div className="px-4 py-3">
@@ -407,12 +452,19 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
                               </p>
                             </div>
                             <div className="px-4 py-3">
-                              <p className="text-[10px] text-muted-foreground mb-0.5">Доставка</p>
-                              <p className="font-oswald text-sm font-semibold text-foreground">
-                                {deliveryPerSeller !== null
-                                  ? `${deliveryPerSeller.toLocaleString("ru")} ₽`
-                                  : <span className="text-muted-foreground font-normal text-xs">не выбрана</span>}
-                              </p>
+                              <p className="text-[10px] text-muted-foreground mb-0.5">Доставка (мин.)</p>
+                              {isLoadingDelivery ? (
+                                <div className="flex items-center gap-1.5">
+                                  <div className="w-3 h-3 border-2 border-primary/40 border-t-primary rounded-full animate-spin" />
+                                  <span className="text-xs text-muted-foreground">считаем...</span>
+                                </div>
+                              ) : (
+                                <p className="font-oswald text-sm font-semibold text-foreground">
+                                  {deliveryCostForSeller !== null
+                                    ? `от ${deliveryCostForSeller.toLocaleString("ru")} ₽`
+                                    : <span className="text-muted-foreground font-normal text-xs">{delivery.city ? "нет тарифов" : "укажите город"}</span>}
+                                </p>
+                              )}
                             </div>
                           </div>
                         );
