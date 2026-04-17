@@ -16,11 +16,12 @@ interface PvzPoint {
 interface CdekPvzMapProps {
   cityCode: string;
   cityName: string;
+  cityGuid?: string;
   onSelect: (pvz: PvzPoint) => void;
   onClose: () => void;
 }
 
-export default function CdekPvzMap({ cityCode, cityName, onSelect, onClose }: CdekPvzMapProps) {
+export default function CdekPvzMap({ cityCode, cityName, cityGuid, onSelect, onClose }: CdekPvzMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const leafletMap = useRef<import("leaflet").Map | null>(null);
   const markersRef = useRef<import("leaflet").Marker[]>([]);
@@ -46,7 +47,10 @@ export default function CdekPvzMap({ cityCode, cityName, onSelect, onClose }: Cd
     setLoading(true);
     setError("");
     setPoints([]);
-    fetch(`${CDEK_URL}?action=get_pvz&city_code=${cityCode}`)
+    const pvzParam = cityGuid
+      ? `city_code=${encodeURIComponent(cityCode)}&city_guid=${cityGuid}`
+      : `city_code=${encodeURIComponent(cityCode)}`;
+    fetch(`${CDEK_URL}?action=get_pvz&${pvzParam}`)
       .then(r => r.json())
       .then(data => {
         if (Array.isArray(data) && data.length > 0) {

@@ -8,6 +8,7 @@ interface City {
   code: string;
   city: string;
   region: string;
+  guid?: string;
 }
 
 interface Tariff {
@@ -122,9 +123,10 @@ export default function DeliverySelector({ weightGrams, fromCityCode = "", selle
     setSelectedPvz(null);
     setLoadingTariffs(true);
     setError("");
-    const fromParam = fromCityCode ? `&from_city_code=${fromCityCode}` : "";
+    const fromParam = fromCityCode ? `&from_city_code=${encodeURIComponent(fromCityCode)}` : "";
     const sellerParam = sellerId ? `&seller_id=${sellerId}` : "";
-    fetch(`${APISHIP_URL}?action=calc&city_code=${city.code}&weight=${weightGrams}${fromParam}${sellerParam}`)
+    const guidParam = city.guid ? `&city_guid=${city.guid}` : "";
+    fetch(`${APISHIP_URL}?action=calc&city_code=${encodeURIComponent(city.code)}&weight=${weightGrams}${guidParam}${fromParam}${sellerParam}`)
       .then(r => r.json())
       .then(data => {
         if (Array.isArray(data) && data.length > 0 && !data[0]?._raw) {
@@ -335,6 +337,7 @@ export default function DeliverySelector({ weightGrams, fromCityCode = "", selle
         <CdekPvzMap
           cityCode={selectedCity.code}
           cityName={selectedCity.city}
+          cityGuid={selectedCity.guid}
           onSelect={(pvz) => {
             setSelectedPvz(pvz);
             setShowPvzMap(false);

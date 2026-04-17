@@ -60,12 +60,15 @@ def apiship_request(path: str, payload: dict = None, method: str = "GET") -> dic
 
 
 def search_cities(query: str) -> list:
-    """Поиск городов через агрегацию ПВЗ ApiShip (точное совпадение по city)."""
+    """Поиск городов через агрегацию ПВЗ ApiShip.
+    code = название города (для калькулятора через cityName).
+    guid = ФИАС UUID (для поиска ПВЗ через cityGuid).
+    """
     q = query.strip()
     if not q:
         return []
     try:
-        params = urllib.parse.urlencode({"filter": f"city={q}", "limit": 100})
+        params = urllib.parse.urlencode({"filter": f"city={q}", "limit": 200})
         data = apiship_request(f"/lists/points?{params}")
     except Exception:
         return []
@@ -75,38 +78,48 @@ def search_cities(query: str) -> list:
         city = p.get("city") or ""
         region = p.get("region") or ""
         guid = p.get("cityGuid") or ""
-        if not city or not guid:
+        if not city:
             continue
-        key = guid
+        key = city.lower()
         if key in seen:
             continue
         seen[key] = {
-            "code": guid,
+            "code": city,       # используется как cityName в калькуляторе
             "city": city,
             "region": region,
             "country": p.get("countryCode", "RU"),
+            "guid": guid,       # ФИАС, для поиска ПВЗ
         }
     return list(seen.values())[:15]
 
 
-def calc_tariffs(city_code: str, weight_g: int, from_city_code: str = "") -> list:
-    """Расчёт доставки через ApiShip. city_code — это cityGuid (ФИАС)."""
-    def addr_block(code: str, default_name: str = None):
+FROM_CITY_GUID = "7dfa745e-aa19-4688-b121-b655c11e482f"  # Краснодар ФИАС
+
+def calc_tariffs(city_code: str, weight_g: int, from_city_code: str = "", from_city_guid: str = "") -> list:
+    """Расчёт доставки через ApiShip.
+    city_code = название города назначения.
+    ApiShip требует cityGuid (ФИАС) для from и to.
+    """
+    def addr_block(name: str, guid: str = "", default_name: str = "", default_guid: str = "") -> dict:
+        n = name.strip() if name else ""
+        g = guid.strip() if guid else ""
+        if not n and not g:
+            n = default_name
+            g = default_guid
         b = {}
-        if code:
-            if "-" in code:  # похоже на GUID
-                b["cityGuid"] = code
-            elif code.isdigit():
-                b["cityId"] = int(code)
-            else:
-                b["cityName"] = code
-        if default_name and not b:
-            b["cityName"] = default_name
+        if g:
+            b["cityGuid"] = g
+        if n and not g:
+            b["city"] = n
         return b
 
+    # from: используем сохранённый GUID склада, или GUID Краснодара по умолчанию
+    from_block = addr_block(from_city_code, from_city_guid, FROM_CITY_NAME, FROM_CITY_GUID)
+    to_block = addr_block(city_code, "", "", "")
+
     payload = {
-        "from": addr_block(from_city_code, FROM_CITY_NAME),
-        "to": addr_block(city_code),
+        "from": from_block,
+        "to": to_block,
         "places": [{
             "weight": max(int(weight_g), 100),
             "height": 10,
@@ -119,7 +132,7 @@ def calc_tariffs(city_code: str, weight_g: int, from_city_code: str = "") -> lis
         result = apiship_request("/calculator", payload, "POST")
     except urllib.error.HTTPError as e:
         raw = e.read().decode() if hasattr(e, "read") else ""
-        print(f"[APISHIP] calc HTTP {e.code}: {raw[:300]}")
+        print(f"[APISHIP] calc HTTP {e.code}: {raw[:500]}")
         return []
     except Exception as e:
         print(f"[APISHIP] calc error: {e}")
@@ -136,6 +149,8 @@ def calc_tariffs(city_code: str, weight_g: int, from_city_code: str = "") -> lis
         providers_list.append({**p, "_delivery_to": "pvz"})
     if not providers_list and isinstance(result, list):
         providers_list = result
+    if not to_door and not to_point:
+        return []
     out = []
     for prov in providers_list:
         default_dt = prov.get("_delivery_to", "courier")
@@ -303,14 +318,16 @@ def handler(event: dict, context) -> dict:
             return {"statusCode": 200, "headers": headers, "body": json.dumps(cities, ensure_ascii=False)}
 
         if action == "calc":
-            city_code = qs.get("city_code", "")
+            city_code = qs.get("city_code", "")       # название города назначения
+            city_guid = qs.get("city_guid", "")        # ФИАС GUID города назначения (если передан)
             weight_g = int(qs.get("weight", 500))
-            from_city = qs.get("from_city_code", "")
+            from_city = qs.get("from_city_code", "")  # название города отправки
+            from_guid = qs.get("from_city_guid", "")  # ФИАС GUID города отправки
             seller_id = qs.get("seller_id", "")
-            if not city_code:
+            if not city_code and not city_guid:
                 return {"statusCode": 400, "headers": headers, "body": json.dumps({"error": "city_code required"})}
 
-            if not from_city and seller_id:
+            if not from_city and not from_guid and seller_id:
                 try:
                     conn = get_conn()
                     cur = conn.cursor(cursor_factory=RealDictCursor)
@@ -326,13 +343,17 @@ def handler(event: dict, context) -> dict:
                         )
                         row = cur.fetchone()
                     if row:
-                        from_city = str(row["city_code"])
+                        val = str(row["city_code"])
+                        if "-" in val:
+                            from_guid = val
+                        else:
+                            from_city = val
                     cur.close()
                     conn.close()
                 except Exception:
                     pass
 
-            tariffs = calc_tariffs(city_code, weight_g, from_city)
+            tariffs = calc_tariffs(city_code, weight_g, from_city, from_guid)
             return {"statusCode": 200, "headers": headers, "body": json.dumps(tariffs, ensure_ascii=False)}
 
         if action == "get_pvz":
@@ -341,9 +362,12 @@ def handler(event: dict, context) -> dict:
             if not city_code:
                 return {"statusCode": 400, "headers": headers, "body": json.dumps({"error": "city_code required"})}
 
-            # city_code может быть: cityGuid (с "-"), cityName, или cityId
+            # city_guid — ФИАС UUID (приоритет), city_code — имя города (fallback)
+            city_guid = qs.get("city_guid") or body.get("city_guid") or ""
             filters = []
-            if "-" in str(city_code):
+            if city_guid and "-" in city_guid:
+                filters.append(f"cityGuid={city_guid}")
+            elif "-" in str(city_code):
                 filters.append(f"cityGuid={city_code}")
             elif str(city_code).isdigit():
                 filters.append(f"cityId={city_code}")
