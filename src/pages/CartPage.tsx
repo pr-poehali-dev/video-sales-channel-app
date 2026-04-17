@@ -17,7 +17,7 @@ interface CartPageProps {
 
 interface SelectedDelivery {
   tariff: { code: string; name: string; price: number; days_min: number; days_max: number; provider?: string; delivery_to?: "pvz" | "courier" } | null;
-  city: { code: string; city: string; region: string } | null;
+  city: { code: string; city: string; region: string; guid?: string } | null;
 }
 
 type PaymentMethod = "sbp" | "card" | null;
@@ -116,7 +116,7 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
       groups[sid].weight += item.qty * (item.weightG ?? 300);
     });
     Object.values(groups).forEach(g => {
-      recalcSellerDelivery(g.sellerId, g.fromCityCode, g.weight, delivery.city!.code, (delivery.city as { code: string; city: string; region: string; guid?: string })?.guid);
+      recalcSellerDelivery(g.sellerId, g.fromCityCode, g.weight, delivery.city!.code, delivery.city!.guid);
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [delivery.city, cartQtyKey]);

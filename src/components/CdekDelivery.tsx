@@ -124,6 +124,8 @@ export default function DeliverySelector({ weightGrams, fromCityCode = "", selle
     setSelectedPvz(null);
     setLoadingTariffs(true);
     setError("");
+    // Сообщаем родителю о выбранном городе сразу — для пересчёта доставки по продавцам
+    onSelect(null, city);
     const fromParam = fromCityCode ? `&from_city_code=${encodeURIComponent(fromCityCode)}` : "";
     const sellerParam = sellerId ? `&seller_id=${sellerId}` : "";
     const guidParam = city.guid ? `&city_guid=${city.guid}` : "";
