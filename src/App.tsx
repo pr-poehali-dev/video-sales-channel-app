@@ -3,6 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/context/AuthContext";
 import { StoreProvider } from "@/context/StoreContext";
+import { PriceModeProvider } from "@/context/PriceModeContext";
 import HomePage from "@/pages/HomePage";
 import StreamsPage from "@/pages/StreamsPage";
 import CatalogPage from "@/pages/CatalogPage";
@@ -139,10 +140,12 @@ export default function App() {
   return (
     <AuthProvider>
       <StoreProvider>
-        <TooltipProvider>
-          <Toaster />
-          <AppInner />
-        </TooltipProvider>
+        <PriceModeProvider>
+          <TooltipProvider>
+            <Toaster />
+            <AppInner />
+          </TooltipProvider>
+        </PriceModeProvider>
       </StoreProvider>
     </AuthProvider>
   );

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import { useStore } from "@/context/StoreContext";
 import type { CartItem } from "@/App";
+import { usePriceMode } from "@/context/PriceModeContext";
 
 function VideoPreview({ src, poster }: { src: string; poster?: string }) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -42,6 +43,7 @@ interface ProductPageProps {
 
 export default function ProductPage({ productId, addToCart, onBack, onSellerClick }: ProductPageProps) {
   const { products, getSellerProducts } = useStore();
+  const { mode } = usePriceMode();
   const product = products.find(p => p.id === productId);
   const [activeImg, setActiveImg] = useState(0);
   const [added, setAdded] = useState(false);
@@ -67,12 +69,15 @@ export default function ProductPage({ productId, addToCart, onBack, onSellerClic
   const retailPrice = hasWholesale
     ? Math.round(product.wholesalePrice! * (1 + (product.retailMarkupPct ?? 0) / 100))
     : product.price;
+  const displayPrice = hasWholesale
+    ? (mode === "wholesale" ? product.wholesalePrice! : retailPrice)
+    : product.price;
 
-  const handleAdd = (priceOverride?: number) => {
+  const handleAdd = () => {
     addToCart({
       id: product.id,
       name: product.name,
-      price: priceOverride ?? product.price,
+      price: displayPrice,
       image: product.images[0] ?? "",
       fromCityCode: product.fromCityCode ?? 0,
       weightG: product.weightG ?? 500,
@@ -134,44 +139,20 @@ export default function ProductPage({ productId, addToCart, onBack, onSellerClic
           </div>
         </div>
 
-        {/* Кнопки В корзину */}
-        <div className="px-4 pt-2 pb-1 space-y-2">
-          {hasWholesale ? (
-            <>
-              <button
-                onClick={() => handleAdd(product.wholesalePrice!)}
-                className={`w-full flex items-center justify-between px-5 py-3 rounded-xl font-semibold transition-all ${
-                  added ? "bg-green-500 text-white" : "bg-primary text-primary-foreground hover:opacity-90"
-                }`}
-              >
-                <span className="flex items-center gap-2">
-                  <Icon name={added ? "Check" : "ShoppingBag"} size={18} />
-                  {added ? "Добавлено!" : "Купить оптом"}
-                </span>
-                <span className="font-oswald text-lg">{product.wholesalePrice!.toLocaleString("ru")} ₽</span>
-              </button>
-              <button
-                onClick={() => handleAdd(retailPrice)}
-                className="w-full flex items-center justify-between px-5 py-3 rounded-xl font-semibold border border-border bg-secondary text-foreground hover:border-primary/40 transition-all"
-              >
-                <span className="flex items-center gap-2 text-sm">
-                  <Icon name="ShoppingCart" size={16} />
-                  Купить в розницу
-                </span>
-                <span className="font-oswald text-lg">{retailPrice.toLocaleString("ru")} ₽</span>
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={() => handleAdd()}
-              className={`w-full flex items-center justify-center gap-2 font-semibold py-3 rounded-xl transition-all ${
-                added ? "bg-green-500 text-white" : "bg-primary text-primary-foreground hover:opacity-90"
-              }`}
-            >
+        {/* Кнопка В корзину */}
+        <div className="px-4 pt-2 pb-1">
+          <button
+            onClick={handleAdd}
+            className={`w-full flex items-center justify-between px-5 py-3 rounded-xl font-semibold transition-all ${
+              added ? "bg-green-500 text-white" : "bg-primary text-primary-foreground hover:opacity-90"
+            }`}
+          >
+            <span className="flex items-center gap-2">
               <Icon name={added ? "Check" : "ShoppingCart"} size={18} />
-              {added ? "Добавлено в корзину!" : "В корзину"}
-            </button>
-          )}
+              {added ? "Добавлено!" : hasWholesale ? (mode === "wholesale" ? "Купить оптом" : "Купить в розницу") : "В корзину"}
+            </span>
+            <span className="font-oswald text-lg">{displayPrice.toLocaleString("ru")} ₽</span>
+          </button>
         </div>
       </div>
 
@@ -185,15 +166,11 @@ export default function ProductPage({ productId, addToCart, onBack, onSellerClic
               <h1 className="font-oswald text-xl font-semibold text-foreground leading-tight">{product.name}</h1>
             </div>
             <div className="flex-shrink-0 text-right">
-              {hasWholesale ? (
-                <>
-                  <div className="text-xs text-muted-foreground">опт / розница</div>
-                  <span className="font-oswald text-xl font-bold text-foreground">
-                    {product.wholesalePrice!.toLocaleString("ru")} / {retailPrice.toLocaleString("ru")} ₽
-                  </span>
-                </>
-              ) : (
-                <span className="font-oswald text-2xl font-bold text-foreground">{product.price.toLocaleString("ru")} ₽</span>
+              <span className="font-oswald text-2xl font-bold text-foreground">{displayPrice.toLocaleString("ru")} ₽</span>
+              {hasWholesale && (
+                <div className={`text-[10px] font-medium mt-0.5 ${mode === "wholesale" ? "text-primary" : "text-muted-foreground"}`}>
+                  {mode === "wholesale" ? "оптовая цена" : "розничная цена"}
+                </div>
               )}
             </div>
           </div>

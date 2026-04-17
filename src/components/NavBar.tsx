@@ -1,6 +1,7 @@
 import Icon from "@/components/ui/icon";
 import type { Page } from "@/App";
 import { useAuth } from "@/context/AuthContext";
+import { usePriceMode } from "@/context/PriceModeContext";
 
 interface NavBarProps {
   page: Page;
@@ -10,6 +11,7 @@ interface NavBarProps {
 
 export default function NavBar({ page, setPage, cartCount }: NavBarProps) {
   const { user } = useAuth();
+  const { mode, setMode } = usePriceMode();
 
   const navItems: { id: Page; label: string; icon: string }[] = [
     { id: "home", label: "Главная", icon: "Home" },
@@ -41,6 +43,32 @@ export default function NavBar({ page, setPage, cartCount }: NavBarProps) {
             <span className="text-foreground font-light">стрим</span><span className="text-primary">БАЗАР</span>
             <span className="text-[10px] font-normal text-muted-foreground">.рф</span>
           </button>
+
+          {/* Переключатель Опт / Розница */}
+          <div className="flex items-center bg-secondary rounded-lg p-0.5 gap-0.5">
+            <button
+              onClick={() => setMode("retail")}
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                mode === "retail"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Icon name="ShoppingCart" size={13} />
+              Розница
+            </button>
+            <button
+              onClick={() => setMode("wholesale")}
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                mode === "wholesale"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Icon name="Layers" size={13} />
+              Оптом
+            </button>
+          </div>
 
           {/* Десктоп навигация */}
           <nav className="hidden md:flex items-center gap-1">
