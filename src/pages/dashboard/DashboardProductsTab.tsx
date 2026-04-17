@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import Icon from "@/components/ui/icon";
 import { useAuth } from "@/context/AuthContext";
 import { useStore } from "@/context/StoreContext";
@@ -328,10 +329,10 @@ export default function DashboardProductsTab({ warehouses }: Props) {
         </div>
       )}
 
-      {/* Форма товара */}
-      {showForm && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 50, background: "var(--card)", display: "flex", flexDirection: "column" }}>
-          <div style={{ maxWidth: 512, width: "100%", margin: "0 auto", display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
+      {/* Форма товара — через portal в body чтобы fixed работал корректно */}
+      {showForm && createPortal(
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, background: "var(--card)", display: "flex", flexDirection: "column" }}>
+          <div style={{ width: "100%", maxWidth: 560, margin: "0 auto", display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
             <div className="flex items-center justify-between p-5 border-b border-border flex-shrink-0">
               <h3 className="font-oswald text-lg font-semibold text-foreground tracking-wide">
                 {editId ? "Редактировать товар" : "Новый товар"}
@@ -549,7 +550,8 @@ export default function DashboardProductsTab({ warehouses }: Props) {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Подтверждение удаления товара */}
