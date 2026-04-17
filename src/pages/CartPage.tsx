@@ -344,7 +344,7 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
                         {group.items.map(item => {
                           const isSelected = selectedIds.has(item.id);
                           return (
-                            <div key={item.id} className={`p-4 flex gap-3 items-center transition-opacity ${isSelected ? "" : "opacity-50"}`}>
+                            <div key={item.id} className={`p-4 flex gap-3 items-center transition-all ${isSelected ? "" : "opacity-40"}`}>
                               {/* Чекбокс товара */}
                               <button onClick={() => toggleItem(item.id)} className="flex-shrink-0">
                                 <span className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
@@ -389,6 +389,34 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
                           );
                         })}
                       </div>
+
+                      {/* Итого по продавцу */}
+                      {(() => {
+                        const sellerGoods = group.items
+                          .filter(i => selectedIds.has(i.id))
+                          .reduce((s, c) => s + getItemPrice(c, mode) * c.qty, 0);
+                        const deliveryPerSeller = delivery.tariff
+                          ? Math.round(delivery.tariff.price / Math.max(groups.length, 1))
+                          : null;
+                        return (
+                          <div className="grid grid-cols-2 divide-x divide-border border-t border-border">
+                            <div className="px-4 py-3">
+                              <p className="text-[10px] text-muted-foreground mb-0.5">Товары</p>
+                              <p className="font-oswald text-sm font-semibold text-foreground">
+                                {sellerGoods.toLocaleString("ru")} ₽
+                              </p>
+                            </div>
+                            <div className="px-4 py-3">
+                              <p className="text-[10px] text-muted-foreground mb-0.5">Доставка</p>
+                              <p className="font-oswald text-sm font-semibold text-foreground">
+                                {deliveryPerSeller !== null
+                                  ? `${deliveryPerSeller.toLocaleString("ru")} ₽`
+                                  : <span className="text-muted-foreground font-normal text-xs">не выбрана</span>}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   );
                 })}
