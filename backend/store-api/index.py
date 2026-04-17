@@ -353,9 +353,23 @@ def handler(event: dict, context) -> dict:
         if action == "get_products":
             seller_id = qs.get("seller_id")
             if seller_id:
-                cur.execute("SELECT * FROM products WHERE seller_id=%s ORDER BY created_at DESC", (seller_id,))
+                cur.execute("""
+                    SELECT p.*, COALESCE(NULLIF(u.shop_name,''), p.seller_name) AS effective_seller_name,
+                           COALESCE(NULLIF(u.shop_city_code,''), p.from_city_code) AS effective_from_city_code,
+                           COALESCE(NULLIF(u.shop_city_name,''), p.from_city_name) AS effective_from_city_name,
+                           COALESCE(NULLIF(u.shop_city_guid,''), '') AS effective_from_city_guid
+                    FROM products p LEFT JOIN users u ON u.id = p.seller_id
+                    WHERE p.seller_id=%s ORDER BY p.created_at DESC
+                """, (seller_id,))
             else:
-                cur.execute("SELECT * FROM products ORDER BY created_at DESC")
+                cur.execute("""
+                    SELECT p.*, COALESCE(NULLIF(u.shop_name,''), p.seller_name) AS effective_seller_name,
+                           COALESCE(NULLIF(u.shop_city_code,''), p.from_city_code) AS effective_from_city_code,
+                           COALESCE(NULLIF(u.shop_city_name,''), p.from_city_name) AS effective_from_city_name,
+                           COALESCE(NULLIF(u.shop_city_guid,''), '') AS effective_from_city_guid
+                    FROM products p LEFT JOIN users u ON u.id = p.seller_id
+                    ORDER BY p.created_at DESC
+                """)
             rows = cur.fetchall()
             return ok([_fmt_product(r) for r in rows])
 
@@ -895,6 +909,10 @@ def _fmt_order(r):
     }
 
 def _fmt_product(r):
+    # Если в запросе есть effective_* поля (из JOIN с users) — используем их
+    seller_name = r.get("effective_seller_name") or r.get("seller_name") or ""
+    from_city_code = r.get("effective_from_city_code") or r.get("from_city_code") or ""
+    from_city_name = r.get("effective_from_city_name") or r.get("from_city_name") or ""
     return {
         "id":             r["id"],
         "name":           r["name"],
@@ -903,7 +921,7 @@ def _fmt_product(r):
         "description":    r["description"],
         "images":         _clean_images(r["images"]),
         "sellerId":       r["seller_id"],
-        "sellerName":     r["seller_name"],
+        "sellerName":     seller_name,
         "sellerAvatar":   r["seller_avatar"],
         "inStock":        r["in_stock"],
         "weightG":        r.get("weight_g", 500),
@@ -913,8 +931,8 @@ def _fmt_product(r):
         "cdekEnabled":    r.get("cdek_enabled", True),
         "nalogEnabled":   r.get("nalog_enabled", False),
         "fittingEnabled": r.get("fitting_enabled", False),
-        "fromCityCode":   r.get("from_city_code", 0),
-        "fromCityName":   r.get("from_city_name", ""),
+        "fromCityCode":   from_city_code,
+        "fromCityName":   from_city_name,
         "videoUrl":          r.get("video_url") or None,
         "wholesalePrice":    float(r["wholesale_price"]) if r.get("wholesale_price") is not None else None,
         "retailMarkupPct":   r.get("retail_markup_pct") or 0,
