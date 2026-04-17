@@ -360,9 +360,10 @@ export default function DeliverySelector({
               )}
             </div>
 
-            {/* Тариф */}
+            {/* Тариф — показываем тип и срок, без цены (цена считается отдельно по каждому продавцу) */}
             {activeTariff && (
-              <div className="flex items-center justify-between px-4 py-3 rounded-xl border border-primary bg-primary/8">
+              <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-primary bg-primary/8">
+                <Icon name={activeMode === "pvz" ? "Store" : "Truck"} size={14} className="text-primary flex-shrink-0" />
                 <div>
                   <p className="text-sm font-medium text-foreground leading-tight">
                     {providerLabel(activeTariff.provider)}
@@ -372,7 +373,6 @@ export default function DeliverySelector({
                   </p>
                   <p className="text-xs text-muted-foreground">{cleanTariffName(activeTariff.name)}</p>
                 </div>
-                <span className="font-oswald text-base font-semibold text-foreground flex-shrink-0">{activeTariff.price.toLocaleString("ru")} ₽</span>
               </div>
             )}
 

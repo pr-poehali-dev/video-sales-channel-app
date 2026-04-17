@@ -123,7 +123,11 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
 
   const goodsTotal = selectedCart.reduce((s, c) => s + getItemPrice(c, mode) * c.qty, 0);
   const sellerDeliveryTotal = Object.values(sellerDeliveryCosts).reduce<number>((s, v) => s + (v ?? 0), 0);
-  const deliveryCost = delivery.city ? sellerDeliveryTotal || null : (delivery.tariff?.price ?? null);
+  const anySellerLoading = Object.values(sellerDeliveryLoading).some(Boolean);
+  // Итоговая доставка — всегда сумма по продавцам (если город выбран), иначе null
+  const deliveryCost = delivery.city
+    ? (anySellerLoading ? null : (sellerDeliveryTotal > 0 ? sellerDeliveryTotal : null))
+    : null;
   const orderTotal = goodsTotal + (deliveryCost ?? 0);
   const totalWeight = selectedCart.reduce((s, c) => s + c.qty * (c.weightG ?? 300), 0);
   const fromCityCode = (selectedCart[0] ?? cart[0])?.fromCityCode ?? "";
@@ -568,22 +572,26 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
                   <span className="text-foreground">{deliveryCost.toLocaleString("ru")} ₽</span>
                 )}
               </div>
-              {delivery.city && delivery.tariff && (
+              {delivery.city && (
                 <div className="bg-secondary rounded-lg px-3 py-2 text-xs text-muted-foreground space-y-0.5">
                   <div className="flex items-center gap-1.5">
                     <Icon name="MapPin" size={11} />
                     {delivery.city.city}{delivery.city.region ? `, ${delivery.city.region}` : ""}
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <Icon name={delivery.tariff.delivery_to === "pvz" ? "Store" : "Truck"} size={11} />
-                    {delivery.tariff.delivery_to === "pvz" ? "Самовывоз из пункта" : "Курьер до двери"}
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <Icon name="Clock" size={11} />
-                    {delivery.tariff.days_min === delivery.tariff.days_max
-                      ? `${delivery.tariff.days_min} дн.`
-                      : `${delivery.tariff.days_min}–${delivery.tariff.days_max} дн.`}
-                  </div>
+                  {delivery.tariff && (
+                    <>
+                      <div className="flex items-center gap-1.5">
+                        <Icon name={delivery.tariff.delivery_to === "pvz" ? "Store" : "Truck"} size={11} />
+                        {delivery.tariff.delivery_to === "pvz" ? "Самовывоз из пункта" : "Курьер до двери"}
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Icon name="Clock" size={11} />
+                        {delivery.tariff.days_min === delivery.tariff.days_max
+                          ? `${delivery.tariff.days_min} дн.`
+                          : `${delivery.tariff.days_min}–${delivery.tariff.days_max} дн.`}
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
               <div className="border-t border-border pt-2 flex justify-between font-semibold">
