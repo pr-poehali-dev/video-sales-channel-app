@@ -88,6 +88,24 @@ export default function DeliverySelector({ weightGrams, fromCityCode = "", selle
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  // Авто-выбор города из savedCity при первой загрузке
+  useEffect(() => {
+    if (!savedCity || selectedCity) return;
+    const cityName = savedCity.split(",")[0].trim();
+    if (cityName.length < 2) return;
+    fetch(`${APISHIP_URL}?action=cities&q=${encodeURIComponent(cityName)}`)
+      .then(r => r.json())
+      .then(data => {
+        const list: City[] = Array.isArray(data) ? data : [];
+        if (list.length === 0) return;
+        // Берём первый совпадающий (по имени города)
+        const match = list.find(c => savedCity.startsWith(c.city)) ?? list[0];
+        selectCity(match);
+      })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const searchCities = (q: string) => {
     if (q.length < 2) { setCities([]); setShowDropdown(false); return; }
     setLoadingCities(true);
