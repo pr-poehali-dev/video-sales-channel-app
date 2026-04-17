@@ -79,7 +79,7 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
         const sellerParam = sellerId ? `&seller_id=${sellerId}` : "";
         const res = await fetch(`${CDEK_API}?action=calc&city_code=${encodeURIComponent(toCityCode)}&weight=${weightG}${guidParam}${fromParam}${sellerParam}`);
         const data = await res.json();
-        const tariffs: { price: number }[] = data.tariffs ?? [];
+        const tariffs: { price: number }[] = Array.isArray(data) ? data : (data.tariffs ?? []);
         const minPrice = tariffs.length > 0 ? Math.min(...tariffs.map(t => t.price)) : null;
         setSellerDeliveryCosts(prev => ({ ...prev, [sellerId]: minPrice }));
       } catch {
