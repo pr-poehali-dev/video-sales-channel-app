@@ -189,6 +189,7 @@ export default function DashboardProductsTab({ warehouses }: Props) {
       }
     }
     setShowForm(true);
+    document.body.style.overflow = "hidden";
   };
 
   const openEditForm = (id: string) => {
@@ -217,6 +218,12 @@ export default function DashboardProductsTab({ warehouses }: Props) {
     setFRetailMarkup(String(p.retailMarkupPct ?? 0));
     setFVideoBlobUrl(null);
     setShowForm(true);
+    document.body.style.overflow = "hidden";
+  };
+
+  const closeForm = () => {
+    setShowForm(false);
+    document.body.style.overflow = "";
   };
 
   const handleSave = () => {
@@ -255,7 +262,7 @@ export default function DashboardProductsTab({ warehouses }: Props) {
       } as never);
     }
     if (fVideoBlobUrl) URL.revokeObjectURL(fVideoBlobUrl);
-    setShowForm(false);
+    closeForm();
   };
 
   const handleDelete = (id: string) => {
@@ -331,13 +338,13 @@ export default function DashboardProductsTab({ warehouses }: Props) {
 
       {/* Форма товара — через portal в body чтобы fixed работал корректно */}
       {showForm && createPortal(
-        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, background: "var(--card)", display: "flex", flexDirection: "column" }}>
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, background: "hsl(var(--card))", display: "flex", flexDirection: "column" }}>
           <div style={{ width: "100%", maxWidth: 560, margin: "0 auto", display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
             <div className="flex items-center justify-between p-5 border-b border-border flex-shrink-0">
               <h3 className="font-oswald text-lg font-semibold text-foreground tracking-wide">
                 {editId ? "Редактировать товар" : "Новый товар"}
               </h3>
-              <button onClick={() => setShowForm(false)} className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center hover:bg-secondary/70">
+              <button onClick={closeForm} className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center hover:bg-secondary/70">
                 <Icon name="X" size={15} className="text-muted-foreground" />
               </button>
             </div>
@@ -544,7 +551,7 @@ export default function DashboardProductsTab({ warehouses }: Props) {
                 className="flex-1 bg-primary text-primary-foreground font-semibold py-3 rounded-xl hover:opacity-90 transition-opacity text-sm">
                 {editId ? "Сохранить" : "Добавить товар"}
               </button>
-              <button onClick={() => setShowForm(false)}
+              <button onClick={closeForm}
                 className="px-5 border border-border text-muted-foreground font-medium rounded-xl hover:bg-secondary transition-colors text-sm">
                 Отмена
               </button>
