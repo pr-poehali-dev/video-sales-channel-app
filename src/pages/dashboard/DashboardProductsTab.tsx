@@ -585,8 +585,8 @@ export default function DashboardProductsTab({ warehouses }: Props) {
       )}
 
       {/* ── Камера для съёмки видео-товара ── */}
-      {camOpen && (
-        <div className="fixed inset-0 z-[100] bg-black flex flex-col overflow-hidden touch-none">
+      {camOpen && createPortal(
+        <div style={{ position: "fixed", inset: 0, zIndex: 10000, background: "#000", display: "flex", flexDirection: "column", overflow: "hidden" }}>
           {/* Видео с камеры */}
           <video
             ref={camVideoRef}
@@ -634,7 +634,8 @@ export default function DashboardProductsTab({ warehouses }: Props) {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
