@@ -5,7 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 const STORE_API = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c";
 const CDEK_API = "https://functions.poehali.dev/a73e197d-7da4-4945-bd28-4d0de6b02bb7";
 
-interface CdekCity { code: string; city: string; region: string; }
+interface CdekCity { code: string; city: string; region: string; guid?: string; }
 export interface Warehouse { id: string; sellerId: string; name: string; cityCode: string; cityName: string; address: string; isDefault: boolean; }
 
 interface Props {
@@ -21,6 +21,7 @@ export default function DashboardWarehousesTab({ warehouses, setWarehouses, whLo
   const [whName, setWhName] = useState("");
   const [whAddress, setWhAddress] = useState("");
   const [whCityCode, setWhCityCode] = useState("");
+  const [whCityGuid, setWhCityGuid] = useState("");
   const [whCityName, setWhCityName] = useState("");
   const [whCityQuery, setWhCityQuery] = useState("");
   const [whCitySuggestions, setWhCitySuggestions] = useState<CdekCity[]>([]);
@@ -50,12 +51,12 @@ export default function DashboardWarehousesTab({ warehouses, setWarehouses, whLo
       const r = await fetch(`${STORE_API}?action=add_warehouse`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ seller_id: user!.id, name: whName.trim(), city_code: whCityCode, city_name: whCityName, address: whAddress.trim() }),
+        body: JSON.stringify({ seller_id: user!.id, name: whName.trim(), city_code: whCityCode, city_guid: whCityGuid, city_name: whCityName, address: whAddress.trim() }),
       });
       const wh = await r.json();
       setWarehouses(prev => [...prev, wh]);
       setShowWhForm(false);
-      setWhName(""); setWhAddress(""); setWhCityCode(""); setWhCityName(""); setWhCityQuery(""); setWhCitySuggestions([]);
+      setWhName(""); setWhAddress(""); setWhCityCode(""); setWhCityGuid(""); setWhCityName(""); setWhCityQuery(""); setWhCitySuggestions([]);
     } catch { setWhError("Ошибка сохранения"); } finally { setWhSaving(false); }
   };
 
@@ -158,17 +159,17 @@ export default function DashboardWarehousesTab({ warehouses, setWarehouses, whLo
               <div className="relative">
                 <label className="text-xs text-muted-foreground mb-1 block">Город отправления *</label>
                 <div className="relative">
-                  <input value={whCityQuery} onChange={e => { setWhCityQuery(e.target.value); setWhCityCode(0); setWhCityName(""); }}
+                  <input value={whCityQuery} onChange={e => { setWhCityQuery(e.target.value); setWhCityCode(""); setWhCityGuid(""); setWhCityName(""); }}
                     placeholder="Начните вводить город..."
                     className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors pr-8" />
                   {whCityLoading && <Icon name="Loader" size={14} className="absolute right-3 top-3 text-muted-foreground animate-spin" />}
-                  {whCityCode > 0 && !whCityLoading && <Icon name="CheckCircle" size={14} className="absolute right-3 top-3 text-green-500" />}
+                  {whCityCode && !whCityLoading && <Icon name="CheckCircle" size={14} className="absolute right-3 top-3 text-green-500" />}
                 </div>
                 {whCitySuggestions.length > 0 && (
                   <div className="absolute z-20 top-full left-0 right-0 bg-card border border-border rounded-xl shadow-xl mt-1 overflow-hidden">
                     {whCitySuggestions.map(c => (
                       <button key={c.code} type="button"
-                        onClick={() => { setWhCityCode(c.code); setWhCityName(c.city); setWhCityQuery(c.city); setWhCitySuggestions([]); }}
+                        onClick={() => { setWhCityCode(c.code); setWhCityGuid(c.guid || ""); setWhCityName(c.city); setWhCityQuery(c.city); setWhCitySuggestions([]); }}
                         className="w-full text-left px-3 py-2.5 text-sm hover:bg-secondary transition-colors border-b border-border/50 last:border-0">
                         <span className="font-medium text-foreground">{c.city}</span>
                         <span className="text-muted-foreground text-xs ml-1">{c.region}</span>

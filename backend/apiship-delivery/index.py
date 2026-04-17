@@ -332,22 +332,19 @@ def handler(event: dict, context) -> dict:
                     conn = get_conn()
                     cur = conn.cursor(cursor_factory=RealDictCursor)
                     cur.execute(
-                        "SELECT city_code FROM warehouses WHERE seller_id=%s AND is_default=TRUE LIMIT 1",
+                        "SELECT city_code, city_guid FROM warehouses WHERE seller_id=%s AND is_default=TRUE LIMIT 1",
                         (seller_id,)
                     )
                     row = cur.fetchone()
                     if not row:
                         cur.execute(
-                            "SELECT city_code FROM warehouses WHERE seller_id=%s ORDER BY created_at ASC LIMIT 1",
+                            "SELECT city_code, city_guid FROM warehouses WHERE seller_id=%s ORDER BY created_at ASC LIMIT 1",
                             (seller_id,)
                         )
                         row = cur.fetchone()
                     if row:
-                        val = str(row["city_code"])
-                        if "-" in val:
-                            from_guid = val
-                        else:
-                            from_city = val
+                        from_guid = str(row.get("city_guid") or "").strip()
+                        from_city = str(row.get("city_code") or "").strip()
                     cur.close()
                     conn.close()
                 except Exception:

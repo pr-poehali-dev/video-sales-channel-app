@@ -107,6 +107,7 @@ def _fmt_warehouse(r) -> dict:
         "sellerId": r["seller_id"],
         "name": r["name"],
         "cityCode": r["city_code"],
+        "cityGuid": r.get("city_guid") or "",
         "cityName": r["city_name"],
         "address": r["address"],
         "isDefault": r["is_default"],
@@ -767,6 +768,7 @@ def handler(event: dict, context) -> dict:
             seller_id = body.get("seller_id")
             name = body.get("name", "").strip()
             city_code = body.get("city_code")
+            city_guid = str(body.get("city_guid") or "").strip()
             city_name = body.get("city_name", "").strip()
             address = body.get("address", "").strip()
             if not all([seller_id, name, city_code, city_name]):
@@ -775,9 +777,9 @@ def handler(event: dict, context) -> dict:
             cur.execute("SELECT COUNT(*) as cnt FROM warehouses WHERE seller_id=%s", (seller_id,))
             is_first = cur.fetchone()["cnt"] == 0
             cur.execute("""
-                INSERT INTO warehouses (id, seller_id, name, city_code, city_name, address, is_default)
-                VALUES (%s,%s,%s,%s,%s,%s,%s) RETURNING *
-            """, (wid, seller_id, name, str(city_code), city_name, address, is_first))
+                INSERT INTO warehouses (id, seller_id, name, city_code, city_guid, city_name, address, is_default)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s) RETURNING *
+            """, (wid, seller_id, name, str(city_code), city_guid, city_name, address, is_first))
             conn.commit()
             return ok(_fmt_warehouse(cur.fetchone()), 201)
 
