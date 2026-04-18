@@ -176,7 +176,7 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
         delivery_tariff_name: delivery.tariff?.name || "",
         delivery_cost:        deliveryCost || 0,
         cdek_pvz_code:        cdekPvzCode || "",
-        items: selectedCart.map(c => ({ id: c.id, name: c.name, price: getItemPrice(c, mode), qty: c.qty, image: c.image, videoUrl: c.videoUrl || "" })),
+        items: selectedCart.map(c => ({ id: c.id, name: c.name, price: getItemPrice(c, mode), qty: c.qty, image: c.image, videoUrl: c.videoUrl || "", sellerId: c.sellerId || "" })),
         payment_method: payMethod || "",
         goods_total:    goodsTotal,
         order_total:    orderTotal,
