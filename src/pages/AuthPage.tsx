@@ -24,7 +24,7 @@ export default function AuthPage({ onSuccess }: AuthPageProps) {
   const handleSubmit = async () => {
     setError(null);
     if (!email.trim() || !password.trim()) {
-      setError("Заполните все обязательные поля");
+      setError(mode === "login" ? "Введите email или телефон и пароль" : "Заполните все обязательные поля");
       return;
     }
     if (mode === "register") {
@@ -89,14 +89,16 @@ export default function AuthPage({ onSuccess }: AuthPageProps) {
               </div>
             )}
 
-            {/* Email */}
+            {/* Email / Phone */}
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Email *</label>
+              <label className="text-xs text-muted-foreground mb-1 block">
+                {mode === "login" ? "Email или телефон *" : "Email *"}
+              </label>
               <input
-                type="email"
+                type={mode === "login" ? "text" : "email"}
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                placeholder="you@example.com"
+                placeholder={mode === "login" ? "you@example.com или +7 900..." : "you@example.com"}
                 className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors"
               />
             </div>

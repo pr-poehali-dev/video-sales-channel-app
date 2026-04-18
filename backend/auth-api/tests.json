@@ -15,7 +15,7 @@
       "path": "/?action=login",
       "body": {"email": "admin@yugastore.ru", "password": "wrongpass"},
       "expectedStatus": 400,
-      "expectedBody": {"error": "Неверный email или пароль"},
+      "expectedBody": {"error": "Неверный email/телефон или пароль"},
       "bodyMatcher": "partial"
     }
   ]

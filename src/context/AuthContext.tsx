@@ -81,8 +81,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const login = async (email: string, password: string): Promise<string | null> => {
-    const data = await authFetch("login", { email, password });
+  const login = async (emailOrPhone: string, password: string): Promise<string | null> => {
+    const isPhone = !emailOrPhone.includes("@");
+    const body = isPhone
+      ? { phone: emailOrPhone, password }
+      : { email: emailOrPhone, password };
+    const data = await authFetch("login", body);
     if (data.error) return data.error;
     saveSession(data.user);
     return null;

@@ -99,23 +99,41 @@ def handler(event: dict, context) -> dict:
     try:
         # ─── LOGIN ───
         if action == "login":
-            email = (body.get("email") or "").strip().lower()
+            login_id = (body.get("email") or body.get("phone") or "").strip()
             password = body.get("password") or ""
 
-            if not email or not password:
-                return err("Введите email и пароль")
+            if not login_id or not password:
+                return err("Введите email или телефон и пароль")
 
-            if email == ADMIN_EMAIL and password == ADMIN_PASSWORD:
+            # Admin shortcut
+            if login_id.lower() == ADMIN_EMAIL and password == ADMIN_PASSWORD:
                 return ok({"user": ADMIN_USER})
 
-            cur.execute("SELECT * FROM users WHERE email = '%s'" % email.replace("'", "''"))
+            # Normalise phone: strip spaces/dashes, ensure starts with +7 or 8
+            def normalise_phone(p):
+                import re
+                digits = re.sub(r'\D', '', p)
+                if digits.startswith('8') and len(digits) == 11:
+                    digits = '7' + digits[1:]
+                return digits
+
+            is_phone = not('@' in login_id)
+            if is_phone:
+                digits = normalise_phone(login_id)
+                # Match by last 10 digits to be tolerant of +7/8 prefix differences
+                cur.execute(
+                    "SELECT * FROM users WHERE regexp_replace(phone, '[^0-9]', '', 'g') LIKE '%%%s'" % digits[-10:]
+                )
+            else:
+                cur.execute("SELECT * FROM users WHERE email = '%s'" % login_id.lower().replace("'", "''"))
+
             user = cur.fetchone()
             if not user:
-                return err("Неверный email или пароль")
+                return err("Неверный email/телефон или пароль")
             if user["is_blocked"]:
                 return err("Аккаунт заблокирован")
             if user["password_hash"] != hash_password(password):
-                return err("Неверный email или пароль")
+                return err("Неверный email/телефон или пароль")
 
             return ok({"user": fmt_user(user)})
 
