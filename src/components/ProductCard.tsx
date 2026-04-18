@@ -128,17 +128,13 @@ export default function ProductCard({ product, addToCart, onClick }: ProductCard
           <div className="min-w-0">
             {hasWholesale ? (
               <>
-                <div className="flex items-baseline gap-1.5">
-                  <span className="font-oswald text-base font-semibold text-foreground">
-                    {product.wholesalePrice!.toLocaleString("ru")} ₽
-                  </span>
-                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-primary/15 text-primary">опт</span>
+                <div className="flex items-center gap-1">
+                  <span className="font-oswald text-base font-semibold text-foreground leading-none">{retailPrice.toLocaleString("ru")} ₽</span>
+                  <span className="text-[9px] font-medium px-1 py-0.5 rounded-full bg-secondary text-muted-foreground leading-none">розница</span>
                 </div>
-                <div className="flex items-baseline gap-1.5 mt-0.5">
-                  <span className="font-oswald text-sm text-muted-foreground">
-                    {retailPrice.toLocaleString("ru")} ₽
-                  </span>
-                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-secondary text-muted-foreground">розница</span>
+                <div className="flex items-center gap-1 mt-0.5">
+                  <span className="font-oswald text-sm text-muted-foreground leading-none">{product.wholesalePrice!.toLocaleString("ru")} ₽</span>
+                  <span className="text-[9px] font-medium px-1 py-0.5 rounded-full bg-primary/15 text-primary leading-none">опт</span>
                 </div>
               </>
             ) : (
