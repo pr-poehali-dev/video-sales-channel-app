@@ -245,11 +245,58 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
     else groups.push({ sellerId: sid, sellerName: sname, items: [item] });
   });
 
+  const stickyLabel = submitting
+    ? null
+    : payMethod === "sbp" ? "Оплатить через СБП"
+    : payMethod === "card" ? "Оплатить картой"
+    : "Оформить заказ";
+
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8">
+    <div className="max-w-3xl mx-auto px-4 py-8 pb-28">
       <h1 className="font-oswald text-2xl font-semibold text-foreground tracking-wide mb-6">
         Корзина <span className="text-muted-foreground font-normal text-lg">({cart.length})</span>
       </h1>
+
+      {/* Sticky-кнопка снизу */}
+      {!showSbp && !orderDone && (
+        <div className="fixed bottom-16 left-0 right-0 z-40 px-4 pb-2 pointer-events-none">
+          <div className="max-w-3xl mx-auto pointer-events-auto">
+            <button
+              disabled={!canCheckout || submitting}
+              onClick={handleCheckout}
+              className="w-full bg-primary text-primary-foreground rounded-2xl px-4 py-2.5 flex items-center justify-between shadow-lg disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
+            >
+              <div className="flex flex-col items-start min-w-0">
+                <span className="text-[10px] text-primary-foreground/70 leading-none mb-0.5">
+                  {deliveryCost !== null ? `доставка ${deliveryCost.toLocaleString("ru")} ₽` : "доставка не выбрана"}
+                </span>
+                <span className="font-oswald text-base font-bold leading-none">
+                  {orderTotal.toLocaleString("ru")} ₽
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 flex-shrink-0 pl-3">
+                {submitting ? (
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <Icon name="ShoppingBag" size={15} />
+                    <span className="font-semibold text-sm">{stickyLabel}</span>
+                  </>
+                )}
+              </div>
+            </button>
+            {!canCheckout && !submitting && (
+              <p className="text-xs text-muted-foreground text-center mt-1.5">
+                {!contactFilled
+                  ? "Заполните контактные данные"
+                  : deliveryCost === null
+                  ? "Выберите город и способ доставки"
+                  : "Выберите способ оплаты"}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-col lg:flex-row gap-6">
         {/* Левая колонка */}
