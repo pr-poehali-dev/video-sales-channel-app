@@ -22,7 +22,6 @@ interface SelectedDelivery {
   city: { code: string; city: string; region: string; guid?: string } | null;
 }
 
-type PaymentMethod = "sbp" | "card" | null;
 type DeliveryType  = "cdek_pvz" | "cdek_courier";
 
 function getItemPrice(item: CartItem, mode: "retail" | "wholesale"): number {
@@ -147,8 +146,6 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
   const [buyerName,  setBuyerName]  = useState(user?.name  || "");
   const [buyerPhone, setBuyerPhone] = useState(user?.phone || "");
   const [buyerEmail, setBuyerEmail] = useState(user?.email || "");
-  const [payMethod,  setPayMethod]  = useState<PaymentMethod>(null);
-  const [showSbp,    setShowSbp]    = useState(false);
   const [orderDone,  setOrderDone]  = useState(false);
   const [orderId,    setOrderId]    = useState<string | null>(null);
   const [cdekTrack,  setCdekTrack]  = useState<string | null>(null);
@@ -156,7 +153,6 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const contactFilled = buyerName.trim() && buyerPhone.trim();
-  const canCheckout   = deliveryCost !== null && payMethod !== null && !!contactFilled;
 
   // ── Оформление заказа ─────────────────────────────────────────────────────
   const createOrder = async (): Promise<string | null> => {
@@ -177,7 +173,7 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
         delivery_cost:        deliveryCost || 0,
         cdek_pvz_code:        cdekPvzCode || "",
         items: selectedCart.map(c => ({ id: c.id, name: c.name, price: getItemPrice(c, mode), qty: c.qty, image: c.image, videoUrl: c.videoUrl || "", sellerId: c.sellerId || "" })),
-        payment_method: payMethod || "",
+        payment_method: "",
         goods_total:    goodsTotal,
         order_total:    orderTotal,
       };
@@ -229,25 +225,6 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
       setValidationError("Выберите город и способ доставки");
       return;
     }
-    if (!payMethod) {
-      setValidationError("Выберите способ оплаты");
-      return;
-    }
-    if (payMethod === "sbp") {
-      const oid = await createOrder();
-      if (oid) setShowSbp(true);
-    } else if (payMethod === "card") {
-      const oid = await createOrder();
-      if (oid) setOrderDone(true);
-    }
-  };
-
-  const handleTestCheckout = async () => {
-    setValidationError(null);
-    if (!contactFilled) {
-      setValidationError(!buyerName.trim() ? "Введите имя получателя" : "Введите номер телефона");
-      return;
-    }
     const oid = await createOrder();
     if (oid) setOrderDone(true);
   };
@@ -275,11 +252,7 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
     else groups.push({ sellerId: sid, sellerName: sname, items: [item] });
   });
 
-  const stickyLabel = submitting
-    ? null
-    : payMethod === "sbp" ? "Оплатить через СБП"
-    : payMethod === "card" ? "Оплатить картой"
-    : "Оформить заказ";
+  const stickyLabel = submitting ? null : "Оформить заказ";
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 pb-28">
@@ -288,7 +261,7 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
       </h1>
 
       {/* Sticky-кнопка снизу */}
-      {!showSbp && !orderDone && (
+      {!orderDone && (
         <div className="fixed bottom-16 left-0 right-0 z-40 px-4 pb-2 pointer-events-none">
           <div className="max-w-3xl mx-auto pointer-events-auto space-y-2">
             {validationError && (
@@ -300,42 +273,30 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
                 {validationError}
               </div>
             )}
-            <div className="flex gap-2">
-              <button
-                onClick={handleCheckout}
-                disabled={submitting}
-                className="flex-1 bg-primary text-primary-foreground rounded-2xl px-4 py-2.5 flex items-center justify-between shadow-lg hover:opacity-90 transition-opacity disabled:opacity-60"
-              >
-                <div className="flex flex-col items-start min-w-0">
-                  <span className="text-[10px] text-primary-foreground/70 leading-none mb-0.5">
-                    {deliveryCost !== null ? `доставка ${deliveryCost.toLocaleString("ru")} ₽` : "доставка не выбрана"}
-                  </span>
-                  <span className="font-oswald text-base font-bold leading-none">
-                    {orderTotal.toLocaleString("ru")} ₽
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5 flex-shrink-0 pl-3">
-                  {submitting ? (
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      <Icon name="ShoppingBag" size={15} />
-                      <span className="font-semibold text-sm">{stickyLabel}</span>
-                    </>
-                  )}
-                </div>
-              </button>
-              <button
-                onClick={handleTestCheckout}
-                disabled={submitting || !contactFilled}
-                className="bg-orange-500/15 border border-dashed border-orange-400 text-orange-500 rounded-2xl px-3 py-2.5 shadow-lg hover:bg-orange-500/25 transition-colors disabled:opacity-40 flex flex-col items-center justify-center gap-0.5 min-w-[64px]"
-                title="Тестовый заказ без оплаты и СДЭК"
-              >
-                <Icon name="FlaskConical" size={16} />
-                <span className="text-[9px] font-semibold leading-tight text-center">Тест</span>
-              </button>
-            </div>
-
+            <button
+              onClick={handleCheckout}
+              disabled={submitting}
+              className="w-full bg-primary text-primary-foreground rounded-2xl px-4 py-2.5 flex items-center justify-between shadow-lg hover:opacity-90 transition-opacity disabled:opacity-60"
+            >
+              <div className="flex flex-col items-start min-w-0">
+                <span className="text-[10px] text-primary-foreground/70 leading-none mb-0.5">
+                  {deliveryCost !== null ? `доставка ${deliveryCost.toLocaleString("ru")} ₽` : "доставка не выбрана"}
+                </span>
+                <span className="font-oswald text-base font-bold leading-none">
+                  {orderTotal.toLocaleString("ru")} ₽
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 flex-shrink-0 pl-3">
+                {submitting ? (
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <Icon name="ShoppingBag" size={15} />
+                    <span className="font-semibold text-sm">{stickyLabel}</span>
+                  </>
+                )}
+              </div>
+            </button>
           </div>
         </div>
       )}
@@ -442,17 +403,10 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
           deliveryCost={deliveryCost}
           orderTotal={orderTotal}
           delivery={delivery}
-          payMethod={payMethod}
-          canCheckout={canCheckout}
           contactFilled={contactFilled}
           submitting={submitting}
           submitError={submitError}
-          showSbp={showSbp}
-          onSetPayMethod={setPayMethod}
           onCheckout={handleCheckout}
-          onTestCheckout={handleTestCheckout}
-          onSbpSuccess={() => setOrderDone(true)}
-          onSbpCancel={() => setShowSbp(false)}
         />
       </div>
     </div>

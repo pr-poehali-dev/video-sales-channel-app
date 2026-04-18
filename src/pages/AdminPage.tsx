@@ -6,7 +6,6 @@ import AdminChatsTab from "@/components/admin/AdminChatsTab";
 import AdminStreamsTab from "@/components/admin/AdminStreamsTab";
 import AdminCdekTab from "@/components/admin/AdminCdekTab";
 import AdminUsersTab from "@/components/admin/AdminUsersTab";
-import AdminTestOrderTab from "@/components/admin/AdminTestOrderTab";
 import AdminProductsTab from "@/components/admin/AdminProductsTab";
 
 interface AdminPageProps {
@@ -15,7 +14,7 @@ interface AdminPageProps {
 
 export default function AdminPage({ setPage }: AdminPageProps) {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<"users" | "cdek" | "chats" | "streams" | "test_order" | "products">("chats");
+  const [activeTab, setActiveTab] = useState<"users" | "cdek" | "chats" | "streams" | "products">("chats");
 
   if (!user || user.role !== "admin") {
     return (
@@ -46,7 +45,7 @@ export default function AdminPage({ setPage }: AdminPageProps) {
       {/* Вкладки */}
       <div className="mb-6 -mx-4 px-4 overflow-x-auto scrollbar-none">
         <div className="flex gap-1 bg-secondary rounded-xl p-1 w-fit">
-          {([["chats", "Чаты"], ["streams", "Эфиры"], ["products", "Товары"], ["users", "Пользователи"], ["cdek", "СДЭК"], ["test_order", "Тест-заказ"]] as const).map(([key, label]) => (
+          {([["chats", "Чаты"], ["streams", "Эфиры"], ["products", "Товары"], ["users", "Пользователи"], ["cdek", "СДЭК"]] as const).map(([key, label]) => (
             <button key={key} onClick={() => setActiveTab(key)}
               className={`px-4 py-2 text-sm rounded-lg font-medium transition-all whitespace-nowrap ${
                 activeTab === key ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
@@ -62,7 +61,6 @@ export default function AdminPage({ setPage }: AdminPageProps) {
       {activeTab === "products" && <AdminProductsTab />}
       {activeTab === "cdek" && <AdminCdekTab />}
       {activeTab === "users" && <AdminUsersTab />}
-      {activeTab === "test_order" && <AdminTestOrderTab />}
     </div>
   );
 }
