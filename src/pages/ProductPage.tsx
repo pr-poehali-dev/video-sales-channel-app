@@ -153,9 +153,16 @@ export default function ProductPage({ productId, addToCart, onBack, onSellerClic
           >
             <span className="flex items-center gap-2">
               <Icon name={added ? "Check" : "ShoppingCart"} size={18} />
-              {added ? "Добавлено!" : hasWholesale ? (mode === "wholesale" ? "Купить оптом" : "Купить в розницу") : "В корзину"}
+              {added ? "Добавлено!" : "В корзину"}
             </span>
-            <span className="font-oswald text-lg">{displayPrice.toLocaleString("ru")} ₽</span>
+            {hasWholesale ? (
+              <span className="flex flex-col items-end leading-none">
+                <span className="font-oswald text-base">{product.wholesalePrice!.toLocaleString("ru")} ₽ <span className="text-[10px] opacity-70">опт</span></span>
+                <span className="font-oswald text-xs opacity-70">{retailPrice.toLocaleString("ru")} ₽ розница</span>
+              </span>
+            ) : (
+              <span className="font-oswald text-lg">{displayPrice.toLocaleString("ru")} ₽</span>
+            )}
           </button>
         </div>
       </div>
@@ -170,11 +177,19 @@ export default function ProductPage({ productId, addToCart, onBack, onSellerClic
               <h1 className="font-oswald text-xl font-semibold text-foreground leading-tight">{product.name}</h1>
             </div>
             <div className="flex-shrink-0 text-right">
-              <span className="font-oswald text-2xl font-bold text-foreground">{displayPrice.toLocaleString("ru")} ₽</span>
-              {hasWholesale && (
-                <div className={`text-[10px] font-medium mt-0.5 ${mode === "wholesale" ? "text-primary" : "text-muted-foreground"}`}>
-                  {mode === "wholesale" ? "оптовая цена" : "розничная цена"}
-                </div>
+              {hasWholesale ? (
+                <>
+                  <div className="flex items-baseline justify-end gap-1.5">
+                    <span className="font-oswald text-2xl font-bold text-foreground">{product.wholesalePrice!.toLocaleString("ru")} ₽</span>
+                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-primary/15 text-primary">опт</span>
+                  </div>
+                  <div className="flex items-baseline justify-end gap-1.5 mt-0.5">
+                    <span className="font-oswald text-base text-muted-foreground">{retailPrice.toLocaleString("ru")} ₽</span>
+                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-secondary text-muted-foreground">розница</span>
+                  </div>
+                </>
+              ) : (
+                <span className="font-oswald text-2xl font-bold text-foreground">{displayPrice.toLocaleString("ru")} ₽</span>
               )}
             </div>
           </div>
