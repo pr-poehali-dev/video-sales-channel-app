@@ -191,11 +191,14 @@ def create_apiship_order(order: dict) -> dict:
     if is_pvz and order.get("cdek_pvz_code"):
         address_to["pointOutId"] = order["cdek_pvz_code"]
 
+    assessed_cost = round(float(order.get("order_total", goods_total) or goods_total), 2)
+
     payload = {
         "clientNumber": str(order.get("order_id", "")),
         "providerKey": order.get("provider", "cdek"),
         "tariffId": int(order["delivery_tariff_code"]) if str(order.get("delivery_tariff_code", "")).isdigit() else None,
         "shopId": 3388,
+        "assessedCost": assessed_cost,
         "recipient": {
             "name": order.get("buyer_name", ""),
             "phone": phone,
@@ -227,9 +230,9 @@ def create_apiship_order(order: dict) -> dict:
     if payload["tariffId"] is None:
         payload.pop("tariffId")
 
+    print(f"[APISHIP] create_order payload: {json.dumps(payload, ensure_ascii=False)[:800]}")
     try:
         result = apiship_request("/orders", payload, "POST")
-        print(f"[APISHIP] create_order payload: {json.dumps(payload, ensure_ascii=False)[:600]}")
         print(f"[APISHIP] create_order result: {json.dumps(result, ensure_ascii=False)[:600]}")
         return result
     except urllib.error.HTTPError as e:
