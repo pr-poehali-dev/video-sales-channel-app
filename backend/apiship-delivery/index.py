@@ -226,9 +226,12 @@ def create_apiship_order(order: dict) -> dict:
 
     try:
         result = apiship_request("/orders", payload, "POST")
+        print(f"[APISHIP] create_order payload: {json.dumps(payload, ensure_ascii=False)[:600]}")
+        print(f"[APISHIP] create_order result: {json.dumps(result, ensure_ascii=False)[:600]}")
         return result
     except urllib.error.HTTPError as e:
         raw = e.read().decode() if hasattr(e, "read") else ""
+        print(f"[APISHIP] create_order HTTP {e.code}: {raw[:600]}")
         return {"error": f"HTTP {e.code}: {raw[:400]}"}
 
 
