@@ -202,7 +202,6 @@ def create_apiship_order(order: dict) -> dict:
         "cost": {
             "assessedCost": int(assessed_cost),
             "deliveryCost": int(delivery_cost),
-            "codCost": 0,
         },
         "sender": {
             "name": "ИП Буцкий Денис Алексеевич",
