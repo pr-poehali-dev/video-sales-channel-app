@@ -195,7 +195,6 @@ def create_apiship_order(order: dict) -> dict:
         "clientNumber": str(order.get("order_id", "")),
         "providerKey": order.get("provider", "cdek"),
         "tariffId": int(order["delivery_tariff_code"]) if str(order.get("delivery_tariff_code", "")).isdigit() else None,
-        "cost": int(float(order.get("order_total", goods_total)) or goods_total),
         "recipient": {
             "name": order.get("buyer_name", ""),
             "phone": phone,
@@ -216,8 +215,8 @@ def create_apiship_order(order: dict) -> dict:
                     "description": item.get("name", "Товар")[:255],
                     "articul": str(item.get("id", i)),
                     "quantity": int(item.get("qty", 1)),
-                    "assessedCost": float(item.get("price", 0)),
-                    "cost": float(item.get("price", 0)),
+                    "assessedCost": int(float(item.get("price", 0))),
+                    "cost": int(float(item.get("price", 0))),
                     "weight": max(weight_g // items_count, 100),
                 }
                 for i, item in enumerate(order.get("items", []))
