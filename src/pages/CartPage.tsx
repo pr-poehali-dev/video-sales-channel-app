@@ -212,7 +212,22 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
     }
   };
 
+  const [validationError, setValidationError] = useState<string | null>(null);
+
   const handleCheckout = async () => {
+    setValidationError(null);
+    if (!contactFilled) {
+      setValidationError(!buyerName.trim() ? "Введите имя получателя" : "Введите номер телефона");
+      return;
+    }
+    if (deliveryCost === null) {
+      setValidationError("Выберите город и способ доставки");
+      return;
+    }
+    if (!payMethod) {
+      setValidationError("Выберите способ оплаты");
+      return;
+    }
     if (payMethod === "sbp") {
       const oid = await createOrder();
       if (oid) setShowSbp(true);
@@ -260,11 +275,20 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
       {/* Sticky-кнопка снизу */}
       {!showSbp && !orderDone && (
         <div className="fixed bottom-16 left-0 right-0 z-40 px-4 pb-2 pointer-events-none">
-          <div className="max-w-3xl mx-auto pointer-events-auto">
+          <div className="max-w-3xl mx-auto pointer-events-auto space-y-2">
+            {validationError && (
+              <div
+                className="flex items-center gap-2 bg-destructive text-white text-sm font-medium px-4 py-2.5 rounded-2xl shadow-lg"
+                onClick={() => setValidationError(null)}
+              >
+                <Icon name="AlertCircle" size={15} className="flex-shrink-0" />
+                {validationError}
+              </div>
+            )}
             <button
-              disabled={!canCheckout || submitting}
               onClick={handleCheckout}
-              className="w-full bg-primary text-primary-foreground rounded-2xl px-4 py-2.5 flex items-center justify-between shadow-lg hover:opacity-90 transition-opacity"
+              disabled={submitting}
+              className="w-full bg-primary text-primary-foreground rounded-2xl px-4 py-2.5 flex items-center justify-between shadow-lg hover:opacity-90 transition-opacity disabled:opacity-60"
             >
               <div className="flex flex-col items-start min-w-0">
                 <span className="text-[10px] text-primary-foreground/70 leading-none mb-0.5">
