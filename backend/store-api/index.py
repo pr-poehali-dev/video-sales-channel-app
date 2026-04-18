@@ -268,7 +268,7 @@ def handler(event: dict, context) -> dict:
             """, (oid, body.get("buyer_id",""), body.get("buyer_name",""),
                   body.get("buyer_phone",""), body.get("buyer_email",""),
                   body.get("delivery_type","cdek_pvz"),
-                  int(body["delivery_city_code"]) if body.get("delivery_city_code") not in (None, "", "null") else None,
+                  (lambda v: int(v) if v not in (None, "", "null") and str(v).lstrip('-').isdigit() else None)(body.get("delivery_city_code")),
                   body.get("delivery_city_name",""),
                   body.get("delivery_address",""), body.get("delivery_tariff_code"),
                   body.get("delivery_tariff_name",""), delivery_cost,
