@@ -124,29 +124,27 @@ export default function ProductCard({ product, addToCart, onClick }: ProductCard
         <p className="text-sm font-medium text-foreground line-clamp-2 leading-snug mb-1">{product.name}</p>
         <p className="text-xs text-muted-foreground mb-2">{product.sellerName}</p>
 
-        <div className="flex items-end justify-between gap-2">
-          <div className="min-w-0">
-            {hasWholesale ? (
-              <>
-                <div className="flex items-center gap-1">
-                  <span className="font-oswald text-base font-semibold text-foreground leading-none">{retailPrice.toLocaleString("ru")} ₽</span>
-                  <span className="text-[9px] font-medium px-1 py-0.5 rounded-full bg-secondary text-muted-foreground leading-none">розница</span>
-                </div>
-                <div className="flex items-center gap-1 mt-0.5">
-                  <span className="font-oswald text-sm text-muted-foreground leading-none">{product.wholesalePrice!.toLocaleString("ru")} ₽</span>
-                  <span className="text-[9px] font-medium px-1 py-0.5 rounded-full bg-primary/15 text-primary leading-none">опт</span>
-                </div>
-              </>
-            ) : (
-              <span className="font-oswald text-base font-semibold text-foreground">
-                {displayPrice.toLocaleString("ru")} ₽
-              </span>
-            )}
-          </div>
+        <div className="flex flex-col gap-2">
+          {hasWholesale ? (
+            <div className="flex flex-col gap-0.5">
+              <div className="flex items-center gap-1.5">
+                <span className="font-oswald text-base font-semibold text-foreground leading-none">{retailPrice.toLocaleString("ru")} ₽</span>
+                <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-secondary text-muted-foreground">розница</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="font-oswald text-sm text-muted-foreground leading-none">{product.wholesalePrice!.toLocaleString("ru")} ₽</span>
+                <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-primary/15 text-primary">опт</span>
+              </div>
+            </div>
+          ) : (
+            <span className="font-oswald text-base font-semibold text-foreground">
+              {displayPrice.toLocaleString("ru")} ₽
+            </span>
+          )}
           <button
             onClick={handleAdd}
             disabled={inStock === 0}
-            className={`flex-shrink-0 flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
+            className={`w-full flex items-center justify-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
               added
                 ? "bg-green-500/20 text-green-600"
                 : "bg-primary/15 text-primary hover:bg-primary hover:text-primary-foreground"
