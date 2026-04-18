@@ -122,41 +122,13 @@ export default function CartOrderSummary({
           </div>
         )}
 
-        {showSbp ? (
+        {showSbp && (
           <SbpPayment
             amount={orderTotal}
             description={`Заказ — ${cartLength} товар${cartLength > 1 ? "а" : ""}`}
             onSuccess={onSbpSuccess}
             onCancel={onSbpCancel}
           />
-        ) : (
-          <>
-            <button
-              disabled={!canCheckout || submitting}
-              onClick={onCheckout}
-              className="w-full bg-primary text-primary-foreground font-semibold py-3 rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {submitting ? (
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : payMethod === "sbp" ? (
-                <><span>⚡</span> Оплатить через СБП</>
-              ) : payMethod === "card" ? (
-                <><Icon name="CreditCard" size={18} /> Оплатить картой</>
-              ) : (
-                <><Icon name="ShoppingBag" size={18} /> Оформить заказ</>
-              )}
-            </button>
-
-            {!canCheckout && !submitting && (
-              <p className="text-xs text-muted-foreground text-center mt-2">
-                {!contactFilled
-                  ? "Заполните контактные данные"
-                  : deliveryCost === null
-                  ? "Выберите город и способ доставки"
-                  : "Выберите способ оплаты"}
-              </p>
-            )}
-          </>
         )}
       </div>
     </div>

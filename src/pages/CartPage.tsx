@@ -285,15 +285,7 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
                 )}
               </div>
             </button>
-            {!canCheckout && !submitting && (
-              <p className="text-xs text-muted-foreground text-center mt-1.5">
-                {!contactFilled
-                  ? "Заполните контактные данные"
-                  : deliveryCost === null
-                  ? "Выберите город и способ доставки"
-                  : "Выберите способ оплаты"}
-              </p>
-            )}
+
           </div>
         </div>
       )}
