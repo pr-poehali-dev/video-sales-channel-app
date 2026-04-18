@@ -211,11 +211,14 @@ def create_apiship_order(order: dict) -> dict:
         },
         "sender": {
             "name": "ИП Буцкий Денис Алексеевич",
+            "contactName": "Буцкий Денис Алексеевич",
             "phone": "+79034444199",
             "email": "Denis2207853@yandex.ru",
+            "addressString": FROM_ADDRESS,
         },
         "recipient": {
             "name": order.get("buyer_name", ""),
+            "contactName": order.get("buyer_name", ""),
             "phone": phone,
             "email": order.get("buyer_email", ""),
         },
