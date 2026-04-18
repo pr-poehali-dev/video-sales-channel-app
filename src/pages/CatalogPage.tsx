@@ -8,10 +8,12 @@ const CATEGORIES = ["Все", "Украшения", "Одежда", "Красо�
 
 interface CatalogPageProps {
   addToCart: (item: Omit<CartItem, "qty">) => void;
+  updateQty?: (id: string, qty: number) => void;
+  cart?: CartItem[];
   onProductClick: (productId: string) => void;
 }
 
-export default function CatalogPage({ addToCart, onProductClick }: CatalogPageProps) {
+export default function CatalogPage({ addToCart, updateQty, cart = [], onProductClick }: CatalogPageProps) {
   const { products, loading } = useStore();
   const [category, setCategory] = useState("Все");
   const [sort, setSort] = useState("new");
@@ -105,6 +107,8 @@ export default function CatalogPage({ addToCart, onProductClick }: CatalogPagePr
                   <ProductCard
                     product={product}
                     addToCart={addToCart}
+                    updateQty={updateQty}
+                    cartQty={cart.find(c => c.id === product.id)?.qty ?? 0}
                     onClick={() => onProductClick(product.id)}
                   />
                 </div>

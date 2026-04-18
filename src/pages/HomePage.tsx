@@ -39,6 +39,8 @@ function VideoPreview({ src }: { src: string }) {
 interface HomePageProps {
   setPage: (p: Page) => void;
   addToCart: (item: Omit<CartItem, "qty">) => void;
+  updateQty?: (id: string, qty: number) => void;
+  cart?: CartItem[];
   onProductClick: (productId: string) => void;
 }
 
@@ -48,7 +50,7 @@ function fmtDuration(sec?: number) {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-export default function HomePage({ setPage, addToCart, onProductClick }: HomePageProps) {
+export default function HomePage({ setPage, addToCart, updateQty, cart = [], onProductClick }: HomePageProps) {
   const { user } = useAuth();
   const { products, streams } = useStore();
   const [watchingId, setWatchingId] = useState<string | null>(null);
@@ -207,7 +209,13 @@ export default function HomePage({ setPage, addToCart, onProductClick }: HomePag
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {latestProducts.map((p, i) => (
               <div key={p.id} className="animate-fade-in" style={{ animationDelay: `${i * 40}ms` }}>
-                <ProductCard product={p} addToCart={addToCart} onClick={() => onProductClick(p.id)} />
+                <ProductCard
+                  product={p}
+                  addToCart={addToCart}
+                  updateQty={updateQty}
+                  cartQty={cart.find(c => c.id === p.id)?.qty ?? 0}
+                  onClick={() => onProductClick(p.id)}
+                />
               </div>
             ))}
           </div>

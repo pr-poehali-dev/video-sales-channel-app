@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import Icon from "@/components/ui/icon";
 import type { CartItem } from "@/App";
 import type { StoreProduct } from "@/context/StoreContext";
@@ -7,6 +7,8 @@ import { usePriceMode } from "@/context/PriceModeContext";
 interface ProductCardProps {
   product: StoreProduct;
   addToCart: (item: Omit<CartItem, "qty">) => void;
+  updateQty?: (id: string, qty: number) => void;
+  cartQty?: number;
   onClick?: () => void;
 }
 
@@ -49,8 +51,7 @@ function VideoPreview({ src, poster }: { src: string; poster?: string }) {
   );
 }
 
-export default function ProductCard({ product, addToCart, onClick }: ProductCardProps) {
-  const [added, setAdded] = useState(false);
+export default function ProductCard({ product, addToCart, updateQty, cartQty = 0, onClick }: ProductCardProps) {
   const { mode } = usePriceMode();
 
   const coverImage = product.images[0] ?? null;
@@ -81,8 +82,28 @@ export default function ProductCard({ product, addToCart, onClick }: ProductCard
       wholesalePrice: product.wholesalePrice,
       retailMarkupPct: product.retailMarkupPct,
     });
-    setAdded(true);
-    setTimeout(() => setAdded(false), 1500);
+  };
+
+  const handleMinus = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    updateQty?.(product.id, cartQty - 1);
+  };
+
+  const handlePlus = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    addToCart({
+      id: product.id,
+      name: product.name,
+      price: displayPrice,
+      image: coverImage ?? "",
+      sellerId: product.sellerId,
+      sellerName: product.sellerName,
+      fromCityCode: product.fromCityCode ?? 0,
+      weightG: product.weightG ?? 500,
+      videoUrl: product.videoUrl,
+      wholesalePrice: product.wholesalePrice,
+      retailMarkupPct: product.retailMarkupPct,
+    });
   };
 
   return (
@@ -141,18 +162,34 @@ export default function ProductCard({ product, addToCart, onClick }: ProductCard
               {displayPrice.toLocaleString("ru")} ₽
             </span>
           )}
-          <button
-            onClick={handleAdd}
-            disabled={inStock === 0}
-            className={`w-full flex items-center justify-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
-              added
-                ? "bg-green-500/20 text-green-600"
-                : "bg-primary/15 text-primary hover:bg-primary hover:text-primary-foreground"
-            }`}
-          >
-            <Icon name={added ? "Check" : "Plus"} size={13} />
-            {added ? "Добавлено" : inStock === 0 ? "Нет" : "В корзину"}
-          </button>
+
+          {cartQty > 0 ? (
+            <div className="flex items-center justify-between w-full bg-primary/10 rounded-lg overflow-hidden h-8">
+              <button
+                onClick={handleMinus}
+                className="flex items-center justify-center w-9 h-full text-primary hover:bg-primary/20 transition-colors text-lg font-bold"
+              >
+                −
+              </button>
+              <span className="font-oswald font-semibold text-sm text-primary">{cartQty}</span>
+              <button
+                onClick={handlePlus}
+                disabled={inStock !== 99 && cartQty >= inStock}
+                className="flex items-center justify-center w-9 h-full text-primary hover:bg-primary/20 transition-colors text-lg font-bold disabled:opacity-40"
+              >
+                +
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={handleAdd}
+              disabled={inStock === 0}
+              className="w-full flex items-center justify-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-primary/15 text-primary hover:bg-primary hover:text-primary-foreground"
+            >
+              <Icon name="Plus" size={13} />
+              {inStock === 0 ? "Нет в наличии" : "В корзину"}
+            </button>
+          )}
         </div>
       </div>
     </div>

@@ -8,6 +8,8 @@ import type { CartItem } from "@/App";
 interface SellerPageProps {
   sellerId: string;
   addToCart: (item: Omit<CartItem, "qty">) => void;
+  updateQty?: (id: string, qty: number) => void;
+  cart?: CartItem[];
   onBack: () => void;
   onProductClick: (productId: string) => void;
 }
@@ -36,7 +38,7 @@ function Stars({ value, max = 5, size = 14, interactive = false, onChange }: {
   );
 }
 
-export default function SellerPage({ sellerId, addToCart, onBack, onProductClick }: SellerPageProps) {
+export default function SellerPage({ sellerId, addToCart, updateQty, cart = [], onBack, onProductClick }: SellerPageProps) {
   const { user } = useAuth();
   const { getSellerProducts, getSellerStreams, getSellerReviews, addSellerReview } = useStore();
   const products = getSellerProducts(sellerId);
@@ -161,7 +163,14 @@ export default function SellerPage({ sellerId, addToCart, onBack, onProductClick
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {products.map(p => (
-              <ProductCard key={p.id} product={p} addToCart={addToCart} onClick={() => onProductClick(p.id)} />
+              <ProductCard
+                key={p.id}
+                product={p}
+                addToCart={addToCart}
+                updateQty={updateQty}
+                cartQty={cart.find(c => c.id === p.id)?.qty ?? 0}
+                onClick={() => onProductClick(p.id)}
+              />
             ))}
           </div>
         </div>
