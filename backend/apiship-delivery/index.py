@@ -180,6 +180,11 @@ def create_apiship_order(order: dict) -> dict:
     items_count = max(len(items_list), 1)
     goods_total = sum(float(i.get("price", 0)) * int(i.get("qty", 1)) for i in items_list)
 
+    buyer_name_raw = (order.get("buyer_name", "") or "").strip()
+    buyer_name_safe = buyer_name_raw if len(buyer_name_raw) >= 3 else f"Получатель {buyer_name_raw}".strip()
+    if len(buyer_name_safe) < 3:
+        buyer_name_safe = "Получатель"
+
     city_name = str(order.get("delivery_city_name", "") or order.get("delivery_city_code", "") or "")
     delivery_address = order.get("delivery_address", "") or ""
     address_to = {"cityName": city_name, "address": delivery_address}
@@ -202,6 +207,7 @@ def create_apiship_order(order: dict) -> dict:
         "cost": {
             "assessedCost": int(assessed_cost),
             "deliveryCost": int(delivery_cost),
+            "codCost": 0,
         },
         "sender": {
             "name": "ИП Буцкий Денис Алексеевич",
@@ -211,8 +217,8 @@ def create_apiship_order(order: dict) -> dict:
             "addressString": FROM_ADDRESS,
         },
         "recipient": {
-            "name": order.get("buyer_name", ""),
-            "contactName": order.get("buyer_name", ""),
+            "name": buyer_name_safe,
+            "contactName": buyer_name_safe,
             "phone": phone,
             "email": order.get("buyer_email", ""),
             "addressString": f"{city_name}, {delivery_address}".strip(", "),
@@ -234,6 +240,7 @@ def create_apiship_order(order: dict) -> dict:
                     "quantity": int(item.get("qty", 1)),
                     "assessedCost": int(float(item.get("price", 0))),
                     "cost": int(float(item.get("price", 0))),
+                    "codCost": 0,
                     "weight": max(weight_g // items_count, 100),
                 }
                 for i, item in enumerate(order.get("items", []))
