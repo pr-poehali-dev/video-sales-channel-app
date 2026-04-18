@@ -203,6 +203,11 @@ def create_apiship_order(order: dict) -> dict:
             "assessedCost": int(assessed_cost),
             "deliveryCost": int(delivery_cost),
         },
+        "sender": {
+            "name": "ИП Буцкий Денис Алексеевич",
+            "phone": "+79034444199",
+            "email": "Denis2207853@yandex.ru",
+        },
         "recipient": {
             "name": order.get("buyer_name", ""),
             "phone": phone,
