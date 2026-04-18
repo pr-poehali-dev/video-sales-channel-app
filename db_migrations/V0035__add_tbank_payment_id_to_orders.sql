@@ -1,0 +1,1 @@
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS tbank_payment_id TEXT DEFAULT '';

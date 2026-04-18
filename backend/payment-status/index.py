@@ -1,20 +1,50 @@
 """
-Проверка статуса платежа ЮКассы по payment_id.
-Возвращает текущий статус: pending, waiting_for_capture, succeeded, canceled.
+Проверка статуса платежа Т-Банк по payment_id.
+Возвращает статус: NEW, FORM_SHOWED, AUTHORIZING, 3DS_CHECKING, AUTHORIZED, CONFIRMING, CONFIRMED, REVERSING, PARTIAL_REVERSED, REVERSED, REFUNDING, PARTIAL_REFUNDED, REFUNDED, CANCELED, REJECTED.
+При статусе CONFIRMED — обновляет статус заказа в БД на 'paid'.
 """
 import json
 import os
+import hashlib
 import urllib.request
-import base64
+import psycopg2
 
 
-YOOKASSA_URL = "https://api.yookassa.ru/v3/payments"
+TBANK_API = "https://securepay.tinkoff.ru/v2"
+
+
+def get_conn():
+    return psycopg2.connect(os.environ["DATABASE_URL"])
+
+
+def tbank_token(params: dict, password: str) -> str:
+    data = {**params, "Password": password}
+    pairs = sorted(data.items())
+    values = "".join(str(v) for _, v in pairs if not isinstance(v, (dict, list)))
+    return hashlib.sha256(values.encode()).hexdigest()
+
+
+def tbank_request(method: str, payload: dict) -> dict:
+    terminal_key = os.environ.get("TBANK_TERMINAL_KEY", "")
+    secret_key = os.environ.get("TBANK_SECRET_KEY", "")
+    payload["TerminalKey"] = terminal_key
+    payload["Token"] = tbank_token(payload, secret_key)
+    data = json.dumps(payload).encode()
+    req = urllib.request.Request(
+        f"{TBANK_API}/{method}",
+        data=data,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=10) as resp:
+        return json.loads(resp.read())
 
 
 def handler(event: dict, context) -> dict:
+    """Проверяет статус платежа и обновляет заказ в БД при успешной оплате."""
     headers = {
         "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, OPTIONS",
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
         "Access-Control-Allow-Headers": "Content-Type",
         "Content-Type": "application/json",
     }
@@ -22,34 +52,46 @@ def handler(event: dict, context) -> dict:
     if event.get("httpMethod") == "OPTIONS":
         return {"statusCode": 200, "headers": headers, "body": ""}
 
-    shop_id = os.environ.get("YOOKASSA_SHOP_ID", "")
-    secret_key = os.environ.get("YOOKASSA_SECRET_KEY", "")
+    terminal_key = os.environ.get("TBANK_TERMINAL_KEY", "")
+    secret_key = os.environ.get("TBANK_SECRET_KEY", "")
 
-    if not shop_id or not secret_key:
+    if not terminal_key or not secret_key:
         return {"statusCode": 503, "headers": headers, "body": json.dumps({"error": "Платёжный шлюз не настроен"})}
 
     params = event.get("queryStringParameters") or {}
     payment_id = params.get("payment_id", "")
+    order_id = params.get("order_id", "")
 
     if not payment_id:
         return {"statusCode": 400, "headers": headers, "body": json.dumps({"error": "Укажите payment_id"})}
 
-    credentials = base64.b64encode(f"{shop_id}:{secret_key}".encode()).decode()
-    req = urllib.request.Request(
-        f"{YOOKASSA_URL}/{payment_id}",
-        headers={"Authorization": f"Basic {credentials}"},
-    )
+    result = tbank_request("GetState", {"PaymentId": payment_id})
 
-    with urllib.request.urlopen(req, timeout=10) as resp:
-        result = json.loads(resp.read())
+    status = result.get("Status", "")
+    paid = status == "CONFIRMED"
+
+    # При успешной оплате — обновляем статус заказа
+    if paid and order_id:
+        try:
+            conn = get_conn()
+            cur = conn.cursor()
+            cur.execute(
+                "UPDATE orders SET status = 'paid' WHERE id = %s AND status = 'new'",
+                (order_id,),
+            )
+            conn.commit()
+            cur.close()
+            conn.close()
+        except Exception as e:
+            print(f"[PAYMENT-STATUS] DB update error: {e}")
 
     return {
         "statusCode": 200,
         "headers": headers,
         "body": json.dumps({
-            "payment_id": result.get("id"),
-            "status": result.get("status"),
-            "paid": result.get("paid", False),
-            "amount": result.get("amount", {}),
+            "payment_id": payment_id,
+            "status": status,
+            "paid": paid,
+            "amount": result.get("Amount", 0),
         }),
     }

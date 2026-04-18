@@ -1,7 +1,7 @@
 {
   "tests": [
     {
-      "name": "Missing payment_id returns 400",
+      "name": "No credentials returns 503",
       "method": "GET",
       "path": "/",
       "expectedStatus": 503,

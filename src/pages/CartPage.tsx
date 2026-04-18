@@ -8,8 +8,9 @@ import CartSellerGroup, { isSellerWholesaleReached, getEffectiveItemPrice } from
 import CartOrderSummary from "./cart/CartOrderSummary";
 import CartOrderDone from "./cart/CartOrderDone";
 
-const STORE_API = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c";
-const CDEK_API  = "https://functions.poehali.dev/a73e197d-7da4-4945-bd28-4d0de6b02bb7";
+const STORE_API   = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c";
+const CDEK_API    = "https://functions.poehali.dev/a73e197d-7da4-4945-bd28-4d0de6b02bb7";
+const PAYMENT_API = "https://functions.poehali.dev/1c026af5-a39b-454b-96bb-cc77b21ee685";
 
 interface CartPageProps {
   cart: CartItem[];
@@ -238,7 +239,41 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
       return;
     }
     const oid = await createOrder();
-    if (oid) setOrderDone(true);
+    if (!oid) return;
+
+    // Получаем seller_account первого продавца для Мультирасчётов
+    const sellerIds = [...new Set(selectedCart.map(c => c.sellerId).filter(Boolean))];
+    const sellerAccount = sellerIds.length === 1 ? sellerIds[0] : "";
+
+    try {
+      const payRes = await fetch(PAYMENT_API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          order_id: oid,
+          amount: orderTotal,
+          description: `Заказ ${oid}`,
+          return_url: `${window.location.origin}/order-success?order_id=${oid}`,
+          email: buyerEmail.trim(),
+          phone: buyerPhone.replace(/\D/g, "").replace(/^8/, "7"),
+          seller_account: sellerAccount,
+          platform_fee_pct: 10,
+          items: selectedCart.map(c => ({
+            name: c.name,
+            price: getItemPrice(c, mode),
+            qty: c.qty,
+          })),
+        }),
+      });
+      const payData = await payRes.json();
+      if (payData.payment_url) {
+        window.location.href = payData.payment_url;
+      } else {
+        setOrderDone(true);
+      }
+    } catch {
+      setOrderDone(true);
+    }
   };
 
   // ── Guard screens ─────────────────────────────────────────────────────────
