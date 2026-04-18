@@ -264,7 +264,7 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
             <button
               disabled={!canCheckout || submitting}
               onClick={handleCheckout}
-              className="w-full bg-primary text-primary-foreground rounded-2xl px-4 py-2.5 flex items-center justify-between shadow-lg disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
+              className="w-full bg-primary text-primary-foreground rounded-2xl px-4 py-2.5 flex items-center justify-between shadow-lg hover:opacity-90 transition-opacity"
             >
               <div className="flex flex-col items-start min-w-0">
                 <span className="text-[10px] text-primary-foreground/70 leading-none mb-0.5">

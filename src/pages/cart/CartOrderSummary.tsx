@@ -72,65 +72,23 @@ export default function CartOrderSummary({
         ))}
       </div>
 
-      {/* Итого */}
-      <div className="bg-card border border-border rounded-xl p-4">
-        <div className="space-y-2 mb-4">
-          <div className="flex justify-between text-sm text-muted-foreground">
-            <span>Товары ({selectedCount} шт.)</span>
-            <span>{goodsTotal.toLocaleString("ru")} ₽</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Доставка</span>
-            {deliveryCost === null ? (
-              <span className="text-muted-foreground italic text-xs">не выбрана</span>
-            ) : (
-              <span className="text-foreground">{deliveryCost.toLocaleString("ru")} ₽</span>
-            )}
-          </div>
-          {delivery.city && (
-            <div className="bg-secondary rounded-lg px-3 py-2 text-xs text-muted-foreground space-y-0.5">
-              <div className="flex items-center gap-1.5">
-                <Icon name="MapPin" size={11} />
-                {delivery.city.city}{delivery.city.region ? `, ${delivery.city.region}` : ""}
-              </div>
-              {delivery.tariff && (
-                <>
-                  <div className="flex items-center gap-1.5">
-                    <Icon name={delivery.tariff.delivery_to === "pvz" ? "Store" : "Truck"} size={11} />
-                    {delivery.tariff.delivery_to === "pvz" ? "Самовывоз из пункта" : "Курьер до двери"}
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <Icon name="Clock" size={11} />
-                    {delivery.tariff.days_min === delivery.tariff.days_max
-                      ? `${delivery.tariff.days_min} дн.`
-                      : `${delivery.tariff.days_min}–${delivery.tariff.days_max} дн.`}
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-          <div className="border-t border-border pt-2 flex justify-between font-semibold">
-            <span className="text-foreground">Итого</span>
-            <span className="font-oswald text-lg text-foreground">{orderTotal.toLocaleString("ru")} ₽</span>
-          </div>
+      {submitError && (
+        <div className="flex items-center gap-2 bg-destructive/10 text-destructive text-xs px-3 py-2 rounded-lg">
+          <Icon name="AlertCircle" size={13} />
+          {submitError}
         </div>
+      )}
 
-        {submitError && (
-          <div className="flex items-center gap-2 bg-destructive/10 text-destructive text-xs px-3 py-2 rounded-lg mb-3">
-            <Icon name="AlertCircle" size={13} />
-            {submitError}
-          </div>
-        )}
-
-        {showSbp && (
+      {showSbp && (
+        <div className="bg-card border border-border rounded-xl p-4">
           <SbpPayment
             amount={orderTotal}
             description={`Заказ — ${cartLength} товар${cartLength > 1 ? "а" : ""}`}
             onSuccess={onSbpSuccess}
             onCancel={onSbpCancel}
           />
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
