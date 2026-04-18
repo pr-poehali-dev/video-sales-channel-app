@@ -144,7 +144,19 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
 
   // ── Контакты и оплата ─────────────────────────────────────────────────────
   const [buyerName,  setBuyerName]  = useState(user?.name  || "");
-  const [buyerPhone, setBuyerPhone] = useState(user?.phone || "");
+  const [buyerPhone, setBuyerPhone] = useState(() => {
+    const raw = user?.phone || "";
+    const digits = raw.replace(/\D/g, "");
+    if (!digits) return "";
+    const norm = digits.startsWith("8") ? "7" + digits.slice(1) : digits.startsWith("7") ? digits : "7" + digits;
+    const d = norm.slice(0, 11);
+    let fmt = "+7";
+    if (d.length > 1) fmt += " (" + d.slice(1, 4);
+    if (d.length >= 4) fmt += ") " + d.slice(4, 7);
+    if (d.length >= 7) fmt += "-" + d.slice(7, 9);
+    if (d.length >= 9) fmt += "-" + d.slice(9, 11);
+    return fmt;
+  });
   const [buyerEmail, setBuyerEmail] = useState(user?.email || "");
   const [orderDone,  setOrderDone]  = useState(false);
   const [orderId,    setOrderId]    = useState<string | null>(null);
@@ -375,13 +387,28 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Имя *</label>
                 <input value={buyerName} onChange={e => setBuyerName(e.target.value)}
+                  onBlur={e => { if (e.target.value.trim().length > 0 && e.target.value.trim().length < 3) setBuyerName(e.target.value.trim() + " (получатель)"); }}
                   placeholder="Иван Иванов"
                   className="w-full bg-secondary border border-border rounded-xl px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors" />
               </div>
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Телефон *</label>
-                <input value={buyerPhone} onChange={e => setBuyerPhone(e.target.value)}
-                  placeholder="+7 900 000-00-00"
+                <input
+                  value={buyerPhone}
+                  onChange={e => {
+                    const digits = e.target.value.replace(/\D/g, "");
+                    if (digits.length === 0) { setBuyerPhone(""); return; }
+                    const normalized = digits.startsWith("8") ? "7" + digits.slice(1) : digits.startsWith("7") ? digits : "7" + digits;
+                    const d = normalized.slice(0, 11);
+                    let formatted = "+7";
+                    if (d.length > 1) formatted += " (" + d.slice(1, 4);
+                    if (d.length >= 4) formatted += ") " + d.slice(4, 7);
+                    if (d.length >= 7) formatted += "-" + d.slice(7, 9);
+                    if (d.length >= 9) formatted += "-" + d.slice(9, 11);
+                    setBuyerPhone(formatted);
+                  }}
+                  placeholder="+7 (900) 000-00-00"
+                  inputMode="tel"
                   className="w-full bg-secondary border border-border rounded-xl px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors" />
               </div>
             </div>
