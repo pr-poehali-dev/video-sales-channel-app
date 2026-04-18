@@ -179,13 +179,13 @@ export default function ProductPage({ productId, addToCart, onBack, onSellerClic
             <div className="flex-shrink-0 text-right">
               {hasWholesale ? (
                 <>
-                  <div className="flex items-baseline justify-end gap-1.5">
-                    <span className="font-oswald text-2xl font-bold text-foreground">{product.wholesalePrice!.toLocaleString("ru")} ₽</span>
-                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-primary/15 text-primary">опт</span>
-                  </div>
-                  <div className="flex items-baseline justify-end gap-1.5 mt-0.5">
-                    <span className="font-oswald text-base text-muted-foreground">{retailPrice.toLocaleString("ru")} ₽</span>
+                  <div className="flex items-center justify-end gap-1.5">
+                    <span className="font-oswald text-2xl font-bold text-foreground">{retailPrice.toLocaleString("ru")} ₽</span>
                     <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-secondary text-muted-foreground">розница</span>
+                  </div>
+                  <div className="flex items-center justify-end gap-1.5 mt-0.5">
+                    <span className="font-oswald text-base text-muted-foreground">{product.wholesalePrice!.toLocaleString("ru")} ₽</span>
+                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-primary/15 text-primary">опт</span>
                   </div>
                 </>
               ) : (
