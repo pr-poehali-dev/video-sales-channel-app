@@ -192,14 +192,17 @@ def create_apiship_order(order: dict) -> dict:
         address_to["pointOutId"] = order["cdek_pvz_code"]
 
     assessed_cost = round(float(order.get("order_total", goods_total) or goods_total), 2)
+    delivery_cost = round(float(order.get("delivery_cost", 0) or 0), 2)
 
     payload = {
         "clientNumber": str(order.get("order_id", "")),
         "providerKey": order.get("provider", "cdek"),
         "tariffId": int(order["delivery_tariff_code"]) if str(order.get("delivery_tariff_code", "")).isdigit() else None,
         "shopId": 3388,
-        "assessedCost": assessed_cost,
-        "cost": assessed_cost,
+        "cost": {
+            "assessedCost": int(assessed_cost),
+            "deliveryCost": int(delivery_cost),
+        },
         "recipient": {
             "name": order.get("buyer_name", ""),
             "phone": phone,
