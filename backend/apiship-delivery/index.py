@@ -194,14 +194,20 @@ def create_apiship_order(order: dict) -> dict:
     assessed_cost = round(float(order.get("order_total", goods_total) or goods_total), 2)
     delivery_cost = round(float(order.get("delivery_cost", 0) or 0), 2)
 
+    delivery_type_out = 2 if not is_pvz else 1  # 1=ПВЗ, 2=курьер
+
     payload = {
         "clientNumber": str(order.get("order_id", "")),
         "providerKey": order.get("provider", "cdek"),
         "tariffId": int(order["delivery_tariff_code"]) if str(order.get("delivery_tariff_code", "")).isdigit() else None,
         "shopId": 3388,
+        "weight": max(weight_g, 100),
+        "pickupType": 1,
+        "deliveryType": delivery_type_out,
         "cost": {
             "assessedCost": int(assessed_cost),
             "deliveryCost": int(delivery_cost),
+            "codCost": 0,
         },
         "sender": {
             "name": "ИП Буцкий Денис Алексеевич",
@@ -230,6 +236,7 @@ def create_apiship_order(order: dict) -> dict:
                     "quantity": int(item.get("qty", 1)),
                     "assessedCost": int(float(item.get("price", 0))),
                     "cost": int(float(item.get("price", 0))),
+                    "codCost": 0,
                     "weight": max(weight_g // items_count, 100),
                 }
                 for i, item in enumerate(order.get("items", []))
