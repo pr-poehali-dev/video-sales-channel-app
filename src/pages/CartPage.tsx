@@ -203,6 +203,11 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
         else if (cdekData.cdek_uuid) setCdekTrack(cdekData.cdek_uuid);
       } catch { /* СДЭК недоступен — заказ всё равно создан */ }
 
+      // Сохраняем телефон в профиль, если его ещё нет
+      if (user && !user.phone && buyerPhone.trim()) {
+        updateUser({ phone: buyerPhone.trim() }).catch(() => {});
+      }
+
       return oid;
     } catch (e: unknown) {
       setSubmitError(e instanceof Error ? e.message : "Ошибка оформления заказа");
