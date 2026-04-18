@@ -23,6 +23,7 @@ interface CartOrderSummaryProps {
   showSbp: boolean;
   onSetPayMethod: (m: PaymentMethod) => void;
   onCheckout: () => void;
+  onTestCheckout: () => void;
   onSbpSuccess: () => void;
   onSbpCancel: () => void;
 }
@@ -42,6 +43,7 @@ export default function CartOrderSummary({
   showSbp,
   onSetPayMethod,
   onCheckout,
+  onTestCheckout,
   onSbpSuccess,
   onSbpCancel,
 }: CartOrderSummaryProps) {
@@ -78,6 +80,31 @@ export default function CartOrderSummary({
           {submitError}
         </div>
       )}
+
+      <div className="flex flex-col gap-2">
+        <button
+          onClick={onCheckout}
+          disabled={submitting || !canCheckout}
+          className="w-full bg-primary text-primary-foreground font-semibold text-sm py-3 rounded-xl disabled:opacity-40 transition-all hover:opacity-90 flex items-center justify-center gap-2"
+        >
+          {submitting ? (
+            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          ) : (
+            <>
+              <Icon name="ShoppingBag" size={15} />
+              {payMethod === "sbp" ? "Оплатить через СБП" : payMethod === "card" ? "Оплатить картой" : "Оформить заказ"}
+            </>
+          )}
+        </button>
+        <button
+          onClick={onTestCheckout}
+          disabled={submitting || !contactFilled}
+          className="w-full border border-dashed border-orange-400 text-orange-500 font-medium text-xs py-2.5 rounded-xl disabled:opacity-40 transition-all hover:bg-orange-50 dark:hover:bg-orange-950/20 flex items-center justify-center gap-1.5"
+        >
+          <Icon name="FlaskConical" size={13} />
+          Тестовый заказ (без оплаты и СДЭК)
+        </button>
+      </div>
 
       {showSbp && (
         <div className="bg-card border border-border rounded-xl p-4">

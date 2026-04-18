@@ -237,6 +237,16 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
     }
   };
 
+  const handleTestCheckout = async () => {
+    setValidationError(null);
+    if (!contactFilled) {
+      setValidationError(!buyerName.trim() ? "Введите имя получателя" : "Введите номер телефона");
+      return;
+    }
+    const oid = await createOrder();
+    if (oid) setOrderDone(true);
+  };
+
   // ── Guard screens ─────────────────────────────────────────────────────────
   if (orderDone) return <CartOrderDone orderId={orderId} cdekTrack={cdekTrack} />;
 
@@ -285,30 +295,41 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
                 {validationError}
               </div>
             )}
-            <button
-              onClick={handleCheckout}
-              disabled={submitting}
-              className="w-full bg-primary text-primary-foreground rounded-2xl px-4 py-2.5 flex items-center justify-between shadow-lg hover:opacity-90 transition-opacity disabled:opacity-60"
-            >
-              <div className="flex flex-col items-start min-w-0">
-                <span className="text-[10px] text-primary-foreground/70 leading-none mb-0.5">
-                  {deliveryCost !== null ? `доставка ${deliveryCost.toLocaleString("ru")} ₽` : "доставка не выбрана"}
-                </span>
-                <span className="font-oswald text-base font-bold leading-none">
-                  {orderTotal.toLocaleString("ru")} ₽
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5 flex-shrink-0 pl-3">
-                {submitting ? (
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                ) : (
-                  <>
-                    <Icon name="ShoppingBag" size={15} />
-                    <span className="font-semibold text-sm">{stickyLabel}</span>
-                  </>
-                )}
-              </div>
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={handleCheckout}
+                disabled={submitting}
+                className="flex-1 bg-primary text-primary-foreground rounded-2xl px-4 py-2.5 flex items-center justify-between shadow-lg hover:opacity-90 transition-opacity disabled:opacity-60"
+              >
+                <div className="flex flex-col items-start min-w-0">
+                  <span className="text-[10px] text-primary-foreground/70 leading-none mb-0.5">
+                    {deliveryCost !== null ? `доставка ${deliveryCost.toLocaleString("ru")} ₽` : "доставка не выбрана"}
+                  </span>
+                  <span className="font-oswald text-base font-bold leading-none">
+                    {orderTotal.toLocaleString("ru")} ₽
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 flex-shrink-0 pl-3">
+                  {submitting ? (
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <Icon name="ShoppingBag" size={15} />
+                      <span className="font-semibold text-sm">{stickyLabel}</span>
+                    </>
+                  )}
+                </div>
+              </button>
+              <button
+                onClick={handleTestCheckout}
+                disabled={submitting || !contactFilled}
+                className="bg-orange-500/15 border border-dashed border-orange-400 text-orange-500 rounded-2xl px-3 py-2.5 shadow-lg hover:bg-orange-500/25 transition-colors disabled:opacity-40 flex flex-col items-center justify-center gap-0.5 min-w-[64px]"
+                title="Тестовый заказ без оплаты и СДЭК"
+              >
+                <Icon name="FlaskConical" size={16} />
+                <span className="text-[9px] font-semibold leading-tight text-center">Тест</span>
+              </button>
+            </div>
 
           </div>
         </div>
@@ -424,6 +445,7 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
           showSbp={showSbp}
           onSetPayMethod={setPayMethod}
           onCheckout={handleCheckout}
+          onTestCheckout={handleTestCheckout}
           onSbpSuccess={() => setOrderDone(true)}
           onSbpCancel={() => setShowSbp(false)}
         />
