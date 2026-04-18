@@ -170,9 +170,11 @@ def calc_tariffs(city_code: str, weight_g: int, from_city_code: str = "", from_c
 
 def create_apiship_order(order: dict) -> dict:
     """Создание заказа в ApiShip."""
-    phone = order.get("buyer_phone", "").replace(" ", "").replace("-", "")
-    if not phone.startswith("+"):
-        phone = "+" + phone.lstrip("8").lstrip("+")
+    raw_phone = order.get("buyer_phone", "").replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
+    digits = ''.join(c for c in raw_phone if c.isdigit())
+    if digits.startswith("8"):
+        digits = "7" + digits[1:]
+    phone = f"+{digits}" if digits else "+70000000000"
 
     is_pvz = order.get("delivery_type") == "cdek_pvz" or order.get("delivery_to") == "pvz"
     weight_g = int(order.get("weight_g", 500))
@@ -185,11 +187,14 @@ def create_apiship_order(order: dict) -> dict:
     if len(buyer_name_safe) < 3:
         buyer_name_safe = "Получатель"
 
-    city_name = str(order.get("delivery_city_name", "") or order.get("delivery_city_code", "") or "")
+    city_name_raw = str(order.get("delivery_city_name", "") or order.get("delivery_city_code", "") or "")
+    # Берём только название города без региона (до первой запятой)
+    city_name = city_name_raw.split(",")[0].strip()
     delivery_address = order.get("delivery_address", "") or ""
+    pvz_code = order.get("cdek_pvz_code", "") or ""
     address_to = {"cityName": city_name, "address": delivery_address}
-    if is_pvz and order.get("cdek_pvz_code"):
-        address_to["pointOutId"] = order["cdek_pvz_code"]
+    if is_pvz and pvz_code:
+        address_to["pointOutId"] = pvz_code
 
     assessed_cost = round(float(order.get("order_total", goods_total) or goods_total), 2)
     delivery_cost = round(float(order.get("delivery_cost", 0) or 0), 2)
@@ -221,7 +226,7 @@ def create_apiship_order(order: dict) -> dict:
             "contactName": buyer_name_safe,
             "phone": phone,
             "email": order.get("buyer_email", ""),
-            "addressString": f"{city_name}, {delivery_address}".strip(", "),
+            "addressString": f"{city_name}, {delivery_address}".strip(", ") or city_name,
         },
         "addressFrom": {
             "cityName": FROM_CITY_NAME,
@@ -239,8 +244,6 @@ def create_apiship_order(order: dict) -> dict:
                     "articul": str(item.get("id", i)),
                     "quantity": int(item.get("qty", 1)),
                     "assessedCost": int(float(item.get("price", 0))),
-                    "cost": int(float(item.get("price", 0))),
-                    "codCost": 0,
                     "weight": max(weight_g // items_count, 100),
                 }
                 for i, item in enumerate(order.get("items", []))
