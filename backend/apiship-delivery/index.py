@@ -195,7 +195,7 @@ def create_apiship_order(order: dict) -> dict:
         "clientNumber": str(order.get("order_id", "")),
         "providerKey": order.get("provider", "cdek"),
         "tariffId": int(order["delivery_tariff_code"]) if str(order.get("delivery_tariff_code", "")).isdigit() else None,
-        "cost": float(order.get("order_total", goods_total)) or goods_total,
+        "cost": int(float(order.get("order_total", goods_total)) or goods_total),
         "recipient": {
             "name": order.get("buyer_name", ""),
             "phone": phone,
