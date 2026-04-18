@@ -124,30 +124,40 @@ export default function ProductCard({ product, addToCart, onClick }: ProductCard
         <p className="text-sm font-medium text-foreground line-clamp-2 leading-snug mb-1">{product.name}</p>
         <p className="text-xs text-muted-foreground mb-2">{product.sellerName}</p>
 
-        <div className="flex items-center justify-between">
-          <div>
-            <span className="font-oswald text-base font-semibold text-foreground">
-              {displayPrice.toLocaleString("ru")} ₽
-            </span>
-            {hasWholesale && (
-              <span className={`ml-1.5 text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
-                mode === "wholesale" ? "bg-primary/15 text-primary" : "bg-secondary text-muted-foreground"
-              }`}>
-                {mode === "wholesale" ? "опт" : "розница"}
+        <div className="flex items-end justify-between gap-2">
+          <div className="min-w-0">
+            {hasWholesale ? (
+              <>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="font-oswald text-base font-semibold text-foreground">
+                    {product.wholesalePrice!.toLocaleString("ru")} ₽
+                  </span>
+                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-primary/15 text-primary">опт</span>
+                </div>
+                <div className="flex items-baseline gap-1.5 mt-0.5">
+                  <span className="font-oswald text-sm text-muted-foreground">
+                    {retailPrice.toLocaleString("ru")} ₽
+                  </span>
+                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-secondary text-muted-foreground">розница</span>
+                </div>
+              </>
+            ) : (
+              <span className="font-oswald text-base font-semibold text-foreground">
+                {displayPrice.toLocaleString("ru")} ₽
               </span>
             )}
           </div>
           <button
             onClick={handleAdd}
             disabled={inStock === 0}
-            className={`flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
+            className={`flex-shrink-0 flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
               added
                 ? "bg-green-500/20 text-green-600"
                 : "bg-primary/15 text-primary hover:bg-primary hover:text-primary-foreground"
             }`}
           >
             <Icon name={added ? "Check" : "Plus"} size={13} />
-            {added ? "Добавлено" : inStock === 0 ? "Нет в наличии" : "В корзину"}
+            {added ? "Добавлено" : inStock === 0 ? "Нет" : "В корзину"}
           </button>
         </div>
       </div>
