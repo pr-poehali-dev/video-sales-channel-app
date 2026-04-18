@@ -199,6 +199,7 @@ def create_apiship_order(order: dict) -> dict:
         "tariffId": int(order["delivery_tariff_code"]) if str(order.get("delivery_tariff_code", "")).isdigit() else None,
         "shopId": 3388,
         "assessedCost": assessed_cost,
+        "cost": assessed_cost,
         "recipient": {
             "name": order.get("buyer_name", ""),
             "phone": phone,
