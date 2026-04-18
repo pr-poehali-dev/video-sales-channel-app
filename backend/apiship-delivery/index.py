@@ -180,14 +180,9 @@ def create_apiship_order(order: dict) -> dict:
     items_count = max(len(items_list), 1)
     goods_total = sum(float(i.get("price", 0)) * int(i.get("qty", 1)) for i in items_list)
 
-    city_code = str(order.get("delivery_city_code", ""))
-    address_to = {"address": order.get("delivery_address", "")}
-    if "-" in city_code:
-        address_to["cityGuid"] = city_code
-    elif city_code.isdigit():
-        address_to["cityId"] = int(city_code)
-    else:
-        address_to["cityName"] = city_code or "Москва"
+    city_name = str(order.get("delivery_city_name", "") or order.get("delivery_city_code", "") or "")
+    delivery_address = order.get("delivery_address", "") or ""
+    address_to = {"cityName": city_name, "address": delivery_address}
     if is_pvz and order.get("cdek_pvz_code"):
         address_to["pointOutId"] = order["cdek_pvz_code"]
 
@@ -221,6 +216,7 @@ def create_apiship_order(order: dict) -> dict:
             "contactName": order.get("buyer_name", ""),
             "phone": phone,
             "email": order.get("buyer_email", ""),
+            "addressString": f"{city_name}, {delivery_address}".strip(", "),
         },
         "addressFrom": {
             "cityName": FROM_CITY_NAME,
@@ -239,7 +235,6 @@ def create_apiship_order(order: dict) -> dict:
                     "quantity": int(item.get("qty", 1)),
                     "assessedCost": int(float(item.get("price", 0))),
                     "cost": int(float(item.get("price", 0))),
-                    "codCost": 0,
                     "weight": max(weight_g // items_count, 100),
                 }
                 for i, item in enumerate(order.get("items", []))
