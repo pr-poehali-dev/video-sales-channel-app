@@ -176,7 +176,9 @@ def create_apiship_order(order: dict) -> dict:
 
     is_pvz = order.get("delivery_type") == "cdek_pvz" or order.get("delivery_to") == "pvz"
     weight_g = int(order.get("weight_g", 500))
-    items_count = max(len(order.get("items", [])), 1)
+    items_list = order.get("items", [])
+    items_count = max(len(items_list), 1)
+    goods_total = sum(float(i.get("price", 0)) * int(i.get("qty", 1)) for i in items_list)
 
     city_code = str(order.get("delivery_city_code", ""))
     address_to = {"address": order.get("delivery_address", "")}
@@ -193,6 +195,7 @@ def create_apiship_order(order: dict) -> dict:
         "clientNumber": str(order.get("order_id", "")),
         "providerKey": order.get("provider", "cdek"),
         "tariffId": int(order["delivery_tariff_code"]) if str(order.get("delivery_tariff_code", "")).isdigit() else None,
+        "cost": float(order.get("order_total", goods_total)) or goods_total,
         "recipient": {
             "name": order.get("buyer_name", ""),
             "phone": phone,
