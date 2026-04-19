@@ -50,9 +50,10 @@ interface QuickVideoProductModalProps {
 
 export default function QuickVideoProductModal({ videoBlobUrl, sellerId, sellerName, sellerAvatar, defaultWarehouse, onClose, onSaved }: QuickVideoProductModalProps) {
   const { addProduct } = useStore();
-  const [name, setName]         = useState("");
-  const [price, setPrice]       = useState("");
-  const [stock, setStock]       = useState("10");
+  const [name, setName]                     = useState("");
+  const [wholesalePrice, setWholesalePrice] = useState("");
+  const [retailMarkup, setRetailMarkup]     = useState("0");
+  const [stock, setStock]                   = useState("10");
   const [weightG, setWeightG]   = useState("500");
   const [lengthCm, setLengthCm] = useState("20");
   const [widthCm, setWidthCm]   = useState("15");
@@ -126,13 +127,22 @@ export default function QuickVideoProductModal({ videoBlobUrl, sellerId, sellerN
     })();
   }, [videoBlobUrl]);
 
+  const wholesaleNum = wholesalePrice ? Number(wholesalePrice.replace(/\s/g, "").replace(",", ".")) : 0;
+  const markupNum = Number(retailMarkup) || 0;
+  const retailNum = wholesaleNum > 0 ? Math.round(wholesaleNum * (1 + markupNum / 100)) : 0;
+
+  const handleWholesaleChange = (v: string) => setWholesalePrice(v);
+  const handleMarkupChange = (v: string) => setRetailMarkup(v.replace(/\D/g, ""));
+
   const save = async () => {
-    if (!name.trim() || !price || saving) return;
+    if (!name.trim() || !wholesaleNum || saving) return;
     setSaving(true);
     try {
       await addProduct({
         name: name.trim(),
-        price: parseFloat(price),
+        price: retailNum || wholesaleNum,
+        wholesalePrice: wholesaleNum,
+        retailMarkupPct: markupNum,
         category: "Разное",
         description: "",
         images: [thumbUrl, ...extraImgs].filter(Boolean) as string[],
@@ -225,29 +235,62 @@ export default function QuickVideoProductModal({ videoBlobUrl, sellerId, sellerN
               style={{ fontSize: 16 }}
               autoFocus
             />
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <input
-                  value={price}
-                  onChange={e => setPrice(e.target.value.replace(/[^0-9.]/g, ""))}
-                  placeholder="Цена"
-                  type="number"
-                  className="bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/30 outline-none focus:border-primary/60 w-full pr-6"
-                  style={{ fontSize: 16 }}
-                />
-                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/40 text-xs">₽</span>
-              </div>
-              <div className="relative w-20">
-                <input
-                  value={stock}
-                  onChange={e => setStock(e.target.value.replace(/[^0-9]/g, ""))}
-                  placeholder="Кол-во"
-                  type="number"
-                  className="bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/30 outline-none focus:border-primary/60 w-full pr-5"
-                  style={{ fontSize: 16 }}
-                />
-                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-white/40 text-[10px]">шт</span>
-              </div>
+            <div className="relative w-24">
+              <input
+                value={stock}
+                onChange={e => setStock(e.target.value.replace(/[^0-9]/g, ""))}
+                placeholder="Кол-во"
+                inputMode="numeric"
+                className="bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/30 outline-none focus:border-primary/60 w-full pr-7"
+                style={{ fontSize: 16 }}
+              />
+              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-white/40 text-[10px]">шт</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Цены */}
+        <div className="bg-white/5 border border-white/10 rounded-xl p-3 mb-3 space-y-2">
+          <p className="text-[11px] font-medium text-white/60 flex items-center gap-1.5">
+            <Icon name="Layers" size={12} className="text-primary" />
+            Цены
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <p className="text-[10px] text-white/40 mb-1">Оптовая цена, ₽ *</p>
+              <input
+                value={wholesalePrice}
+                onChange={e => handleWholesaleChange(e.target.value)}
+                placeholder="Введите стоимость"
+                inputMode="decimal"
+                className="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/20 outline-none focus:border-primary/60"
+                style={{ fontSize: 16 }}
+              />
+            </div>
+            <div>
+              <p className="text-[10px] text-white/40 mb-1">Наценка для розницы, %</p>
+              <input
+                value={retailMarkup}
+                onChange={e => handleMarkupChange(e.target.value)}
+                placeholder="0"
+                inputMode="numeric"
+                className="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/30 outline-none focus:border-primary/60"
+                style={{ fontSize: 16 }}
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="bg-white/5 rounded-lg px-3 py-2 text-center">
+              <p className="text-[10px] text-white/40 mb-0.5">Оптом</p>
+              <p className="font-oswald text-sm font-semibold text-white">
+                {wholesaleNum > 0 ? `${wholesaleNum.toLocaleString("ru")} ₽` : "—"}
+              </p>
+            </div>
+            <div className="bg-primary/20 rounded-lg px-3 py-2 text-center">
+              <p className="text-[10px] text-white/40 mb-0.5">В розницу</p>
+              <p className="font-oswald text-sm font-semibold text-primary">
+                {retailNum > 0 ? `${retailNum.toLocaleString("ru")} ₽` : "—"}
+              </p>
             </div>
           </div>
         </div>
@@ -294,7 +337,7 @@ export default function QuickVideoProductModal({ videoBlobUrl, sellerId, sellerN
 
         <button
           onClick={save}
-          disabled={!name.trim() || !price || saving}
+          disabled={!name.trim() || !wholesaleNum || saving}
           className="w-full bg-orange-500 text-white font-bold py-3 rounded-xl text-sm disabled:opacity-40 flex items-center justify-center gap-2"
         >
           {saving ? <Icon name="Loader" size={15} className="animate-spin" /> : <Icon name="Plus" size={15} />}
