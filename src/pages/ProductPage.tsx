@@ -97,20 +97,20 @@ export default function ProductPage({ productId, addToCart, onBack, onSellerClic
 
       {/* ── ВЕРХНЯЯ ЧАСТЬ: видео + кнопка ── */}
       <div className="flex-shrink-0 bg-background">
-        {/* Кнопка назад */}
-        <div className="px-4 pt-2 pb-1">
+        {/* Кнопка назад — вплотную к верху */}
+        <div className="px-4 pt-1 pb-1">
           <button
             onClick={onBack}
-            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
-            <Icon name="ArrowLeft" size={15} />
+            <Icon name="ArrowLeft" size={13} />
             Назад
           </button>
         </div>
 
         {/* Медиа */}
         <div className="px-4 relative">
-          <div className="w-full aspect-[4/3] max-h-[360px] rounded-xl overflow-hidden bg-secondary relative border border-border">
+          <div className="w-full aspect-video max-h-[280px] rounded-xl overflow-hidden bg-secondary relative border border-border">
             {showVideo && videoUrl ? (
               <video src={videoUrl} autoPlay loop muted playsInline controls className="w-full h-full object-cover" />
             ) : product.images.length > 0 ? (
@@ -144,24 +144,24 @@ export default function ProductPage({ productId, addToCart, onBack, onSellerClic
         </div>
 
         {/* Кнопка В корзину */}
-        <div className="px-4 pt-2 pb-2">
+        <div className="px-4 pt-1.5 pb-1.5">
           <button
             onClick={handleAdd}
-            className={`w-full flex items-center justify-between px-5 py-3 rounded-xl font-semibold transition-all ${
+            className={`w-full flex items-center justify-between px-4 py-2 rounded-xl font-semibold transition-all ${
               added ? "bg-green-500 text-white" : "bg-primary text-primary-foreground hover:opacity-90"
             }`}
           >
-            <span className="flex items-center gap-2">
-              <Icon name={added ? "Check" : "ShoppingCart"} size={18} />
+            <span className="flex items-center gap-2 text-sm">
+              <Icon name={added ? "Check" : "ShoppingCart"} size={15} />
               {added ? "Добавлено!" : "В корзину"}
             </span>
             {hasWholesale ? (
               <span className="flex flex-col items-end leading-none">
-                <span className="font-oswald text-base">{product.wholesalePrice!.toLocaleString("ru")} ₽ <span className="text-[10px] opacity-70">опт</span></span>
-                <span className="font-oswald text-xs opacity-70">{retailPrice.toLocaleString("ru")} ₽ розница</span>
+                <span className="font-oswald text-sm">{product.wholesalePrice!.toLocaleString("ru")} ₽ <span className="text-[10px] opacity-70">опт</span></span>
+                <span className="font-oswald text-[11px] opacity-70">{retailPrice.toLocaleString("ru")} ₽ розница</span>
               </span>
             ) : (
-              <span className="font-oswald text-lg">{displayPrice.toLocaleString("ru")} ₽</span>
+              <span className="font-oswald text-base">{displayPrice.toLocaleString("ru")} ₽</span>
             )}
           </button>
         </div>
