@@ -280,16 +280,11 @@ def create_apiship_order(order: dict) -> dict:
             ],
         }],
     }
-    # ПВЗ для СДЭК — нужен строковый код ПВЗ в extraParams
-    if is_pvz:
-        if pvz_apiship_id:
-            payload["pointOutId"] = int(pvz_apiship_id)
-        if pvz_code:
-            # Строковый код ПВЗ СДЭК передаём в параметрах ТК
-            payload["extraParams"] = [
-                {"key": "toPointCode", "value": pvz_code},
-                {"key": "officeCode", "value": pvz_code},
-            ]
+    # pointInId — ПВЗ отправителя (KSD2, Краснодар, ул. Монтажников)
+    payload["pointInId"] = 372
+    # pointOutId — ПВЗ получателя
+    if is_pvz and pvz_apiship_id:
+        payload["pointOutId"] = int(pvz_apiship_id)
     if payload.get("tariffId") is None:
         payload.pop("tariffId", None)
     if payload.get("shopId") is None:
