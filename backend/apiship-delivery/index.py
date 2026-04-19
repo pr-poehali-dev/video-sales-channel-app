@@ -11,8 +11,8 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 
 
-APISHIP_API = "https://api.apiship.ru/v1"
 APISHIP_TOKEN = os.environ.get("APISHIP_TOKEN", "")
+APISHIP_API = "https://api.apiship.ru/v1"
 
 FROM_CITY_NAME = "Краснодар"
 FROM_ADDRESS = "Краснодар, ул. Красная, 1"
@@ -212,6 +212,7 @@ def create_apiship_order(order: dict) -> dict:
         "cost": {
             "assessedCost": int(assessed_cost),
             "deliveryCost": int(delivery_cost),
+            "codCost": int(assessed_cost),
         },
         "sender": {
             "name": "ИП Буцкий Денис Алексеевич",
@@ -237,6 +238,16 @@ def create_apiship_order(order: dict) -> dict:
             "height": int(order.get("height_cm", 10)),
             "width": int(order.get("width_cm", 15)),
             "length": int(order.get("length_cm", 20)),
+            "items": [
+                {
+                    "description": item.get("name", "Товар")[:255],
+                    "articul": str(item.get("id", i)),
+                    "quantity": int(item.get("qty", 1)),
+                    "assessedCost": int(float(item.get("price", 0))),
+                    "weight": max(weight_g // items_count, 100),
+                }
+                for i, item in enumerate(items_list)
+            ],
         }],
     }
     if payload["tariffId"] is None:
@@ -417,6 +428,11 @@ def handler(event: dict, context) -> dict:
                     "phones": [p.get("phone")] if p.get("phone") else [],
                 })
             return {"statusCode": 200, "headers": headers, "body": json.dumps(points, ensure_ascii=False)}
+
+        if action == "get_shops":
+            result = apiship_request("/shops")
+            print(f"[APISHIP] shops: {json.dumps(result, ensure_ascii=False)[:1000]}")
+            return {"statusCode": 200, "headers": headers, "body": json.dumps(result, ensure_ascii=False)}
 
         if action == "create_order":
             order_id = body.get("order_id")
