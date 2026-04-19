@@ -17,6 +17,7 @@ import AdminPage from "@/pages/AdminPage";
 import SellerRegisterPage from "@/pages/SellerRegisterPage";
 import SupportPage from "@/pages/SupportPage";
 import SupportAdminPage from "@/pages/SupportAdminPage";
+import OrderSuccessPage from "@/pages/OrderSuccessPage";
 import NavBar from "@/components/NavBar";
 import LiveBroadcastBar from "@/components/LiveBroadcastBar";
 import PWAInstallBanner from "@/components/PWAInstallBanner";
@@ -26,7 +27,7 @@ const BroadcastPage = lazy(() => import("@/pages/BroadcastPage"));
 export type Page =
   | "home" | "streams" | "catalog" | "profile" | "cart"
   | "dashboard" | "product" | "seller" | "auth" | "broadcast" | "admin" | "seller-register"
-  | "support" | "support-admin";
+  | "support" | "support-admin" | "order-success";
 
 export interface CartItem {
   id: string;
@@ -44,7 +45,13 @@ export interface CartItem {
 }
 
 function AppInner() {
-  const [page, setPage] = useState<Page>("home");
+  const initialPage = (): Page => {
+    const path = window.location.pathname;
+    if (path === "/order-success") return "order-success";
+    return "home";
+  };
+
+  const [page, setPage] = useState<Page>(initialPage);
 
   useEffect(() => {
     if ("serviceWorker" in navigator) {
@@ -69,6 +76,7 @@ function AppInner() {
   };
 
   const removeFromCart = (id: string) => setCart(prev => prev.filter(c => c.id !== id));
+  const clearCart = () => setCart([]);
 
   const updateQty = (id: string, qty: number) => {
     if (qty <= 0) return removeFromCart(id);
@@ -118,6 +126,7 @@ function AppInner() {
         {page === "seller-register" && <SellerRegisterPage setPage={navSetPage} />}
         {page === "support" && <SupportPage setPage={navSetPage} />}
         {page === "support-admin" && <SupportAdminPage setPage={navSetPage} />}
+        {page === "order-success" && <OrderSuccessPage setPage={navSetPage} clearCart={clearCart} />}
         {page === "product" && selectedProductId !== null && (
           <ProductPage
             productId={selectedProductId}
