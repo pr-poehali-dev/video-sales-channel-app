@@ -95,8 +95,8 @@ export default function ProductPage({ productId, addToCart, onBack, onSellerClic
     /* Мобильный: fixed full-screen; Десктоп: обычный поток с max-w */
     <div className="md:static md:inset-auto fixed inset-x-0 top-14 bottom-0 flex flex-col animate-fade-in md:max-w-2xl md:mx-auto md:pb-8" style={{ bottom: "4rem" }}>
 
-      {/* ── ВЕРХНЯЯ ПОЛОВИНА: видео + кнопка ── */}
-      <div className="flex-shrink-0 bg-background md:h-auto" style={{ height: "50%" }}>
+      {/* ── ВЕРХНЯЯ ЧАСТЬ: видео + кнопка ── */}
+      <div className="flex-shrink-0 bg-background">
         {/* Кнопка назад */}
         <div className="px-4 pt-2 pb-1">
           <button
@@ -109,8 +109,8 @@ export default function ProductPage({ productId, addToCart, onBack, onSellerClic
         </div>
 
         {/* Медиа */}
-        <div className="px-4 relative md:h-auto" style={{ height: "calc(100% - 5.5rem)" }}>
-          <div className="w-full h-full md:h-auto md:aspect-[4/3] md:max-h-[480px] rounded-xl overflow-hidden bg-secondary relative border border-border">
+        <div className="px-4 relative">
+          <div className="w-full aspect-[4/3] max-h-[360px] rounded-xl overflow-hidden bg-secondary relative border border-border">
             {showVideo && videoUrl ? (
               <video src={videoUrl} autoPlay loop muted playsInline controls className="w-full h-full object-cover" />
             ) : product.images.length > 0 ? (
@@ -144,7 +144,7 @@ export default function ProductPage({ productId, addToCart, onBack, onSellerClic
         </div>
 
         {/* Кнопка В корзину */}
-        <div className="px-4 pt-2 pb-1">
+        <div className="px-4 pt-2 pb-2">
           <button
             onClick={handleAdd}
             className={`w-full flex items-center justify-between px-5 py-3 rounded-xl font-semibold transition-all ${
@@ -155,14 +155,7 @@ export default function ProductPage({ productId, addToCart, onBack, onSellerClic
               <Icon name={added ? "Check" : "ShoppingCart"} size={18} />
               {added ? "Добавлено!" : "В корзину"}
             </span>
-            {hasWholesale ? (
-              <span className="flex flex-col items-end leading-none">
-                <span className="font-oswald text-base">{product.wholesalePrice!.toLocaleString("ru")} ₽ <span className="text-[10px] opacity-70">опт</span></span>
-                <span className="font-oswald text-xs opacity-70">{retailPrice.toLocaleString("ru")} ₽ розница</span>
-              </span>
-            ) : (
-              <span className="font-oswald text-lg">{displayPrice.toLocaleString("ru")} ₽</span>
-            )}
+            <span className="font-oswald text-lg">{displayPrice.toLocaleString("ru")} ₽</span>
           </button>
         </div>
       </div>
@@ -198,20 +191,13 @@ export default function ProductPage({ productId, addToCart, onBack, onSellerClic
             <p className="text-sm text-muted-foreground leading-relaxed mb-4">{product.description}</p>
           )}
 
-          {/* Продавец */}
-          <button
-            onClick={() => onSellerClick(product.sellerId)}
-            className="w-full flex items-center gap-3 bg-secondary rounded-xl p-3 hover:bg-secondary/70 transition-colors text-left mb-3"
-          >
-            <div className="w-9 h-9 rounded-full bg-primary/20 text-primary font-bold text-sm flex items-center justify-center font-oswald flex-shrink-0">
+          {/* Продавец — просто текст без клика */}
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-7 h-7 rounded-full bg-primary/20 text-primary font-bold text-xs flex items-center justify-center font-oswald flex-shrink-0">
               {product.sellerAvatar}
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-foreground">{product.sellerName}</p>
-              <p className="text-xs text-muted-foreground">Посмотреть все товары продавца</p>
-            </div>
-            <Icon name="ChevronRight" size={16} className="text-muted-foreground flex-shrink-0" />
-          </button>
+            <span className="text-sm text-muted-foreground">{product.sellerName}</span>
+          </div>
 
           <div className="mb-4 text-xs text-muted-foreground">Добавлен: {product.createdAt}</div>
 
