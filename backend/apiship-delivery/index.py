@@ -209,7 +209,7 @@ def create_apiship_order(order: dict) -> dict:
     payload = {
         "clientNumber": str(order.get("order_id", "")),
         "providerKey": order.get("provider", "cdek"),
-        "tariffId": None,  # не передаём — ApiShip выбирает по providerKey
+        "tariffId": int(order["delivery_tariff_code"]) if str(order.get("delivery_tariff_code", "")).isdigit() else None,
         "shopId": APISHIP_SHOP_ID or None,
         "weight": max(weight_g, 100),
         "pickupType": 1,
@@ -217,7 +217,7 @@ def create_apiship_order(order: dict) -> dict:
         "cost": {
             "assessedCost": int(assessed_cost),
             "deliveryCost": int(delivery_cost),
-            "codCost": int(assessed_cost),
+            "codCost": sum(int(float(i.get("price", 0))) * int(i.get("qty", 1)) for i in items_list),
         },
         "sender": {
             "name": "ИП Буцкий Денис Алексеевич",
