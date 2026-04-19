@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState, useCallback } from "react";
 
 const ITEM_H = 48;
-const VISIBLE = 5; // нечётное — центральный элемент выбран
+const VISIBLE = 5;
 
 interface ScrollPickerProps {
   value: number;
@@ -16,14 +16,13 @@ export function ScrollPicker({ value, onChange, items, dark = false }: ScrollPic
   const [editing, setEditing] = useState(false);
   const [inputVal, setInputVal] = useState("");
 
-  const totalH = ITEM_H * VISIBLE; // высота всего барабана
-  const pad = Math.floor(VISIBLE / 2); // 2 пустых строки сверху/снизу
+  const pad = Math.floor(VISIBLE / 2);
+  const totalH = ITEM_H * VISIBLE;
 
   const scrollToIdx = useCallback((idx: number, smooth = true) => {
     listRef.current?.scrollTo({ top: idx * ITEM_H, behavior: smooth ? "smooth" : "instant" });
   }, []);
 
-  // При изменении value снаружи — прокрутить
   useEffect(() => {
     const idx = items.indexOf(value);
     if (idx >= 0) scrollToIdx(idx, false);
@@ -52,119 +51,108 @@ export function ScrollPicker({ value, onChange, items, dark = false }: ScrollPic
     setInputVal("");
   };
 
+  const fg = dark ? "white" : "hsl(var(--foreground))";
+  const muted = dark ? "rgba(255,255,255,0.22)" : "rgba(0,0,0,0.18)";
+  const maskTop = dark
+    ? "linear-gradient(to bottom, rgb(24,24,27) 0%, rgba(24,24,27,0.5) 60%, transparent 100%)"
+    : "linear-gradient(to bottom, white 0%, rgba(255,255,255,0.7) 50%, transparent 100%)";
+  const maskBot = dark
+    ? "linear-gradient(to top, rgb(24,24,27) 0%, rgba(24,24,27,0.5) 60%, transparent 100%)"
+    : "linear-gradient(to top, white 0%, rgba(255,255,255,0.7) 50%, transparent 100%)";
+  const highlightBg = dark ? "rgba(255,255,255,0.1)" : "hsl(var(--primary)/0.06)";
+  const highlightBorder = dark ? "rgba(255,255,255,0.1)" : "hsl(var(--primary)/0.25)";
+
   return (
-    <div className="flex flex-col items-center gap-1" style={{ width: "100%" }}>
-      {/* Барабан */}
+    <div className="relative select-none" style={{ width: "100%", height: totalH }}>
+
+      {/* Подсветка центральной строки */}
       <div
-        className="relative w-full overflow-hidden"
-        style={{ height: totalH }}
+        className="absolute left-0 right-0 pointer-events-none z-10"
+        style={{
+          top: pad * ITEM_H,
+          height: ITEM_H,
+          background: highlightBg,
+          border: `1px solid ${highlightBorder}`,
+          borderRadius: 12,
+        }}
+      />
+
+      {/* Скролл */}
+      <div
+        ref={listRef}
+        onScroll={handleScroll}
+        style={{
+          width: "100%",
+          height: totalH,
+          overflowY: "scroll",
+          scrollSnapType: "y mandatory",
+          WebkitOverflowScrolling: "touch",
+          scrollbarWidth: "none",
+          msOverflowStyle: "none",
+        }}
       >
-        {/* Подсветка центральной строки */}
-        <div
-          className={`absolute left-0 right-0 pointer-events-none z-10 rounded-xl ${dark ? "bg-white/12" : "bg-primary/8 border border-primary/20"}`}
-          style={{ top: pad * ITEM_H, height: ITEM_H }}
-        />
+        {Array.from({ length: pad }).map((_, i) => (
+          <div key={`t${i}`} style={{ height: ITEM_H, scrollSnapAlign: "start" }} />
+        ))}
 
-        {/* Верхний градиент-маска */}
-        <div
-          className="absolute top-0 left-0 right-0 z-20 pointer-events-none"
-          style={{
-            height: pad * ITEM_H,
-            background: dark
-              ? "linear-gradient(to bottom, rgba(24,24,27,0.95), rgba(24,24,27,0))"
-              : "linear-gradient(to bottom, var(--card, white) 10%, transparent)",
-          }}
-        />
-        {/* Нижний градиент-маска */}
-        <div
-          className="absolute bottom-0 left-0 right-0 z-20 pointer-events-none"
-          style={{
-            height: pad * ITEM_H,
-            background: dark
-              ? "linear-gradient(to top, rgba(24,24,27,0.95), rgba(24,24,27,0))"
-              : "linear-gradient(to top, var(--card, white) 10%, transparent)",
-          }}
-        />
-
-        {/* Список */}
-        <div
-          ref={listRef}
-          onScroll={handleScroll}
-          className="w-full h-full overflow-y-scroll"
-          style={{
-            scrollSnapType: "y mandatory",
-            WebkitOverflowScrolling: "touch",
-            scrollbarWidth: "none",
-            msOverflowStyle: "none",
-          }}
-        >
-          {/* Верхние паддинг-элементы */}
-          {Array.from({ length: pad }).map((_, i) => (
-            <div key={`pt${i}`} style={{ height: ITEM_H, scrollSnapAlign: "start", flexShrink: 0 }} />
-          ))}
-
-          {items.map((item, idx) => {
-            const selected = item === value;
-            return (
-              <div
-                key={item}
-                style={{ height: ITEM_H, scrollSnapAlign: "start", flexShrink: 0 }}
-                className="flex items-center justify-center cursor-pointer relative z-30"
-                onClick={() => { onChange(item); scrollToIdx(idx); }}
-              >
+        {items.map((item, idx) => {
+          const selected = item === value;
+          return (
+            <div
+              key={item}
+              style={{ height: ITEM_H, scrollSnapAlign: "start" }}
+              className="flex items-center justify-center relative z-20"
+              onClick={() => {
+                if (selected) {
+                  setInputVal(String(value));
+                  setEditing(true);
+                } else {
+                  onChange(item);
+                  scrollToIdx(idx);
+                }
+              }}
+            >
+              {selected && editing ? (
+                <input
+                  autoFocus
+                  type="number"
+                  inputMode="numeric"
+                  value={inputVal}
+                  onChange={e => setInputVal(e.target.value)}
+                  onBlur={() => confirmInput(inputVal)}
+                  onKeyDown={e => {
+                    if (e.key === "Enter") confirmInput(inputVal);
+                    if (e.key === "Escape") { setEditing(false); setInputVal(""); }
+                  }}
+                  className="w-full text-center outline-none bg-transparent font-oswald font-bold"
+                  style={{ fontSize: 22, color: fg, border: "none", padding: "0 4px" }}
+                />
+              ) : (
                 <span
-                  className="font-oswald transition-all duration-150 leading-none"
+                  className="font-oswald transition-all duration-100 leading-none"
                   style={{
-                    fontSize: selected ? 22 : 15,
+                    fontSize: selected ? 22 : 16,
                     fontWeight: selected ? 700 : 400,
-                    color: selected
-                      ? (dark ? "white" : "hsl(var(--foreground))")
-                      : (dark ? "rgba(255,255,255,0.28)" : "hsl(var(--muted-foreground)/0.4)"),
-                    opacity: selected ? 1 : 0.7,
+                    color: selected ? fg : muted,
                   }}
                 >
                   {item}
                 </span>
-              </div>
-            );
-          })}
+              )}
+            </div>
+          );
+        })}
 
-          {/* Нижние паддинг-элементы */}
-          {Array.from({ length: pad }).map((_, i) => (
-            <div key={`pb${i}`} style={{ height: ITEM_H, scrollSnapAlign: "start", flexShrink: 0 }} />
-          ))}
-        </div>
+        {Array.from({ length: pad }).map((_, i) => (
+          <div key={`b${i}`} style={{ height: ITEM_H, scrollSnapAlign: "start" }} />
+        ))}
       </div>
 
-      {/* Ручной ввод */}
-      {editing ? (
-        <input
-          autoFocus
-          type="number"
-          inputMode="numeric"
-          value={inputVal}
-          onChange={e => setInputVal(e.target.value)}
-          onBlur={() => confirmInput(inputVal)}
-          onKeyDown={e => { if (e.key === "Enter") confirmInput(inputVal); if (e.key === "Escape") { setEditing(false); setInputVal(""); } }}
-          placeholder={String(value)}
-          className={`w-full rounded-lg px-2 py-1.5 text-sm text-center outline-none border ${
-            dark
-              ? "bg-white/10 border-white/20 text-white placeholder:text-white/30"
-              : "bg-secondary border-border text-foreground placeholder:text-muted-foreground"
-          }`}
-          style={{ fontSize: 14 }}
-        />
-      ) : (
-        <button
-          type="button"
-          onClick={() => { setEditing(true); setInputVal(String(value)); }}
-          className={`text-[10px] underline underline-offset-2 leading-none transition-colors ${
-            dark ? "text-white/25 hover:text-white/50" : "text-muted-foreground/40 hover:text-muted-foreground"
-          }`}
-        >
-          вручную
-        </button>
-      )}
+      {/* Градиентные маски */}
+      <div className="absolute top-0 left-0 right-0 pointer-events-none z-30"
+        style={{ height: pad * ITEM_H, background: maskTop }} />
+      <div className="absolute bottom-0 left-0 right-0 pointer-events-none z-30"
+        style={{ height: pad * ITEM_H, background: maskBot }} />
     </div>
   );
 }
@@ -201,7 +189,7 @@ export function DimensionPicker({
   heightCm, setHeightCm,
   dark = false,
 }: DimensionPickerProps) {
-  const labelCls = dark
+  const lbl = dark
     ? "text-[10px] text-white/40 text-center mb-1 block"
     : "text-[10px] text-muted-foreground text-center mb-1 block";
 
@@ -216,7 +204,7 @@ export function DimensionPicker({
     <div className="grid grid-cols-4 gap-2">
       {cols.map(c => (
         <div key={c.label}>
-          <span className={labelCls}>{c.label}</span>
+          <span className={lbl}>{c.label}</span>
           <ScrollPicker value={c.val} onChange={c.set} items={c.items} dark={dark} />
         </div>
       ))}
