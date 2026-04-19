@@ -201,6 +201,8 @@ def create_apiship_order(order: dict) -> dict:
     # Для ПВЗ адрес может быть пустым — подставляем город
     address_str = delivery_address if delivery_address else city_name
     address_to = {"cityName": city_name, "address": address_str}
+    if is_pvz and pvz_apiship_id:
+        address_to["pointOutId"] = int(pvz_apiship_id)
 
     delivery_cost = int(round(float(order.get("delivery_cost", 0) or 0)))
 
