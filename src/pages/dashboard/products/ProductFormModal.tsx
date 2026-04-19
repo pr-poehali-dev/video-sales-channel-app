@@ -32,10 +32,13 @@ interface ProductFormModalProps {
   fLengthCm: string; setFLengthCm: (v: string) => void;
   fWidthCm: string; setFWidthCm: (v: string) => void;
   fHeightCm: string; setFHeightCm: (v: string) => void;
-  // Опции
-  fCdek: boolean; setFCdek: (v: boolean) => void;
-  fNalog: boolean; setFNalog: (v: boolean) => void;
-  fFitting: boolean; setFFitting: (v: boolean) => void;
+  // Опции (скрыты из UI, значения управляются снаружи)
+  fCdek?: boolean;
+  fNalog?: boolean;
+  fFitting?: boolean;
+  setFCdek?: (v: boolean) => void;
+  setFNalog?: (v: boolean) => void;
+  setFFitting?: (v: boolean) => void;
   // Ошибка и действия
   fError: string | null;
   onSave: () => void;
@@ -56,9 +59,6 @@ export default function ProductFormModal({
   fLengthCm, setFLengthCm,
   fWidthCm, setFWidthCm,
   fHeightCm, setFHeightCm,
-  fCdek, setFCdek,
-  fNalog, setFNalog,
-  fFitting, setFFitting,
   fError,
   onSave, onClose,
 }: ProductFormModalProps) {
@@ -224,31 +224,6 @@ export default function ProductFormModal({
                     placeholder={placeholder} inputMode="numeric"
                     className="w-full bg-secondary border border-border rounded-lg px-2 py-2 text-sm text-foreground text-center outline-none focus:border-primary/50 transition-colors" />
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Опции доставки и оплаты */}
-          <div>
-            <label className="text-xs text-muted-foreground mb-2 block">Опции доставки и оплаты</label>
-            <div className="space-y-2">
-              {([
-                { key: "cdek",    label: "Доставка СДЭК",                 sub: "Покупатель выбирает ПВЗ или курьер", state: fCdek,    setter: setFCdek    },
-                { key: "nalog",   label: "Безопасная сделка (Наложка)",   sub: "Оплата при получении",               state: fNalog,   setter: setFNalog   },
-                { key: "fitting", label: "Возможность примерки",           sub: "Перед оплатой на ПВЗ",               state: fFitting, setter: setFFitting },
-              ] as const).map(({ key, label, sub, state, setter }) => (
-                <label key={key} className="flex items-center gap-3 cursor-pointer group bg-secondary rounded-xl px-3 py-2.5">
-                  <div
-                    onClick={() => setter(!state)}
-                    className={`w-10 h-5 rounded-full transition-all flex-shrink-0 relative ${state ? "bg-primary" : "bg-border"}`}
-                  >
-                    <div className={`w-4 h-4 rounded-full bg-white absolute top-0.5 transition-all ${state ? "left-5" : "left-0.5"}`} />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{label}</p>
-                    <p className="text-xs text-muted-foreground">{sub}</p>
-                  </div>
-                </label>
               ))}
             </div>
           </div>
