@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import Icon from "@/components/ui/icon";
 import { useStore } from "@/context/StoreContext";
+import { DimensionPicker } from "@/components/ui/scroll-picker";
 
 const API = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c";
 const UPLOAD_VIDEO_API = "https://functions.poehali.dev/c69feec2-8522-4f96-aca5-363656289751";
@@ -310,25 +311,13 @@ export default function QuickVideoProductModal({ videoBlobUrl, sellerId, sellerN
 
         <div className="mb-3">
           <p className="text-[11px] text-white/40 mb-2">Вес и габариты (для доставки)</p>
-          <div className="grid grid-cols-4 gap-1.5">
-            {[
-              { label: "Вес, г", val: weightG, set: setWeightG },
-              { label: "Дл., см", val: lengthCm, set: setLengthCm },
-              { label: "Шир., см", val: widthCm, set: setWidthCm },
-              { label: "Выс., см", val: heightCm, set: setHeightCm },
-            ].map(({ label, val, set }) => (
-              <div key={label}>
-                <p className="text-[9px] text-white/30 mb-1 text-center">{label}</p>
-                <input
-                  value={val}
-                  onChange={e => set(e.target.value.replace(/\D/g, ""))}
-                  inputMode="numeric"
-                  className="w-full bg-white/10 border border-white/10 rounded-xl px-2 py-2 text-sm text-white text-center outline-none focus:border-primary/50 transition-colors"
-                  style={{ fontSize: 15 }}
-                />
-              </div>
-            ))}
-          </div>
+          <DimensionPicker
+            weightG={weightG} setWeightG={setWeightG}
+            lengthCm={lengthCm} setLengthCm={setLengthCm}
+            widthCm={widthCm} setWidthCm={setWidthCm}
+            heightCm={heightCm} setHeightCm={setHeightCm}
+            dark
+          />
         </div>
 
         {!videoUrl && (

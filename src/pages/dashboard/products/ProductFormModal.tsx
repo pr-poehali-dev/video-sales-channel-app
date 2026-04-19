@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Icon from "@/components/ui/icon";
+import { DimensionPicker } from "@/components/ui/scroll-picker";
 
 const UPLOAD_IMAGE_API = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c";
 
@@ -290,22 +291,13 @@ export default function ProductFormModal({
 
           {/* Вес и габариты */}
           <div>
-            <label className="text-xs text-muted-foreground mb-2 block">Вес и габариты (для расчёта доставки)</label>
-            <div className="grid grid-cols-4 gap-2">
-              {[
-                { label: "Вес, г",    val: fWeightG,  set: setFWeightG,  placeholder: "500" },
-                { label: "Дл., см",   val: fLengthCm, set: setFLengthCm, placeholder: "20" },
-                { label: "Шир., см",  val: fWidthCm,  set: setFWidthCm,  placeholder: "15" },
-                { label: "Выс., см",  val: fHeightCm, set: setFHeightCm, placeholder: "10" },
-              ].map(({ label, val, set, placeholder }) => (
-                <div key={label}>
-                  <label className="text-[10px] text-muted-foreground mb-1 block">{label}</label>
-                  <input value={val} onChange={e => set(e.target.value.replace(/\D/g, ""))}
-                    placeholder={placeholder} inputMode="numeric"
-                    className="w-full bg-secondary border border-border rounded-lg px-2 py-2 text-sm text-foreground text-center outline-none focus:border-primary/50 transition-colors" />
-                </div>
-              ))}
-            </div>
+            <label className="text-xs text-muted-foreground mb-3 block">Вес и габариты (для расчёта доставки)</label>
+            <DimensionPicker
+              weightG={fWeightG} setWeightG={setFWeightG}
+              lengthCm={fLengthCm} setLengthCm={setFLengthCm}
+              widthCm={fWidthCm} setWidthCm={setFWidthCm}
+              heightCm={fHeightCm} setHeightCm={setFHeightCm}
+            />
           </div>
 
           {fError && (
