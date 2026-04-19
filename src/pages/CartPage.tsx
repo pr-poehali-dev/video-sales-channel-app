@@ -210,9 +210,10 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
           body: JSON.stringify({ order_id: oid, ...orderPayload, weight_g: totalWeight, length_cm: 20, width_cm: 15, height_cm: 10 }),
         });
         const cdekData = await cdekRes.json();
+        console.log("[CDEK create_order]", cdekData);
         if (cdekData.track_number)  setCdekTrack(cdekData.track_number);
         else if (cdekData.cdek_uuid) setCdekTrack(cdekData.cdek_uuid);
-      } catch { /* СДЭК недоступен — заказ всё равно создан */ }
+      } catch (e) { console.error("[CDEK create_order error]", e); }
 
       // Сохраняем телефон в профиль, если его ещё нет
       if (user && !user.phone && buyerPhone.trim()) {
