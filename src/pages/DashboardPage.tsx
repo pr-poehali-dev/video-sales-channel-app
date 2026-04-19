@@ -39,19 +39,7 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
   const [stoppingStream, setStoppingStream] = useState<string | null>(null);
 
   // Профиль
-  const { logout, updateUser } = useAuth();
-  const [editingProfile, setEditingProfile] = useState(false);
-  const [pName, setPName] = useState(user?.name ?? "");
-  const [pPhone, setPPhone] = useState(user?.phone ?? "");
-  const [pCity, setPCity] = useState(user?.city ?? "");
-  const [profileSaved, setProfileSaved] = useState(false);
-
-  const handleSaveProfile = async () => {
-    await updateUser({ name: pName.trim(), phone: pPhone.trim(), city: pCity.trim() });
-    setEditingProfile(false);
-    setProfileSaved(true);
-    setTimeout(() => setProfileSaved(false), 2500);
-  };
+  const { logout } = useAuth();
   const handleLogout = () => { logout(); setPage("home"); };
   const { subscribed, isSupported, subscribe, unsubscribe, status: pushStatus } = usePushNotifications(user?.id ?? null);
   const [pushLoading, setPushLoading] = useState(false);
@@ -112,33 +100,16 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
   return (
     <div className="max-w-5xl mx-auto px-4 py-6 animate-fade-in">
 
-      {/* ── Карточки ─────────────────────────────────────────────── */}
-      {profileSaved && (
-        <div className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 text-sm font-medium px-4 py-2.5 rounded-xl mb-4 animate-fade-in">
-          <Icon name="CircleCheck" size={14} />
-          Данные профиля сохранены
-        </div>
-      )}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        {/* Мои данные */}
-        <button
-          onClick={() => { setEditingProfile(!editingProfile); setPName(user.name); setPPhone(user.phone); setPCity(user.city); }}
-          className={`bg-card border rounded-xl p-4 text-left hover:border-primary/40 transition-colors ${editingProfile ? "border-primary/50 ring-1 ring-primary/20" : "border-border"}`}
-        >
-          <div className="w-8 h-8 rounded-full bg-primary/20 text-primary text-xs font-bold flex items-center justify-center font-oswald mb-2">{user.avatar}</div>
-          <div className="font-oswald text-xl font-semibold text-foreground truncate">{user.name}</div>
-          <div className="text-xs text-muted-foreground mt-0.5">Мои данные</div>
-        </button>
-
-        {/* Реквизиты */}
+        {/* Магазин / Реквизиты */}
         <button
           onClick={() => setPage("seller-register" as Page)}
           className="bg-card border border-border rounded-xl p-4 text-left hover:border-primary/40 transition-colors"
         >
-          <Icon name="FileText" size={16} className="text-muted-foreground mb-2" />
-          <div className="font-oswald text-xl font-semibold text-foreground">Магазин</div>
-          <div className="text-xs text-muted-foreground mt-0.5">Реквизиты</div>
+          <div className="w-8 h-8 rounded-full bg-primary/20 text-primary text-xs font-bold flex items-center justify-center font-oswald mb-2">{user.avatar}</div>
+          <div className="font-oswald text-xl font-semibold text-foreground truncate">{user.name}</div>
+          <div className="text-xs text-muted-foreground mt-0.5">Данные и реквизиты</div>
         </button>
         {/* Товаров */}
         <div className="bg-card border border-border rounded-xl p-4">
@@ -178,44 +149,7 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
         Выйти из аккаунта
       </button>
 
-      {/* Форма редактирования (раскрывается под карточками) */}
-      {editingProfile && (
-        <div className="bg-card border border-primary/30 rounded-2xl p-4 mb-6 space-y-3 animate-fade-in">
-          <div className="flex items-center justify-between mb-1">
-            <span className="font-semibold text-sm text-foreground">Редактировать данные</span>
-            <button onClick={() => setEditingProfile(false)}>
-              <Icon name="X" size={14} className="text-muted-foreground" />
-            </button>
-          </div>
-          <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Имя</label>
-            <input value={pName} onChange={e => setPName(e.target.value)}
-              className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground outline-none focus:border-primary/50 transition-colors" />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Телефон</label>
-              <input value={pPhone} onChange={e => setPPhone(e.target.value)} placeholder="+7 900 000-00-00"
-                className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground outline-none focus:border-primary/50 transition-colors" />
-            </div>
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Город</label>
-              <input value={pCity} onChange={e => setPCity(e.target.value)} placeholder="Москва"
-                className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground outline-none focus:border-primary/50 transition-colors" />
-            </div>
-          </div>
-          <div className="flex gap-3 pt-1">
-            <button onClick={handleSaveProfile}
-              className="bg-primary text-primary-foreground font-semibold px-5 py-2 rounded-xl hover:opacity-90 transition-opacity text-sm">
-              Сохранить
-            </button>
-            <button onClick={() => setEditingProfile(false)}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors px-3">
-              Отмена
-            </button>
-          </div>
-        </div>
-      )}
+
 
       {/* ── Заголовок кабинета + кнопки ──────────────────────────── */}
       <div className="flex items-center justify-between mb-6">

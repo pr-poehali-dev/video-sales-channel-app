@@ -32,11 +32,23 @@ interface Props {
 }
 
 export default function SellerRegisterPage({ setPage }: Props) {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Личные данные
+  const [pName, setPName] = useState(user?.name ?? "");
+  const [pPhone, setPPhone] = useState(user?.phone ?? "");
+  const [pCity, setPCity] = useState(user?.city ?? "");
+  const [profileSaved, setProfileSaved] = useState(false);
+
+  const handleSaveProfile = async () => {
+    await updateUser({ name: pName.trim(), phone: pPhone.trim(), city: pCity.trim() });
+    setProfileSaved(true);
+    setTimeout(() => setProfileSaved(false), 2500);
+  };
 
   const [form, setForm] = useState<SellerProfile>({
     legalType: "individual",
@@ -144,6 +156,38 @@ export default function SellerRegisterPage({ setPage }: Props) {
       </div>
 
       <div className="space-y-5">
+
+        {/* Мои данные */}
+        <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+          <h2 className="text-sm font-semibold text-foreground">Мои данные</h2>
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Имя</label>
+            <input value={pName} onChange={e => setPName(e.target.value)}
+              className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground outline-none focus:border-primary/50 transition-colors" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Телефон</label>
+              <input value={pPhone} onChange={e => setPPhone(e.target.value)} placeholder="+7 900 000-00-00"
+                className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground outline-none focus:border-primary/50 transition-colors" />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Город</label>
+              <input value={pCity} onChange={e => setPCity(e.target.value)} placeholder="Москва"
+                className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground outline-none focus:border-primary/50 transition-colors" />
+            </div>
+          </div>
+          {profileSaved && (
+            <div className="flex items-center gap-2 text-green-600 text-sm">
+              <Icon name="CircleCheck" size={14} /> Данные сохранены
+            </div>
+          )}
+          <button onClick={handleSaveProfile}
+            className="bg-primary text-primary-foreground font-semibold px-5 py-2 rounded-xl hover:opacity-90 transition-opacity text-sm">
+            Сохранить данные
+          </button>
+        </div>
+
         {/* Тип продавца */}
         <div className="bg-card border border-border rounded-2xl p-5">
           <h2 className="text-sm font-semibold text-foreground mb-3">Тип продавца</h2>
