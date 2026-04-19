@@ -205,16 +205,9 @@ def create_apiship_order(order: dict) -> dict:
     assessed_cost = round(float(goods_total or order.get("goods_total", goods_total)), 2)
     delivery_cost = round(float(order.get("delivery_cost", 0) or 0), 2)
 
-    # Предоплата: payment_method = 'tbank' или статус 'paid'
-    is_prepaid = order.get("payment_method") in ("tbank", "online") or order.get("status") == "paid"
-
-    # codCost: если предоплата — 0, иначе товары + доставка
-    if is_prepaid:
-        cod_cost = 0
-        cod_delivery = 0
-    else:
-        cod_cost = int(assessed_cost + delivery_cost)
-        cod_delivery = int(delivery_cost)
+    # Наложенный платёж не используется — всегда 0
+    cod_cost = 0
+    cod_delivery = 0
 
     delivery_type_out = 2 if not is_pvz else 1  # 1=ПВЗ, 2=курьер
 
