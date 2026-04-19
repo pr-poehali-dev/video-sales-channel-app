@@ -113,11 +113,11 @@ def handler(event: dict, context) -> dict:
             })
         payload["Receipt"] = receipt
 
-    # Мультирасчёты: если передан seller_account — делим платёж
-    # platform_fee_pct — процент комиссии площадки (по умолчанию 10%)
+    # Мультирасчёты: только если включены явно (требует отдельного договора с Т-Банк)
     seller_account = body.get("seller_account", "")
-    platform_fee_pct = int(body.get("platform_fee_pct", 10))
-    if seller_account:
+    multimarket_enabled = os.environ.get("TBANK_MULTIMARKET_ENABLED", "false").lower() == "true"
+    if seller_account and multimarket_enabled:
+        platform_fee_pct = int(body.get("platform_fee_pct", 10))
         platform_fee = int(amount_kopecks * platform_fee_pct / 100)
         seller_amount = amount_kopecks - platform_fee
         payload["Shops"] = [
