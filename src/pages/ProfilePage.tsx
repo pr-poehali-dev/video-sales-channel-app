@@ -20,10 +20,10 @@ interface Order {
   id: string;
   status: string;
   items: OrderItem[];
-  goods_total: number;
-  order_total: number;
-  delivery_city_name: string;
-  created_at: string;
+  goodsTotal: number;
+  orderTotal: number;
+  deliveryCityName: string;
+  createdAt: string;
 }
 
 interface ProfilePageProps {
@@ -243,9 +243,7 @@ export default function ProfilePage({ setPage }: ProfilePageProps) {
           <div className="space-y-3">
             {orders.map(order => {
               const st = STATUS_LABEL[order.status] ?? { label: order.status, color: "text-muted-foreground" };
-              const date = order.created_at
-                ? new Date(order.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })
-                : "";
+              const date = order.createdAt || "";
               const isOpen = expandedOrder === order.id;
               const preview = order.items?.[0];
 
@@ -265,13 +263,13 @@ export default function ProfilePage({ setPage }: ProfilePageProps) {
                     <div className="flex-1 min-w-0">
                       <p className="text-xs text-muted-foreground mb-0.5">№ {order.id.replace("order_", "")}</p>
                       <p className="text-sm font-semibold text-foreground">
-                        {Number(order.order_total).toLocaleString("ru-RU")} ₽
+                        {Number(order.orderTotal).toLocaleString("ru-RU")} ₽
                       </p>
                       <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                         <span className={`text-xs font-medium ${st.color}`}>{st.label}</span>
                         {date && <span className="text-xs text-muted-foreground">· {date}</span>}
-                        {order.delivery_city_name && (
-                          <span className="text-xs text-muted-foreground">· {order.delivery_city_name}</span>
+                        {order.deliveryCityName && (
+                          <span className="text-xs text-muted-foreground">· {order.deliveryCityName}</span>
                         )}
                       </div>
                     </div>
@@ -298,7 +296,7 @@ export default function ProfilePage({ setPage }: ProfilePageProps) {
                       ))}
                       <div className="pt-2 border-t border-border flex justify-between text-sm">
                         <span className="text-muted-foreground">Итого с доставкой</span>
-                        <span className="font-semibold text-foreground">{Number(order.order_total).toLocaleString("ru-RU")} ₽</span>
+                        <span className="font-semibold text-foreground">{Number(order.orderTotal).toLocaleString("ru-RU")} ₽</span>
                       </div>
                     </div>
                   )}
