@@ -13,7 +13,10 @@ from psycopg2.extras import RealDictCursor
 
 # Если есть боевой токен — используем его, иначе тестовый (только для расчётов)
 APISHIP_TOKEN = os.environ.get("APISHIP_TOKEN_REAL", "") or os.environ.get("APISHIP_TOKEN", "")
+# companyId из аккаунта ApiShip (Denittt@yandex.ru, companyId=28024)
 APISHIP_SHOP_ID = int(os.environ.get("APISHIP_SHOP_ID", "28024") or "28024")
+if APISHIP_SHOP_ID == 3388:  # старое тестовое значение — перебиваем
+    APISHIP_SHOP_ID = 28024
 APISHIP_API = "https://api.apiship.ru/v1"
 
 FROM_CITY_NAME = "Краснодар"
@@ -214,7 +217,7 @@ def create_apiship_order(order: dict) -> dict:
         "cost": {
             "assessedCost": int(assessed_cost),
             "deliveryCost": int(delivery_cost),
-            "codCost": int(assessed_cost),
+            "codCost": 0,  # оплата онлайн — наложенный платёж = 0
         },
         "sender": {
             "name": "ИП Буцкий Денис Алексеевич",
@@ -245,7 +248,7 @@ def create_apiship_order(order: dict) -> dict:
                     "description": item.get("name", "Товар")[:255],
                     "articul": str(item.get("id", i)),
                     "quantity": int(item.get("qty", 1)),
-                    "assessedCost": int(float(item.get("price", 0))),
+                    "assessedCost": 0,  # предоплачено онлайн, наложенный платёж = 0
                     "weight": max(weight_g // items_count, 100),
                 }
                 for i, item in enumerate(items_list)
