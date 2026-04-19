@@ -196,7 +196,7 @@ def create_apiship_order(order: dict) -> dict:
     if is_pvz and pvz_code:
         address_to["pointOutId"] = pvz_code
 
-    assessed_cost = round(float(order.get("order_total", goods_total) or goods_total), 2)
+    assessed_cost = round(float(goods_total or order.get("goods_total", goods_total)), 2)
     delivery_cost = round(float(order.get("delivery_cost", 0) or 0), 2)
 
     delivery_type_out = 2 if not is_pvz else 1  # 1=ПВЗ, 2=курьер
@@ -212,7 +212,7 @@ def create_apiship_order(order: dict) -> dict:
         "cost": {
             "assessedCost": int(assessed_cost),
             "deliveryCost": int(delivery_cost),
-            "codCost": int(assessed_cost),
+            # codCost убран: оплата проходит онлайн, наложенный платёж не нужен
         },
         "sender": {
             "name": "ИП Буцкий Денис Алексеевич",
