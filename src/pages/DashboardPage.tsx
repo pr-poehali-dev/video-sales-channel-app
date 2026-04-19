@@ -16,7 +16,7 @@ import DashboardProductsTab from "./dashboard/DashboardProductsTab";
 import DashboardStreamsTab from "./dashboard/DashboardStreamsTab";
 import DashboardWarehousesTab, { type Warehouse } from "./dashboard/DashboardWarehousesTab";
 import DashboardOrdersTab from "./dashboard/DashboardOrdersTab";
-import DashboardShopTab from "./dashboard/DashboardShopTab";
+
 import MyPurchasesTab from "./dashboard/MyPurchasesTab";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 
@@ -24,7 +24,7 @@ interface DashboardPageProps {
   setPage: (p: Page) => void;
 }
 
-const TABS = ["Заказы от покупателей", "Мои покупки", "Товары", "Магазин", "Мои эфиры", "Статистика"];
+const TABS = ["Заказы от покупателей", "Мои покупки", "Товары", "Мои эфиры", "Статистика"];
 const STORE_API = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c";
 
 export default function DashboardPage({ setPage }: DashboardPageProps) {
@@ -222,7 +222,7 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
       {tab === "Заказы от покупателей" && <DashboardOrdersTab />}
       {tab === "Мои покупки" && <MyPurchasesTab />}
       {tab === "Товары" && <DashboardProductsTab warehouses={warehouses} />}
-      {tab === "Магазин" && <DashboardShopTab />}
+
       {tab === "Мои эфиры" && <DashboardStreamsTab setPage={setPage} />}
       {tab === "Статистика" && (
         <div className="animate-fade-in text-center py-16">
