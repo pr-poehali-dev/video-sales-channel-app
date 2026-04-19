@@ -223,7 +223,7 @@ def create_apiship_order(order: dict) -> dict:
 
     delivery_type_out = 2 if not is_pvz else 1  # 1=ПВЗ, 2=курьер
 
-    order_block = {
+    payload = {
         "clientNumber": str(order.get("order_id", "")),
         "providerKey": order.get("provider", "cdek"),
         "tariffId": int(order["delivery_tariff_code"]) if str(order.get("delivery_tariff_code", "")).isdigit() else None,
@@ -232,17 +232,6 @@ def create_apiship_order(order: dict) -> dict:
         "weight": max(weight_g, 100),
         "pickupType": 1,
         "deliveryType": delivery_type_out,
-        "pointOutId": int(pvz_apiship_id) if is_pvz and pvz_apiship_id else None,
-    }
-    if order_block["tariffId"] is None:
-        order_block.pop("tariffId")
-    if order_block["shopId"] is None:
-        order_block.pop("shopId")
-    if order_block.get("pointOutId") is None:
-        order_block.pop("pointOutId", None)
-
-    payload = {
-        "order": order_block,
         "cost": {
             "assessedCost": assessed_cost,
             "deliveryCost": item_delivery_cost,
@@ -291,6 +280,20 @@ def create_apiship_order(order: dict) -> dict:
             ],
         }],
     }
+    # ПВЗ для СДЭК — нужен строковый код ПВЗ в extraParams
+    if is_pvz:
+        if pvz_apiship_id:
+            payload["pointOutId"] = int(pvz_apiship_id)
+        if pvz_code:
+            # Строковый код ПВЗ СДЭК передаём в параметрах ТК
+            payload["extraParams"] = [
+                {"key": "toPointCode", "value": pvz_code},
+                {"key": "officeCode", "value": pvz_code},
+            ]
+    if payload.get("tariffId") is None:
+        payload.pop("tariffId", None)
+    if payload.get("shopId") is None:
+        payload.pop("shopId", None)
 
     print(f"[APISHIP] create_order payload: {json.dumps(payload, ensure_ascii=False)}")
     try:
