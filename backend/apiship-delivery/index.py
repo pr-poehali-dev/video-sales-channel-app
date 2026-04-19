@@ -13,7 +13,7 @@ from psycopg2.extras import RealDictCursor
 
 # Если есть боевой токен — используем его, иначе тестовый (только для расчётов)
 APISHIP_TOKEN = os.environ.get("APISHIP_TOKEN_REAL", "") or os.environ.get("APISHIP_TOKEN", "")
-APISHIP_SHOP_ID = int(os.environ.get("APISHIP_SHOP_ID", "0") or "0")
+APISHIP_SHOP_ID = int(os.environ.get("APISHIP_SHOP_ID", "28024") or "28024")
 APISHIP_API = "https://api.apiship.ru/v1"
 
 FROM_CITY_NAME = "Краснодар"
@@ -434,9 +434,14 @@ def handler(event: dict, context) -> dict:
             return {"statusCode": 200, "headers": headers, "body": json.dumps(points, ensure_ascii=False)}
 
         if action == "get_shops":
-            result = apiship_request("/shops")
-            print(f"[APISHIP] shops: {json.dumps(result, ensure_ascii=False)[:1000]}")
-            return {"statusCode": 200, "headers": headers, "body": json.dumps(result, ensure_ascii=False)}
+            results = {}
+            for path in ["/users/info", "/users", "/partners", "/connections", "/lists/providers"]:
+                try:
+                    results[path] = apiship_request(path)
+                except Exception as e:
+                    results[path] = str(e)
+            print(f"[APISHIP] probe: {json.dumps(results, ensure_ascii=False)[:3000]}")
+            return {"statusCode": 200, "headers": headers, "body": json.dumps(results, ensure_ascii=False)}
 
         if action == "create_order":
             order_id = body.get("order_id")
