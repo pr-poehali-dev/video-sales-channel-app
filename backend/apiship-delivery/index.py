@@ -197,7 +197,9 @@ def create_apiship_order(order: dict) -> dict:
     city_name = city_name_raw.split(",")[0].strip()
     delivery_address = order.get("delivery_address", "") or ""
     pvz_code = order.get("cdek_pvz_code", "") or ""
-    address_to = {"cityName": city_name, "address": delivery_address}
+    # Для ПВЗ адрес может быть пустым — подставляем город
+    address_str = delivery_address if delivery_address else city_name
+    address_to = {"cityName": city_name, "address": address_str}
     if is_pvz and pvz_code:
         address_to["pointOutId"] = pvz_code
 
@@ -255,8 +257,8 @@ def create_apiship_order(order: dict) -> dict:
                     "description": item.get("name", "Товар")[:255],
                     "articul": str(item.get("id", i)),
                     "quantity": int(item.get("qty", 1)),
-                    "assessedCost": int(float(item.get("price", 0)) * int(item.get("qty", 1))),
-                    "codCost": int(float(item.get("price", 0)) * int(item.get("qty", 1))),
+                    "assessedCost": int(float(item.get("price", 0))),
+                    "codCost": int(float(item.get("price", 0))),
                     "weight": max(weight_g // items_count, 100),
                 }
                 for i, item in enumerate(items_list)
