@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/context/AuthContext";
 import { StoreProvider } from "@/context/StoreContext";
 import { PriceModeProvider } from "@/context/PriceModeContext";
+import { FavoritesProvider } from "@/context/FavoritesContext";
 import HomePage from "@/pages/HomePage";
 import StreamsPage from "@/pages/StreamsPage";
 import CatalogPage from "@/pages/CatalogPage";
@@ -18,6 +19,7 @@ import SellerRegisterPage from "@/pages/SellerRegisterPage";
 import SupportPage from "@/pages/SupportPage";
 import SupportAdminPage from "@/pages/SupportAdminPage";
 import OrderSuccessPage from "@/pages/OrderSuccessPage";
+import FavoritesPage from "@/pages/FavoritesPage";
 import NavBar from "@/components/NavBar";
 import LiveBroadcastBar from "@/components/LiveBroadcastBar";
 import PWAInstallBanner from "@/components/PWAInstallBanner";
@@ -25,7 +27,7 @@ import PWAInstallBanner from "@/components/PWAInstallBanner";
 const BroadcastPage = lazy(() => import("@/pages/BroadcastPage"));
 
 export type Page =
-  | "home" | "streams" | "catalog" | "profile" | "cart"
+  | "home" | "streams" | "catalog" | "profile" | "cart" | "favorites"
   | "dashboard" | "product" | "seller" | "auth" | "broadcast" | "admin" | "seller-register"
   | "support" | "support-admin" | "order-success";
 
@@ -127,6 +129,7 @@ function AppInner() {
         {page === "support" && <SupportPage setPage={navSetPage} />}
         {page === "support-admin" && <SupportAdminPage setPage={navSetPage} />}
         {page === "order-success" && <OrderSuccessPage setPage={navSetPage} clearCart={clearCart} />}
+        {page === "favorites" && <FavoritesPage addToCart={addToCart} updateQty={updateQty} cart={cart} onProductClick={openProduct} />}
         {page === "product" && selectedProductId !== null && (
           <ProductPage
             productId={selectedProductId}
@@ -156,10 +159,12 @@ export default function App() {
     <AuthProvider>
       <StoreProvider>
         <PriceModeProvider>
-          <TooltipProvider>
-            <Toaster />
-            <AppInner />
-          </TooltipProvider>
+          <FavoritesProvider>
+            <TooltipProvider>
+              <Toaster />
+              <AppInner />
+            </TooltipProvider>
+          </FavoritesProvider>
         </PriceModeProvider>
       </StoreProvider>
     </AuthProvider>

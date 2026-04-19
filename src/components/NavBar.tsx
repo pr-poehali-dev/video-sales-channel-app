@@ -2,6 +2,7 @@ import Icon from "@/components/ui/icon";
 import type { Page } from "@/App";
 import { useAuth } from "@/context/AuthContext";
 import { usePriceMode } from "@/context/PriceModeContext";
+import { useFavorites } from "@/context/FavoritesContext";
 
 interface NavBarProps {
   page: Page;
@@ -12,6 +13,7 @@ interface NavBarProps {
 export default function NavBar({ page, setPage, cartCount }: NavBarProps) {
   const { user } = useAuth();
   const { mode, setMode } = usePriceMode();
+  const { favCount } = useFavorites();
 
   const navItems: { id: Page; label: string; icon: string }[] = [
     { id: "home", label: "Главная", icon: "Home" },
@@ -27,7 +29,7 @@ export default function NavBar({ page, setPage, cartCount }: NavBarProps) {
     { id: "home" as Page, label: "Главная", icon: "Home" },
     { id: "streams" as Page, label: "Эфиры", icon: "Radio" },
     { id: "catalog" as Page, label: "Каталог", icon: "ShoppingBag" },
-    { id: "cart" as Page, label: "Корзина", icon: "ShoppingCart" },
+    { id: "favorites" as Page, label: "Избранное", icon: "Heart" },
     { id: (user ? "profile" : "auth") as Page, label: user ? "Профиль" : "Войти", icon: "User" },
   ];
 
@@ -185,6 +187,7 @@ export default function NavBar({ page, setPage, cartCount }: NavBarProps) {
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
         {mobileItems.map(item => {
           const isCart = item.id === "cart";
+          const isFav = item.id === "favorites";
           const isProfile = item.id === "profile" || item.id === "auth";
           const isActive = isProfile
             ? page === "profile" || page === "auth"
@@ -195,7 +198,7 @@ export default function NavBar({ page, setPage, cartCount }: NavBarProps) {
               key={item.label}
               onClick={() => setPage(item.id)}
               className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium transition-colors relative ${
-                isActive ? "text-primary" : "text-muted-foreground"
+                isActive ? (isFav ? "text-red-500" : "text-primary") : "text-muted-foreground"
               }`}
             >
               {isProfile && user ? (
@@ -203,11 +206,20 @@ export default function NavBar({ page, setPage, cartCount }: NavBarProps) {
                   {user.avatar}
                 </div>
               ) : (
-                <Icon name={item.icon} size={20} />
+                <Icon
+                  name={item.icon}
+                  size={20}
+                  style={isFav && isActive ? { fill: "currentColor" } : {}}
+                />
               )}
               {isCart && cartCount > 0 && (
                 <span className="absolute top-1.5 right-[calc(50%-14px)] bg-primary text-primary-foreground text-[8px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center">
                   {cartCount > 9 ? "9+" : cartCount}
+                </span>
+              )}
+              {isFav && favCount > 0 && (
+                <span className="absolute top-1.5 right-[calc(50%-14px)] bg-red-500 text-white text-[8px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center">
+                  {favCount > 9 ? "9+" : favCount}
                 </span>
               )}
               <span>{isProfile && user ? "Профиль" : item.label}</span>

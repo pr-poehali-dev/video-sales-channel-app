@@ -3,6 +3,7 @@ import Icon from "@/components/ui/icon";
 import type { CartItem } from "@/App";
 import type { StoreProduct } from "@/context/StoreContext";
 import { usePriceMode } from "@/context/PriceModeContext";
+import { useFavorites } from "@/context/FavoritesContext";
 
 interface ProductCardProps {
   product: StoreProduct;
@@ -53,6 +54,7 @@ function VideoPreview({ src, poster }: { src: string; poster?: string }) {
 
 export default function ProductCard({ product, addToCart, updateQty, cartQty = 0, onClick }: ProductCardProps) {
   const { mode } = usePriceMode();
+  const { isFavorite, toggleFavorite } = useFavorites();
 
   const coverImage = product.images[0] ?? null;
   const videoUrl = product.videoUrl || null;
@@ -129,6 +131,20 @@ export default function ProductCard({ product, addToCart, updateQty, cartQty = 0
             <Icon name="Package" size={36} className="text-muted-foreground opacity-30" />
           </div>
         )}
+        {/* Кнопка избранного */}
+        <button
+          onClick={e => { e.stopPropagation(); toggleFavorite(product); }}
+          className="absolute top-2 right-2 z-10 w-7 h-7 rounded-full bg-white/80 backdrop-blur flex items-center justify-center shadow-sm transition-transform active:scale-90"
+          aria-label="В избранное"
+        >
+          <Icon
+            name="Heart"
+            size={15}
+            className={isFavorite(product.id) ? "text-red-500 fill-red-500" : "text-muted-foreground"}
+            style={isFavorite(product.id) ? { fill: "currentColor" } : {}}
+          />
+        </button>
+
         {inStock > 0 && inStock <= 5 && (
           <div className="absolute top-2 left-2 bg-orange-500/90 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full">
             Осталось {inStock} шт.
