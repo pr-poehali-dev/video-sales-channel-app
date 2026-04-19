@@ -35,7 +35,7 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
   const myStreams = user ? getSellerStreams(user.id) : [];
   const activeStream = myStreams.find(s => s.isLive) ?? null;
 
-  const [tab, setTab] = useState<string | null>(null);
+  const [tab, setTab] = useState<string | null>("Профиль");
   const [stoppingStream, setStoppingStream] = useState<string | null>(null);
 
   // Профиль
@@ -190,7 +190,7 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
       {/* ── Контент раздела ──────────────────────────────────────── */}
       {tab === "Профиль" && (
         <div className="animate-fade-in">
-          <SellerRegisterPage setPage={(p) => { if (p === "dashboard") setTab(null); else setPage(p); }} />
+          <SellerRegisterPage embedded setPage={(p) => { if (p === "dashboard") setTab(null); else setPage(p); }} />
         </div>
       )}
       {tab === "Заказы от покупателей" && <DashboardOrdersTab />}

@@ -30,9 +30,10 @@ const LEGAL_LABELS: Record<LegalType, string> = {
 
 interface Props {
   setPage: (p: Page) => void;
+  embedded?: boolean;
 }
 
-export default function SellerRegisterPage({ setPage }: Props) {
+export default function SellerRegisterPage({ setPage, embedded }: Props) {
   const { user, updateUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -176,15 +177,17 @@ export default function SellerRegisterPage({ setPage }: Props) {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 animate-fade-in">
-      <button onClick={() => setPage("dashboard")}
-        className="flex items-center gap-2 text-muted-foreground hover:text-foreground text-sm mb-6 transition-colors">
-        <Icon name="ArrowLeft" size={16} />
-        Назад в кабинет
-      </button>
+      {!embedded && (
+        <button onClick={() => setPage("dashboard")}
+          className="flex items-center gap-2 text-muted-foreground hover:text-foreground text-sm mb-6 transition-colors">
+          <Icon name="ArrowLeft" size={16} />
+          Назад в кабинет
+        </button>
+      )}
 
-      <div className="mb-6">
-        <h1 className="font-oswald text-2xl font-semibold text-foreground tracking-wide">Данные и реквизиты</h1>
-        <p className="text-sm text-muted-foreground mt-1">Заполните один раз — сохраните всё кнопкой внизу</p>
+      <div className="mb-4">
+        <h1 className="font-oswald text-xl font-semibold text-foreground tracking-wide">Данные и реквизиты</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">Заполните один раз — сохраните всё кнопкой внизу</p>
       </div>
 
       <div className="space-y-4">
