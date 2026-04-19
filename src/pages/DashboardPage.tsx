@@ -14,7 +14,7 @@ interface DashboardPageProps {
   setPage: (p: Page) => void;
 }
 
-const TABS = ["Заказы", "Товары", "Магазин", "Мои эфиры", "Статистика"];
+const TABS = ["Заказы от покупателей", "Товары", "Магазин", "Мои эфиры", "Статистика"];
 const STORE_API = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c";
 
 export default function DashboardPage({ setPage }: DashboardPageProps) {
@@ -25,7 +25,7 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
   const myStreams = user ? getSellerStreams(user.id) : [];
   const activeStream = myStreams.find(s => s.isLive) ?? null;
 
-  const [tab, setTab] = useState("Заказы");
+  const [tab, setTab] = useState("Заказы от покупателей");
   const [stoppingStream, setStoppingStream] = useState<string | null>(null);
   const { subscribed, isSupported, subscribe, unsubscribe, status: pushStatus } = usePushNotifications(user?.id ?? null);
   const [pushLoading, setPushLoading] = useState(false);
@@ -182,7 +182,7 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
         ))}
       </div>
 
-      {tab === "Заказы" && <DashboardOrdersTab />}
+      {tab === "Заказы от покупателей" && <DashboardOrdersTab />}
       {tab === "Товары" && <DashboardProductsTab warehouses={warehouses} />}
       {tab === "Магазин" && <DashboardShopTab />}
       {tab === "Мои эфиры" && <DashboardStreamsTab setPage={setPage} />}
