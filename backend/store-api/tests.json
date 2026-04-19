@@ -96,6 +96,15 @@
       "expectedStatus": 400,
       "expectedBody": {"error": "stream_id and video_url required"},
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "clear_orders without admin_key returns 403",
+      "method": "POST",
+      "path": "/?action=clear_orders",
+      "body": {},
+      "expectedStatus": 403,
+      "expectedBody": {"error": "forbidden"},
+      "bodyMatcher": "partial"
     }
   ]
 }

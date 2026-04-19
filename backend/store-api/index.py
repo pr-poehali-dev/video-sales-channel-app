@@ -837,6 +837,17 @@ def handler(event: dict, context) -> dict:
             conn.commit()
             return ok({"ok": True})
 
+        if action == "clear_orders":
+            admin_key = body.get("admin_key") or qs.get("admin_key")
+            if admin_key != "STRIM_ADMIN_2025":
+                return err("forbidden", 403)
+            cur.execute("SELECT COUNT(*) as cnt FROM orders")
+            row = cur.fetchone()
+            total = row["cnt"] if row else 0
+            cur.execute("DELETE FROM orders")
+            conn.commit()
+            return ok({"deleted": total})
+
         return err("unknown action", 404)
 
     except Exception as e:
