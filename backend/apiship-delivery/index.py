@@ -223,7 +223,7 @@ def create_apiship_order(order: dict) -> dict:
 
     delivery_type_out = 2 if not is_pvz else 1  # 1=ПВЗ, 2=курьер
 
-    payload = {
+    order_block = {
         "clientNumber": str(order.get("order_id", "")),
         "providerKey": order.get("provider", "cdek"),
         "tariffId": int(order["delivery_tariff_code"]) if str(order.get("delivery_tariff_code", "")).isdigit() else None,
@@ -233,6 +233,16 @@ def create_apiship_order(order: dict) -> dict:
         "pickupType": 1,
         "deliveryType": delivery_type_out,
         "pointOutId": int(pvz_apiship_id) if is_pvz and pvz_apiship_id else None,
+    }
+    if order_block["tariffId"] is None:
+        order_block.pop("tariffId")
+    if order_block["shopId"] is None:
+        order_block.pop("shopId")
+    if order_block.get("pointOutId") is None:
+        order_block.pop("pointOutId", None)
+
+    payload = {
+        "order": order_block,
         "cost": {
             "assessedCost": assessed_cost,
             "deliveryCost": item_delivery_cost,
@@ -281,12 +291,6 @@ def create_apiship_order(order: dict) -> dict:
             ],
         }],
     }
-    if payload["tariffId"] is None:
-        payload.pop("tariffId")
-    if payload["shopId"] is None:
-        payload.pop("shopId")
-    if payload.get("pointOutId") is None:
-        payload.pop("pointOutId", None)
 
     print(f"[APISHIP] create_order payload: {json.dumps(payload, ensure_ascii=False)}")
     try:
