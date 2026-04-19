@@ -243,7 +243,7 @@ def create_apiship_order(order: dict) -> dict:
                     "description": item.get("name", "Товар")[:255],
                     "articul": str(item.get("id", i)),
                     "quantity": int(item.get("qty", 1)),
-                    "assessedCost": int(float(item.get("price", 0)) * int(item.get("qty", 1))),
+                    "assessedCost": int(float(item.get("price", 0))),  # цена за 1 шт — ApiShip сам умножит на qty
                     "weight": max(weight_g // items_count, 100),
                 }
                 for i, item in enumerate(order.get("items", []))
@@ -253,8 +253,9 @@ def create_apiship_order(order: dict) -> dict:
     if payload["tariffId"] is None:
         payload.pop("tariffId")
 
-    items_sum = sum(it["assessedCost"] for it in payload["places"][0]["items"])
-    print(f"[APISHIP] codCost={payload['cost']['codCost']} items_sum={items_sum} match={items_sum==payload['cost']['codCost']}")
+    items_sum_per_unit = sum(it["assessedCost"] for it in payload["places"][0]["items"])
+    items_sum_with_qty = sum(it["assessedCost"] * it["quantity"] for it in payload["places"][0]["items"])
+    print(f"[APISHIP] codCost={payload['cost']['codCost']} sum_per_unit={items_sum_per_unit} sum_with_qty={items_sum_with_qty}")
     print(f"[APISHIP] create_order payload: {json.dumps(payload, ensure_ascii=False)}")
     try:
         result = apiship_request("/orders", payload, "POST")
