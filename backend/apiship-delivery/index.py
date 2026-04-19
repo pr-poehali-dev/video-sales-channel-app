@@ -215,6 +215,11 @@ def create_apiship_order(order: dict) -> dict:
         "weight": max(weight_g, 100),
         "pickupType": 1,
         "deliveryType": delivery_type_out,
+        "cost": {
+            "assessedCost": int(assessed_cost),
+            "deliveryCost": int(delivery_cost),
+            "codCost": int(assessed_cost),
+        },
         "costs": [{
             "assessedCost": int(assessed_cost),
             "deliveryCost": int(delivery_cost),
