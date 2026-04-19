@@ -37,16 +37,17 @@ function VideoPreview({ src, poster }: { src: string; poster?: string }) {
 interface ProductPageProps {
   productId: string;
   addToCart: (item: Omit<CartItem, "qty">) => void;
+  updateQty: (id: string, qty: number) => void;
+  cart: CartItem[];
   onBack: () => void;
   onSellerClick: (sellerId: string) => void;
 }
 
-export default function ProductPage({ productId, addToCart, onBack, onSellerClick }: ProductPageProps) {
+export default function ProductPage({ productId, addToCart, updateQty, cart, onBack, onSellerClick }: ProductPageProps) {
   const { products, getSellerProducts } = useStore();
   const { mode } = usePriceMode();
   const product = products.find(p => p.id === productId);
   const [activeImg, setActiveImg] = useState(0);
-  const [added, setAdded] = useState(false);
   const [showVideo, setShowVideo] = useState(false);
 
   if (!product) {
@@ -73,6 +74,9 @@ export default function ProductPage({ productId, addToCart, onBack, onSellerClic
     ? (mode === "wholesale" ? product.wholesalePrice! : retailPrice)
     : product.price;
 
+  const cartItem = cart.find(c => c.id === product.id);
+  const cartQty = cartItem?.qty ?? 0;
+
   const handleAdd = () => {
     addToCart({
       id: product.id,
@@ -87,8 +91,6 @@ export default function ProductPage({ productId, addToCart, onBack, onSellerClic
       wholesalePrice: product.wholesalePrice,
       retailMarkupPct: product.retailMarkupPct,
     });
-    setAdded(true);
-    setTimeout(() => setAdded(false), 1800);
   };
 
   return (
@@ -143,25 +145,45 @@ export default function ProductPage({ productId, addToCart, onBack, onSellerClic
 
         {/* Кнопка В корзину */}
         <div className="px-4 pt-1.5 pb-1.5">
-          <button
-            onClick={handleAdd}
-            className={`w-full flex items-center justify-between px-4 py-2 rounded-xl font-semibold transition-all ${
-              added ? "bg-green-500 text-white" : "bg-primary text-primary-foreground hover:opacity-90"
-            }`}
-          >
-            <span className="flex items-center gap-2 text-sm">
-              <Icon name={added ? "Check" : "ShoppingCart"} size={15} />
-              {added ? "Добавлено!" : "В корзину"}
-            </span>
-            {hasWholesale ? (
-              <span className="flex flex-col items-end leading-none">
-                <span className="font-oswald text-sm">{product.wholesalePrice!.toLocaleString("ru")} ₽ <span className="text-[10px] opacity-70">опт</span></span>
-                <span className="font-oswald text-[11px] opacity-70">{retailPrice.toLocaleString("ru")} ₽ розница</span>
+          {cartQty === 0 ? (
+            /* Кнопка «В корзину» */
+            <button
+              onClick={handleAdd}
+              className="w-full flex items-center justify-between px-4 py-2 rounded-xl font-semibold bg-primary text-primary-foreground hover:opacity-90 transition-all"
+            >
+              <span className="flex items-center gap-2 text-sm">
+                <Icon name="ShoppingCart" size={15} />
+                В корзину
               </span>
-            ) : (
-              <span className="font-oswald text-base">{displayPrice.toLocaleString("ru")} ₽</span>
-            )}
-          </button>
+              {hasWholesale ? (
+                <span className="flex flex-col items-end leading-none">
+                  <span className="font-oswald text-sm">{product.wholesalePrice!.toLocaleString("ru")} ₽ <span className="text-[10px] opacity-70">опт</span></span>
+                  <span className="font-oswald text-[11px] opacity-70">{retailPrice.toLocaleString("ru")} ₽ розница</span>
+                </span>
+              ) : (
+                <span className="font-oswald text-base">{displayPrice.toLocaleString("ru")} ₽</span>
+              )}
+            </button>
+          ) : (
+            /* Счётчик +/− */
+            <div className="w-full flex items-center justify-between px-4 py-2 rounded-xl bg-primary text-primary-foreground">
+              <button
+                onClick={() => updateQty(product.id, cartQty - 1)}
+                className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors font-bold text-lg"
+              >−</button>
+              <div className="flex flex-col items-center">
+                <span className="font-oswald text-base font-bold">{cartQty} шт.</span>
+                <span className="text-[11px] opacity-80">
+                  {(displayPrice * cartQty).toLocaleString("ru")} ₽
+                  {hasWholesale && <span className="opacity-70"> · {(product.wholesalePrice! * cartQty).toLocaleString("ru")} ₽ опт</span>}
+                </span>
+              </div>
+              <button
+                onClick={() => updateQty(product.id, cartQty + 1)}
+                className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors font-bold text-lg"
+              >+</button>
+            </div>
+          )}
         </div>
       </div>
 
