@@ -27,9 +27,9 @@ export default function NavBar({ page, setPage, cartCount }: NavBarProps) {
 
   const mobileItems = [
     { id: "home" as Page, label: "Главная", icon: "Home" },
-    { id: "streams" as Page, label: "Эфиры", icon: "Radio" },
-    { id: "catalog" as Page, label: "Каталог", icon: "ShoppingBag" },
     { id: "favorites" as Page, label: "Избранное", icon: "Heart" },
+    { id: "catalog" as Page, label: "Каталог", icon: "ShoppingBag" },
+    { id: "cart" as Page, label: "Корзина", icon: "ShoppingCart" },
     { id: (user ? "profile" : "auth") as Page, label: user ? "Профиль" : "Войти", icon: "User" },
   ];
 
