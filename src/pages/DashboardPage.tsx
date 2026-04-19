@@ -102,53 +102,53 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
 
 
       {/* ── Грид карточек ────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 gap-3 mb-3">
+      <div className="grid grid-cols-3 gap-2 mb-3">
         {/* Данные и реквизиты */}
         <button onClick={() => setPage("seller-register" as Page)}
-          className="bg-card border border-border rounded-xl p-4 text-left hover:border-primary/40 transition-colors">
-          <div className="w-8 h-8 rounded-full bg-primary/20 text-primary text-xs font-bold flex items-center justify-center font-oswald mb-2">{user.avatar}</div>
-          <div className="font-oswald text-xl font-semibold text-foreground truncate">{user.name}</div>
-          <div className="text-xs text-muted-foreground mt-0.5">Данные и реквизиты</div>
+          className="bg-card border border-border rounded-xl p-2.5 text-left hover:border-primary/40 transition-colors">
+          <div className="w-6 h-6 rounded-full bg-primary/20 text-primary text-[9px] font-bold flex items-center justify-center font-oswald mb-1.5">{user.avatar}</div>
+          <div className="font-oswald text-sm font-semibold text-foreground truncate leading-tight">{user.name}</div>
+          <div className="text-[10px] text-muted-foreground mt-0.5 leading-tight">Данные и реквизиты</div>
         </button>
 
         {/* Товары */}
         <button onClick={() => setTab(tab === "Товары" ? null : "Товары")}
-          className={`bg-card border rounded-xl p-4 text-left hover:border-primary/40 transition-colors ${tab === "Товары" ? "border-primary/50 ring-1 ring-primary/20" : "border-border"}`}>
-          <Icon name="Package" size={16} className="text-muted-foreground mb-2" />
-          <div className="font-oswald text-xl font-semibold text-foreground">{products.length}</div>
-          <div className="text-xs text-muted-foreground mt-0.5">Товаров</div>
+          className={`bg-card border rounded-xl p-2.5 text-left hover:border-primary/40 transition-colors ${tab === "Товары" ? "border-primary/50 ring-1 ring-primary/20" : "border-border"}`}>
+          <Icon name="Package" size={13} className="text-muted-foreground mb-1.5" />
+          <div className="font-oswald text-sm font-semibold text-foreground">{products.length}</div>
+          <div className="text-[10px] text-muted-foreground mt-0.5">Товаров</div>
         </button>
 
         {/* Эфиры */}
         <button onClick={() => setTab(tab === "Мои эфиры" ? null : "Мои эфиры")}
-          className={`bg-card border rounded-xl p-4 text-left hover:border-primary/40 transition-colors ${tab === "Мои эфиры" ? "border-primary/50 ring-1 ring-primary/20" : "border-border"}`}>
-          <Icon name="Radio" size={16} className="text-muted-foreground mb-2" />
-          <div className="font-oswald text-xl font-semibold text-foreground">{myStreams.length}</div>
-          <div className="text-xs text-muted-foreground mt-0.5">Эфиров</div>
+          className={`bg-card border rounded-xl p-2.5 text-left hover:border-primary/40 transition-colors ${tab === "Мои эфиры" ? "border-primary/50 ring-1 ring-primary/20" : "border-border"}`}>
+          <Icon name="Radio" size={13} className="text-muted-foreground mb-1.5" />
+          <div className="font-oswald text-sm font-semibold text-foreground">{myStreams.length}</div>
+          <div className="text-[10px] text-muted-foreground mt-0.5">Эфиров</div>
         </button>
 
         {/* Заказы от покупателей */}
         <button onClick={() => setTab(tab === "Заказы от покупателей" ? null : "Заказы от покупателей")}
-          className={`bg-card border rounded-xl p-4 text-left hover:border-primary/40 transition-colors ${tab === "Заказы от покупателей" ? "border-primary/50 ring-1 ring-primary/20" : "border-border"}`}>
-          <Icon name="ShoppingBag" size={16} className="text-muted-foreground mb-2" />
-          <div className="font-oswald text-xl font-semibold text-foreground">0</div>
-          <div className="text-xs text-muted-foreground mt-0.5">Заказы от покупателей</div>
+          className={`bg-card border rounded-xl p-2.5 text-left hover:border-primary/40 transition-colors ${tab === "Заказы от покупателей" ? "border-primary/50 ring-1 ring-primary/20" : "border-border"}`}>
+          <Icon name="ShoppingBag" size={13} className="text-muted-foreground mb-1.5" />
+          <div className="font-oswald text-sm font-semibold text-foreground">0</div>
+          <div className="text-[10px] text-muted-foreground mt-0.5 leading-tight">Заказы от покуп.</div>
         </button>
 
         {/* Мои покупки */}
         <button onClick={() => setTab(tab === "Мои покупки" ? null : "Мои покупки")}
-          className={`bg-card border rounded-xl p-4 text-left hover:border-primary/40 transition-colors ${tab === "Мои покупки" ? "border-primary/50 ring-1 ring-primary/20" : "border-border"}`}>
-          <Icon name="Wallet" size={16} className="text-muted-foreground mb-2" />
-          <div className="font-oswald text-xl font-semibold text-foreground">Мои</div>
-          <div className="text-xs text-muted-foreground mt-0.5">Покупки</div>
+          className={`bg-card border rounded-xl p-2.5 text-left hover:border-primary/40 transition-colors ${tab === "Мои покупки" ? "border-primary/50 ring-1 ring-primary/20" : "border-border"}`}>
+          <Icon name="Wallet" size={13} className="text-muted-foreground mb-1.5" />
+          <div className="font-oswald text-sm font-semibold text-foreground">Мои</div>
+          <div className="text-[10px] text-muted-foreground mt-0.5">Покупки</div>
         </button>
 
         {/* Статистика */}
         <button onClick={() => setTab(tab === "Статистика" ? null : "Статистика")}
-          className={`bg-card border rounded-xl p-4 text-left hover:border-primary/40 transition-colors ${tab === "Статистика" ? "border-primary/50 ring-1 ring-primary/20" : "border-border"}`}>
-          <Icon name="BarChart2" size={16} className="text-muted-foreground mb-2" />
-          <div className="font-oswald text-xl font-semibold text-foreground">0 ₽</div>
-          <div className="text-xs text-muted-foreground mt-0.5">Статистика</div>
+          className={`bg-card border rounded-xl p-2.5 text-left hover:border-primary/40 transition-colors ${tab === "Статистика" ? "border-primary/50 ring-1 ring-primary/20" : "border-border"}`}>
+          <Icon name="BarChart2" size={13} className="text-muted-foreground mb-1.5" />
+          <div className="font-oswald text-sm font-semibold text-foreground">0 ₽</div>
+          <div className="text-[10px] text-muted-foreground mt-0.5">Статистика</div>
         </button>
       </div>
 
