@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Icon from "@/components/ui/icon";
 import type { Page } from "@/App";
 
@@ -11,41 +11,46 @@ interface OrderSuccessPageProps {
 
 export default function OrderSuccessPage({ setPage, clearCart }: OrderSuccessPageProps) {
   const params = new URLSearchParams(window.location.search);
-  const orderId = params.get("order_id") || "";
-  const paymentId = params.get("payment_id") || "";
+  const orderIdRef = useRef(params.get("order_id") || "");
+  const paymentIdRef = useRef(params.get("payment_id") || "");
 
   const [status, setStatus] = useState<"loading" | "paid" | "pending" | "failed">("loading");
+  const [checking, setChecking] = useState(false);
+
+  const checkStatus = async () => {
+    setChecking(true);
+    try {
+      const res = await fetch(
+        `${PAYMENT_STATUS_API}?payment_id=${paymentIdRef.current}&order_id=${orderIdRef.current}`
+      );
+      const data = await res.json();
+      if (data.paid) {
+        setStatus("paid");
+      } else if (data.status === "CANCELED" || data.status === "REJECTED") {
+        setStatus("failed");
+      } else {
+        setStatus("pending");
+      }
+    } catch {
+      setStatus("pending");
+    } finally {
+      setChecking(false);
+    }
+  };
 
   useEffect(() => {
     clearCart();
-
-    const check = async () => {
-      if (!paymentId && !orderId) {
-        setStatus("paid");
-        return;
-      }
-      try {
-        const res = await fetch(
-          `${PAYMENT_STATUS_API}?payment_id=${paymentId}&order_id=${orderId}`
-        );
-        const data = await res.json();
-        if (data.paid) {
-          setStatus("paid");
-        } else if (data.status === "CANCELED" || data.status === "REJECTED") {
-          setStatus("failed");
-        } else {
-          setStatus("pending");
-        }
-      } catch {
-        setStatus("paid");
-      }
-    };
-
-    check();
-
-    // Очищаем URL от параметров
+    // Очищаем URL сразу, но данные уже в ref
     window.history.replaceState({}, "", window.location.pathname);
+
+    if (!paymentIdRef.current && !orderIdRef.current) {
+      setStatus("paid");
+      return;
+    }
+    checkStatus();
   }, []);
+
+  const orderId = orderIdRef.current;
 
   return (
     <div className="max-w-lg mx-auto px-4 py-16 text-center">
@@ -62,9 +67,7 @@ export default function OrderSuccessPage({ setPage, clearCart }: OrderSuccessPag
             <Icon name="PackageCheck" size={42} className="text-green-400" />
           </div>
           <h2 className="font-oswald text-2xl font-semibold text-foreground mb-2">Оплата прошла!</h2>
-          {orderId && (
-            <p className="text-xs text-muted-foreground mb-4">Заказ № {orderId}</p>
-          )}
+          {orderId && <p className="text-xs text-muted-foreground mb-4">Заказ № {orderId.replace("order_", "")}</p>}
           <p className="text-muted-foreground text-sm mb-6">
             Продавец получил уведомление и начнёт собирать заказ. Трек-номер придёт в SMS или email.
           </p>
@@ -83,17 +86,25 @@ export default function OrderSuccessPage({ setPage, clearCart }: OrderSuccessPag
             <Icon name="Clock" size={42} className="text-yellow-400" />
           </div>
           <h2 className="font-oswald text-2xl font-semibold text-foreground mb-2">Платёж обрабатывается</h2>
-          {orderId && (
-            <p className="text-xs text-muted-foreground mb-4">Заказ № {orderId}</p>
-          )}
-          <p className="text-muted-foreground text-sm mb-6">
-            Банк ещё обрабатывает платёж. Заказ появится в личном кабинете как только оплата подтвердится.
+          {orderId && <p className="text-xs text-muted-foreground mb-4">Заказ № {orderId.replace("order_", "")}</p>}
+          <p className="text-muted-foreground text-sm mb-4">
+            Банк ещё обрабатывает платёж. Нажми кнопку ниже чтобы проверить ещё раз.
           </p>
           <button
-            onClick={() => setPage("profile")}
-            className="bg-primary text-primary-foreground font-semibold px-6 py-3 rounded-xl hover:opacity-90 transition-opacity text-sm"
+            onClick={checkStatus}
+            disabled={checking}
+            className="w-full bg-primary text-primary-foreground font-semibold px-6 py-3 rounded-xl hover:opacity-90 transition-opacity text-sm mb-3 flex items-center justify-center gap-2 disabled:opacity-60"
           >
-            Мои заказы
+            {checking
+              ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Проверяем…</>
+              : <><Icon name="RefreshCw" size={15} /> Проверить статус</>
+            }
+          </button>
+          <button
+            onClick={() => setPage("profile")}
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Перейти к покупкам
           </button>
         </div>
       )}

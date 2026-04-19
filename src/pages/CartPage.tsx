@@ -253,7 +253,7 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
           order_id: oid,
           amount: orderTotal,
           description: `Заказ ${oid}`,
-          return_url: `${window.location.origin}/order-success?order_id=${oid}`,
+          return_url: `${window.location.origin}/order-success?order_id=${oid}&payment_id={PaymentId}`,
           email: buyerEmail.trim(),
           phone: buyerPhone.replace(/\D/g, "").replace(/^8/, "7"),
           delivery_cost: deliveryCost || 0,
