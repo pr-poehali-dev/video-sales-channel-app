@@ -112,28 +112,7 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
   return (
     <div className="max-w-5xl mx-auto px-4 py-6 animate-fade-in">
 
-      {/* ── Шапка: аватар + имя + выход ─────────────────────────── */}
-      <div className="flex items-center gap-4 mb-6">
-        <div className="w-14 h-14 rounded-full bg-primary/20 text-primary text-xl font-bold flex items-center justify-center font-oswald flex-shrink-0">
-          {user.avatar}
-        </div>
-        <div className="flex-1 min-w-0">
-          <h1 className="font-oswald text-xl font-semibold text-foreground tracking-wide truncate">{user.name}</h1>
-          <div className="flex flex-wrap gap-x-2 mt-0.5">
-            <span className="text-xs text-muted-foreground">{user.email}</span>
-            {user.city && <span className="text-xs text-muted-foreground">· {user.city}</span>}
-          </div>
-        </div>
-        <button
-          onClick={handleLogout}
-          className="p-2 rounded-xl border border-destructive/20 bg-destructive/5 hover:bg-destructive/10 transition-colors flex-shrink-0"
-          title="Выйти"
-        >
-          <Icon name="LogOut" size={15} className="text-destructive" />
-        </button>
-      </div>
-
-      {/* ── Карточки: данные + реквизиты + статистика ────────────── */}
+      {/* ── Карточки ─────────────────────────────────────────────── */}
       {profileSaved && (
         <div className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 text-sm font-medium px-4 py-2.5 rounded-xl mb-4 animate-fade-in">
           <Icon name="CircleCheck" size={14} />
@@ -141,27 +120,38 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
         </div>
       )}
 
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
-        {/* Мои данные */}
-        <button
-          onClick={() => { setEditingProfile(!editingProfile); setPName(user.name); setPPhone(user.phone); setPCity(user.city); }}
-          className={`bg-card border rounded-xl p-4 text-left hover:border-primary/40 transition-colors ${editingProfile ? "border-primary/50 ring-1 ring-primary/20" : "border-border"}`}
-        >
-          <Icon name="User" size={16} className="text-muted-foreground mb-2" />
-          <div className="font-oswald text-base font-semibold text-foreground truncate">{user.name}</div>
-          <div className="text-xs text-muted-foreground mt-0.5">Мои данные</div>
-        </button>
+      {/* Мои данные + Реквизиты — одна широкая карточка */}
+      <button
+        onClick={() => { setEditingProfile(!editingProfile); setPName(user.name); setPPhone(user.phone); setPCity(user.city); }}
+        className={`w-full bg-card border rounded-2xl p-4 mb-3 text-left hover:border-primary/40 transition-colors ${editingProfile ? "border-primary/50 ring-1 ring-primary/20" : "border-border"}`}
+      >
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-full bg-primary/20 text-primary text-lg font-bold flex items-center justify-center font-oswald flex-shrink-0">
+            {user.avatar}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="font-oswald text-base font-semibold text-foreground truncate">{user.name}</div>
+            <div className="text-xs text-muted-foreground truncate">{user.email}</div>
+            {user.city && <div className="text-xs text-muted-foreground">· {user.city}</div>}
+          </div>
+          <div className="flex flex-col items-end gap-2">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Icon name="FileText" size={12} />
+              <span>Реквизиты</span>
+              <Icon name="ChevronRight" size={12} onClick={e => { e.stopPropagation(); setPage("seller-register" as Page); }} className="hover:text-foreground" />
+            </div>
+            <button
+              onClick={e => { e.stopPropagation(); handleLogout(); }}
+              className="flex items-center gap-1 text-xs text-destructive hover:opacity-70 transition-opacity"
+            >
+              <Icon name="LogOut" size={12} />
+              Выйти
+            </button>
+          </div>
+        </div>
+      </button>
 
-        {/* Реквизиты */}
-        <button
-          onClick={() => setPage("seller-register" as Page)}
-          className="bg-card border border-border rounded-xl p-4 text-left hover:border-primary/40 transition-colors"
-        >
-          <Icon name="FileText" size={16} className="text-muted-foreground mb-2" />
-          <div className="font-oswald text-base font-semibold text-foreground">Реквизиты</div>
-          <div className="text-xs text-muted-foreground mt-0.5">Магазин · ИП / ООО</div>
-        </button>
-
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         {/* Товаров */}
         <div className="bg-card border border-border rounded-xl p-4">
           <Icon name="Package" size={16} className="text-muted-foreground mb-2" />
