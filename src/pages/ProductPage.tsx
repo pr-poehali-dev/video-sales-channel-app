@@ -155,7 +155,14 @@ export default function ProductPage({ productId, addToCart, onBack, onSellerClic
               <Icon name={added ? "Check" : "ShoppingCart"} size={18} />
               {added ? "Добавлено!" : "В корзину"}
             </span>
-            <span className="font-oswald text-lg">{displayPrice.toLocaleString("ru")} ₽</span>
+            {hasWholesale ? (
+              <span className="flex flex-col items-end leading-none">
+                <span className="font-oswald text-base">{product.wholesalePrice!.toLocaleString("ru")} ₽ <span className="text-[10px] opacity-70">опт</span></span>
+                <span className="font-oswald text-xs opacity-70">{retailPrice.toLocaleString("ru")} ₽ розница</span>
+              </span>
+            ) : (
+              <span className="font-oswald text-lg">{displayPrice.toLocaleString("ru")} ₽</span>
+            )}
           </button>
         </div>
       </div>
