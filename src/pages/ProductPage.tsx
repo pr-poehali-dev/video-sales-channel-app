@@ -93,7 +93,7 @@ export default function ProductPage({ productId, addToCart, onBack, onSellerClic
 
   return (
     /* Мобильный: fixed full-screen; Десктоп: обычный поток с max-w */
-    <div className="md:static md:inset-auto fixed inset-x-0 top-14 bottom-0 flex flex-col animate-fade-in md:max-w-2xl md:mx-auto md:pb-8" style={{ bottom: "4rem" }}>
+    <div className="md:static md:inset-auto fixed inset-x-0 top-0 bottom-0 flex flex-col animate-fade-in md:max-w-2xl md:mx-auto md:pb-8" style={{ bottom: "4rem" }}>
 
       {/* ── ВЕРХНЯЯ ЧАСТЬ: видео + кнопка ── */}
       <div className="flex-shrink-0 bg-background">

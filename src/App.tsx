@@ -107,7 +107,7 @@ function AppInner() {
 
   return (
     <div className="min-h-screen bg-background font-golos">
-      <NavBar page={page} setPage={navSetPage} cartCount={cart.reduce((s, c) => s + c.qty, 0)} />
+      {page !== "product" && <NavBar page={page} setPage={navSetPage} cartCount={cart.reduce((s, c) => s + c.qty, 0)} />}
       <LiveBroadcastBar page={page} setPage={navSetPage} />
       <main className={page === "product" ? "" : "pb-16 md:pb-0"}>
         {page === "home" && <HomePage setPage={navSetPage} addToCart={addToCart} updateQty={updateQty} cart={cart} onProductClick={openProduct} />}
