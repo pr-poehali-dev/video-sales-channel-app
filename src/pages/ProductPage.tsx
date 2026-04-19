@@ -166,12 +166,7 @@ export default function ProductPage({ productId, addToCart, updateQty, cart, onB
             <div className="w-full flex items-center justify-between px-2 py-1.5 rounded-xl bg-primary/10 border border-primary/20">
               <button onClick={() => updateQty(product.id, cartQty - 1)}
                 className="w-9 h-9 rounded-lg bg-primary/20 hover:bg-primary/30 flex items-center justify-center text-primary font-bold text-xl transition-colors">−</button>
-              <div className="flex flex-col items-center">
-                <span className="font-oswald text-base font-bold text-primary">{cartQty} шт.</span>
-                <span className="text-[11px] text-muted-foreground">
-                  {(displayPrice * cartQty).toLocaleString("ru")} ₽
-                </span>
-              </div>
+              <span className="font-oswald text-base font-bold text-primary">{cartQty} шт.</span>
               <button onClick={() => updateQty(product.id, cartQty + 1)}
                 className="w-9 h-9 rounded-lg bg-primary/20 hover:bg-primary/30 flex items-center justify-center text-primary font-bold text-xl transition-colors">+</button>
             </div>
