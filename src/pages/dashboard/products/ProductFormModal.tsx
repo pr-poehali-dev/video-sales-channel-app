@@ -1,4 +1,5 @@
-import { createPortal, useRef, useState } from "react";
+import { useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Icon from "@/components/ui/icon";
 
 const UPLOAD_IMAGE_API = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c";
