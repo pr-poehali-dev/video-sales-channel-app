@@ -256,6 +256,7 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
           return_url: `${window.location.origin}/order-success?order_id=${oid}`,
           email: buyerEmail.trim(),
           phone: buyerPhone.replace(/\D/g, "").replace(/^8/, "7"),
+          delivery_cost: deliveryCost || 0,
           seller_account: sellerAccount,
           platform_fee_pct: 10,
           items: selectedCart.map(c => ({

@@ -62,6 +62,7 @@ def handler(event: dict, context) -> dict:
     description = body.get("description", "Заказ в СтримБазар")
     return_url = body.get("return_url", "https://стримбазар.рф/")
     items = body.get("items", [])
+    delivery_cost = float(body.get("delivery_cost", 0))
 
     if not amount or float(amount) <= 0:
         return {"statusCode": 400, "headers": headers, "body": json.dumps({"error": "Укажите сумму платежа"})}
@@ -79,6 +80,7 @@ def handler(event: dict, context) -> dict:
     }
 
     # Receipt — только если есть email или телефон (Т-Банк требует хотя бы одно)
+    # Сумма позиций чека ОБЯЗАНА совпадать с Amount (включая доставку)
     if (email or phone) and items:
         receipt: dict = {"Taxation": "usn_income", "Items": []}
         if email:
@@ -96,6 +98,18 @@ def handler(event: dict, context) -> dict:
                 "Tax": "none",
                 "PaymentMethod": "full_prepayment",
                 "PaymentObject": "commodity",
+            })
+        # Доставка как отдельная позиция
+        if delivery_cost > 0:
+            delivery_kopecks = int(delivery_cost * 100)
+            receipt["Items"].append({
+                "Name": "Доставка",
+                "Price": delivery_kopecks,
+                "Quantity": 1,
+                "Amount": delivery_kopecks,
+                "Tax": "none",
+                "PaymentMethod": "full_prepayment",
+                "PaymentObject": "service",
             })
         payload["Receipt"] = receipt
 
