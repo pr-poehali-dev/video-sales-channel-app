@@ -30,7 +30,7 @@ export default function NavBar({ page, setPage, cartCount }: NavBarProps) {
     { id: "favorites" as Page, label: "Избранное", icon: "Heart" },
     { id: "catalog" as Page, label: "Каталог", icon: "ShoppingBag" },
     { id: "cart" as Page, label: "Корзина", icon: "ShoppingCart" },
-    { id: (user ? "profile" : "auth") as Page, label: user ? "Профиль" : "Войти", icon: "User" },
+    { id: (user ? "dashboard" : "auth") as Page, label: user ? "Профиль" : "Войти", icon: "User" },
   ];
 
   return (
@@ -188,9 +188,9 @@ export default function NavBar({ page, setPage, cartCount }: NavBarProps) {
         {mobileItems.map(item => {
           const isCart = item.id === "cart";
           const isFav = item.id === "favorites";
-          const isProfile = item.id === "profile" || item.id === "auth";
+          const isProfile = item.id === "dashboard" || item.id === "auth";
           const isActive = isProfile
-            ? page === "profile" || page === "auth"
+            ? page === "dashboard" || page === "profile" || page === "auth"
             : page === item.id;
 
           return (
@@ -201,7 +201,7 @@ export default function NavBar({ page, setPage, cartCount }: NavBarProps) {
                 isActive ? (isFav ? "text-red-500" : "text-primary") : "text-muted-foreground"
               }`}
             >
-              {isProfile && user ? (
+              {isProfile && user && item.id === "dashboard" ? (
                 <div className={`w-5 h-5 rounded-full bg-primary/20 text-[9px] font-bold flex items-center justify-center ${isActive ? "text-primary" : "text-muted-foreground"}`}>
                   {user.avatar}
                 </div>
@@ -222,7 +222,7 @@ export default function NavBar({ page, setPage, cartCount }: NavBarProps) {
                   {favCount > 9 ? "9+" : favCount}
                 </span>
               )}
-              <span>{isProfile && user ? "Профиль" : item.label}</span>
+              <span>{item.label}</span>
             </button>
           );
         })}

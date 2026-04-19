@@ -3,6 +3,15 @@ import Icon from "@/components/ui/icon";
 import { useAuth } from "@/context/AuthContext";
 import { useStore } from "@/context/StoreContext";
 import type { Page } from "@/App";
+
+const STATUS_LABEL: Record<string, { label: string; color: string }> = {
+  new:       { label: "Ожидает оплаты", color: "text-yellow-500" },
+  paid:      { label: "Оплачен",         color: "text-green-500" },
+  shipped:   { label: "В доставке",      color: "text-blue-500"  },
+  delivered: { label: "Доставлен",       color: "text-green-600" },
+  cancelled: { label: "Отменён",         color: "text-red-400"   },
+};
+void STATUS_LABEL;
 import DashboardProductsTab from "./dashboard/DashboardProductsTab";
 import DashboardStreamsTab from "./dashboard/DashboardStreamsTab";
 import DashboardWarehousesTab, { type Warehouse } from "./dashboard/DashboardWarehousesTab";
@@ -28,6 +37,22 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
 
   const [tab, setTab] = useState("Заказы от покупателей");
   const [stoppingStream, setStoppingStream] = useState<string | null>(null);
+
+  // Профиль
+  const { logout, updateUser } = useAuth();
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [pName, setPName] = useState(user?.name ?? "");
+  const [pPhone, setPPhone] = useState(user?.phone ?? "");
+  const [pCity, setPCity] = useState(user?.city ?? "");
+  const [profileSaved, setProfileSaved] = useState(false);
+
+  const handleSaveProfile = async () => {
+    await updateUser({ name: pName.trim(), phone: pPhone.trim(), city: pCity.trim() });
+    setEditingProfile(false);
+    setProfileSaved(true);
+    setTimeout(() => setProfileSaved(false), 2500);
+  };
+  const handleLogout = () => { logout(); setPage("home"); };
   const { subscribed, isSupported, subscribe, unsubscribe, status: pushStatus } = usePushNotifications(user?.id ?? null);
   const [pushLoading, setPushLoading] = useState(false);
 
@@ -85,16 +110,81 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8 animate-fade-in">
-      {/* Заголовок */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="font-oswald text-2xl font-semibold text-foreground tracking-wide">Мой кабинет</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {user.shopName || user.name}
-            {user.shopCityName ? ` · ${user.shopCityName}` : user.city ? ` · ${user.city}` : ""}
-          </p>
+    <div className="max-w-5xl mx-auto px-4 py-6 animate-fade-in">
+
+      {/* ── Блок профиля ─────────────────────────────────────────── */}
+      <div className="flex items-center gap-4 mb-5">
+        <div className="w-14 h-14 rounded-full bg-primary/20 text-primary text-xl font-bold flex items-center justify-center font-oswald flex-shrink-0">
+          {user.avatar}
         </div>
+        <div className="flex-1 min-w-0">
+          <h1 className="font-oswald text-xl font-semibold text-foreground tracking-wide truncate">{user.name}</h1>
+          <div className="flex flex-wrap gap-x-2 mt-0.5">
+            <span className="text-xs text-muted-foreground">{user.email}</span>
+            {user.city && <span className="text-xs text-muted-foreground">· {user.city}</span>}
+          </div>
+        </div>
+        <button
+          onClick={() => { setEditingProfile(!editingProfile); setPName(user.name); setPPhone(user.phone); setPCity(user.city); }}
+          className="p-2 rounded-xl border border-border hover:bg-secondary transition-colors flex-shrink-0"
+        >
+          <Icon name={editingProfile ? "X" : "Pencil"} size={15} className="text-muted-foreground" />
+        </button>
+      </div>
+
+      {/* Уведомление о сохранении */}
+      {profileSaved && (
+        <div className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 text-sm font-medium px-4 py-2.5 rounded-xl mb-4 animate-fade-in">
+          <Icon name="CircleCheck" size={14} />
+          Данные профиля сохранены
+        </div>
+      )}
+
+      {/* Форма редактирования профиля */}
+      {editingProfile && (
+        <div className="bg-card border border-border rounded-2xl p-4 mb-5 space-y-3 animate-fade-in">
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Имя</label>
+            <input value={pName} onChange={e => setPName(e.target.value)}
+              className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground outline-none focus:border-primary/50 transition-colors" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Телефон</label>
+              <input value={pPhone} onChange={e => setPPhone(e.target.value)} placeholder="+7 900 000-00-00"
+                className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground outline-none focus:border-primary/50 transition-colors" />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Город</label>
+              <input value={pCity} onChange={e => setPCity(e.target.value)} placeholder="Москва"
+                className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground outline-none focus:border-primary/50 transition-colors" />
+            </div>
+          </div>
+          <div className="flex gap-3 pt-1">
+            <button onClick={handleSaveProfile}
+              className="bg-primary text-primary-foreground font-semibold px-5 py-2 rounded-xl hover:opacity-90 transition-opacity text-sm">
+              Сохранить
+            </button>
+            <button onClick={() => setEditingProfile(false)}
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors px-3">
+              Отмена
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Кнопка выхода */}
+      <button
+        onClick={handleLogout}
+        className="w-full flex items-center gap-3 text-destructive border border-destructive/20 bg-destructive/5 hover:bg-destructive/10 rounded-xl px-4 py-2.5 mb-6 transition-colors text-sm font-medium"
+      >
+        <Icon name="LogOut" size={15} />
+        Выйти из аккаунта
+      </button>
+
+      {/* ── Заголовок кабинета + кнопки ──────────────────────────── */}
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="font-oswald text-lg font-semibold text-foreground tracking-wide">Мой кабинет</h2>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setPage("seller-register" as Page)}
