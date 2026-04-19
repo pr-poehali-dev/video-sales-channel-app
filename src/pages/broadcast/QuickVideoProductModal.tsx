@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Icon from "@/components/ui/icon";
 import { useStore } from "@/context/StoreContext";
 
@@ -57,9 +57,40 @@ export default function QuickVideoProductModal({ videoBlobUrl, sellerId, sellerN
   const [lengthCm, setLengthCm] = useState("20");
   const [widthCm, setWidthCm]   = useState("15");
   const [heightCm, setHeightCm] = useState("10");
-  const [saving, setSaving]     = useState(false);
-  const [videoUrl, setVideoUrl] = useState<string | null>(null);
-  const [thumbUrl, setThumbUrl] = useState<string | null>(null);
+  const [saving, setSaving]         = useState(false);
+  const [videoUrl, setVideoUrl]     = useState<string | null>(null);
+  const [thumbUrl, setThumbUrl]     = useState<string | null>(null);
+  const [extraImgs, setExtraImgs]   = useState<string[]>([]);
+  const [imgUploading, setImgUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+    setImgUploading(true);
+    try {
+      const newUrls: string[] = [];
+      for (const file of files) {
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = ev => resolve(ev.target?.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        const resp = await fetch(`${API}?action=upload_image`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ data_url: dataUrl }),
+        });
+        const data = await resp.json();
+        if (data.url) newUrls.push(data.url);
+      }
+      setExtraImgs(prev => [...prev, ...newUrls]);
+    } finally {
+      setImgUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   useEffect(() => {
     // Загружаем превью и видео параллельно независимо друг от друга
@@ -104,7 +135,7 @@ export default function QuickVideoProductModal({ videoBlobUrl, sellerId, sellerN
         price: parseFloat(price),
         category: "Разное",
         description: "",
-        images: thumbUrl ? [thumbUrl] : [],
+        images: [thumbUrl, ...extraImgs].filter(Boolean) as string[],
         videoUrl: videoUrl ?? undefined,
         sellerId,
         sellerName,
@@ -137,19 +168,53 @@ export default function QuickVideoProductModal({ videoBlobUrl, sellerId, sellerN
           </button>
         </div>
 
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          onChange={handlePhotoUpload}
+        />
+
         <div className="flex gap-3 mb-4">
-          <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-black border border-orange-500/40 relative">
-            <video
-              src={videoBlobUrl}
-              autoPlay
-              loop
-              muted
-              playsInline
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute bottom-1 right-1 bg-orange-500 rounded-full p-0.5">
-              <Icon name="Video" size={9} className="text-white" />
+          <div className="flex flex-col gap-1.5">
+            <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-black border border-orange-500/40 relative">
+              <video
+                src={videoBlobUrl}
+                autoPlay
+                loop
+                muted
+                playsInline
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute bottom-1 right-1 bg-orange-500 rounded-full p-0.5">
+                <Icon name="Video" size={9} className="text-white" />
+              </div>
             </div>
+            {extraImgs.map((url, i) => (
+              <div key={url} className="relative w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-white/10">
+                <img src={url} className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => setExtraImgs(prev => prev.filter((_, j) => j !== i))}
+                  className="absolute top-0.5 right-0.5 w-5 h-5 bg-black/60 rounded-full flex items-center justify-center"
+                >
+                  <Icon name="X" size={9} className="text-white" />
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={imgUploading}
+              className="w-20 h-8 rounded-xl border border-dashed border-white/20 flex items-center justify-center gap-1 hover:border-primary/50 transition-colors disabled:opacity-40"
+            >
+              {imgUploading
+                ? <Icon name="Loader" size={12} className="text-white/40 animate-spin" />
+                : <><Icon name="Plus" size={12} className="text-white/40" /><span className="text-[10px] text-white/40">фото</span></>
+              }
+            </button>
           </div>
           <div className="flex-1 flex flex-col gap-2">
             <input

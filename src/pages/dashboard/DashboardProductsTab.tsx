@@ -326,6 +326,7 @@ export default function DashboardProductsTab({ warehouses }: Props) {
           fLengthCm={fLengthCm} setFLengthCm={setFLengthCm}
           fWidthCm={fWidthCm} setFWidthCm={setFWidthCm}
           fHeightCm={fHeightCm} setFHeightCm={setFHeightCm}
+          fImages={fImages} setFImages={setFImages}
           fCdek={fCdek} setFCdek={setFCdek}
           fNalog={fNalog} setFNalog={setFNalog}
           fFitting={fFitting} setFFitting={setFFitting}

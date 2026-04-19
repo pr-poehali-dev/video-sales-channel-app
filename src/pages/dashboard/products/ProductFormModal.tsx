@@ -1,5 +1,7 @@
-import { createPortal } from "react-dom";
+import { createPortal, useRef, useState } from "react";
 import Icon from "@/components/ui/icon";
+
+const UPLOAD_IMAGE_API = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c";
 
 const CATEGORIES = [
   "Украшения", "Одежда", "Красота", "Аксессуары",
@@ -32,6 +34,9 @@ interface ProductFormModalProps {
   fLengthCm: string; setFLengthCm: (v: string) => void;
   fWidthCm: string; setFWidthCm: (v: string) => void;
   fHeightCm: string; setFHeightCm: (v: string) => void;
+  // Фото
+  fImages: string[];
+  setFImages: (v: string[]) => void;
   // Опции (скрыты из UI, значения управляются снаружи)
   fCdek?: boolean;
   fNalog?: boolean;
@@ -59,9 +64,41 @@ export default function ProductFormModal({
   fLengthCm, setFLengthCm,
   fWidthCm, setFWidthCm,
   fHeightCm, setFHeightCm,
+  fImages, setFImages,
   fError,
   onSave, onClose,
 }: ProductFormModalProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [imgUploading, setImgUploading] = useState(false);
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+    setImgUploading(true);
+    try {
+      const newUrls: string[] = [];
+      for (const file of files) {
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = ev => resolve(ev.target?.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        const resp = await fetch(`${UPLOAD_IMAGE_API}?action=upload_image`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ data_url: dataUrl }),
+        });
+        const data = await resp.json();
+        if (data.url) newUrls.push(data.url);
+      }
+      setFImages([...fImages, ...newUrls]);
+    } finally {
+      setImgUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
   return createPortal(
     <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, background: "hsl(var(--card))", display: "flex", flexDirection: "column" }}>
       <div style={{ width: "100%", maxWidth: 560, margin: "0 auto", display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
@@ -123,6 +160,48 @@ export default function ProductFormModal({
                 <span className="text-xs text-muted-foreground">5 секунд с камеры</span>
               </button>
             )}
+          </div>
+
+          {/* Фото товара */}
+          <div>
+            <label className="text-xs text-muted-foreground mb-2 block">Фото товара</label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={handlePhotoUpload}
+            />
+            <div className="flex gap-2 flex-wrap">
+              {fImages.map((url, i) => (
+                <div key={url} className="relative w-20 h-20 rounded-xl overflow-hidden bg-secondary border border-border flex-shrink-0">
+                  <img src={url} alt="" className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => setFImages(fImages.filter((_, j) => j !== i))}
+                    className="absolute top-0.5 right-0.5 w-5 h-5 bg-black/60 rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+                  >
+                    <Icon name="X" size={10} className="text-white" />
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={imgUploading}
+                className="w-20 h-20 rounded-xl border-2 border-dashed border-border hover:border-primary/50 bg-secondary flex flex-col items-center justify-center gap-1 transition-colors group flex-shrink-0 disabled:opacity-50"
+              >
+                {imgUploading ? (
+                  <Icon name="Loader" size={18} className="text-muted-foreground animate-spin" />
+                ) : (
+                  <>
+                    <Icon name="Camera" size={18} className="text-muted-foreground group-hover:text-primary transition-colors" />
+                    <span className="text-[10px] text-muted-foreground">Добавить</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
 
           {/* Название */}
