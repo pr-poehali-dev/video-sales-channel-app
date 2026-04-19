@@ -112,8 +112,8 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
   return (
     <div className="max-w-5xl mx-auto px-4 py-6 animate-fade-in">
 
-      {/* ── Блок профиля ─────────────────────────────────────────── */}
-      <div className="flex items-center gap-4 mb-5">
+      {/* ── Шапка: аватар + имя + выход ─────────────────────────── */}
+      <div className="flex items-center gap-4 mb-6">
         <div className="w-14 h-14 rounded-full bg-primary/20 text-primary text-xl font-bold flex items-center justify-center font-oswald flex-shrink-0">
           {user.avatar}
         </div>
@@ -125,14 +125,15 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
           </div>
         </div>
         <button
-          onClick={() => { setEditingProfile(!editingProfile); setPName(user.name); setPPhone(user.phone); setPCity(user.city); }}
-          className="p-2 rounded-xl border border-border hover:bg-secondary transition-colors flex-shrink-0"
+          onClick={handleLogout}
+          className="p-2 rounded-xl border border-destructive/20 bg-destructive/5 hover:bg-destructive/10 transition-colors flex-shrink-0"
+          title="Выйти"
         >
-          <Icon name={editingProfile ? "X" : "Pencil"} size={15} className="text-muted-foreground" />
+          <Icon name="LogOut" size={15} className="text-destructive" />
         </button>
       </div>
 
-      {/* Уведомление о сохранении */}
+      {/* ── Карточки: данные + реквизиты + статистика ────────────── */}
       {profileSaved && (
         <div className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 text-sm font-medium px-4 py-2.5 rounded-xl mb-4 animate-fade-in">
           <Icon name="CircleCheck" size={14} />
@@ -140,9 +141,65 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
         </div>
       )}
 
-      {/* Форма редактирования профиля */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
+        {/* Мои данные */}
+        <button
+          onClick={() => { setEditingProfile(!editingProfile); setPName(user.name); setPPhone(user.phone); setPCity(user.city); }}
+          className={`bg-card border rounded-xl p-4 text-left hover:border-primary/40 transition-colors ${editingProfile ? "border-primary/50 ring-1 ring-primary/20" : "border-border"}`}
+        >
+          <Icon name="User" size={16} className="text-muted-foreground mb-2" />
+          <div className="font-oswald text-base font-semibold text-foreground truncate">{user.name}</div>
+          <div className="text-xs text-muted-foreground mt-0.5">Мои данные</div>
+        </button>
+
+        {/* Реквизиты */}
+        <button
+          onClick={() => setPage("seller-register" as Page)}
+          className="bg-card border border-border rounded-xl p-4 text-left hover:border-primary/40 transition-colors"
+        >
+          <Icon name="FileText" size={16} className="text-muted-foreground mb-2" />
+          <div className="font-oswald text-base font-semibold text-foreground">Реквизиты</div>
+          <div className="text-xs text-muted-foreground mt-0.5">Магазин · ИП / ООО</div>
+        </button>
+
+        {/* Товаров */}
+        <div className="bg-card border border-border rounded-xl p-4">
+          <Icon name="Package" size={16} className="text-muted-foreground mb-2" />
+          <div className="font-oswald text-xl font-semibold text-foreground">{products.length}</div>
+          <div className="text-xs text-muted-foreground mt-0.5">Товаров</div>
+        </div>
+
+        {/* Эфиров */}
+        <div className="bg-card border border-border rounded-xl p-4">
+          <Icon name="Radio" size={16} className="text-muted-foreground mb-2" />
+          <div className="font-oswald text-xl font-semibold text-foreground">{myStreams.length}</div>
+          <div className="text-xs text-muted-foreground mt-0.5">Эфиров</div>
+        </div>
+
+        {/* Продаж */}
+        <div className="bg-card border border-border rounded-xl p-4">
+          <Icon name="ShoppingBag" size={16} className="text-muted-foreground mb-2" />
+          <div className="font-oswald text-xl font-semibold text-foreground">0</div>
+          <div className="text-xs text-muted-foreground mt-0.5">Продаж</div>
+        </div>
+
+        {/* Выручка */}
+        <div className="bg-card border border-border rounded-xl p-4">
+          <Icon name="Wallet" size={16} className="text-muted-foreground mb-2" />
+          <div className="font-oswald text-xl font-semibold text-foreground">0 ₽</div>
+          <div className="text-xs text-muted-foreground mt-0.5">Выручка</div>
+        </div>
+      </div>
+
+      {/* Форма редактирования (раскрывается под карточками) */}
       {editingProfile && (
-        <div className="bg-card border border-border rounded-2xl p-4 mb-5 space-y-3 animate-fade-in">
+        <div className="bg-card border border-primary/30 rounded-2xl p-4 mb-6 space-y-3 animate-fade-in">
+          <div className="flex items-center justify-between mb-1">
+            <span className="font-semibold text-sm text-foreground">Редактировать данные</span>
+            <button onClick={() => setEditingProfile(false)}>
+              <Icon name="X" size={14} className="text-muted-foreground" />
+            </button>
+          </div>
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">Имя</label>
             <input value={pName} onChange={e => setPName(e.target.value)}
@@ -173,26 +230,10 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
         </div>
       )}
 
-      {/* Кнопка выхода */}
-      <button
-        onClick={handleLogout}
-        className="w-full flex items-center gap-3 text-destructive border border-destructive/20 bg-destructive/5 hover:bg-destructive/10 rounded-xl px-4 py-2.5 mb-6 transition-colors text-sm font-medium"
-      >
-        <Icon name="LogOut" size={15} />
-        Выйти из аккаунта
-      </button>
-
       {/* ── Заголовок кабинета + кнопки ──────────────────────────── */}
       <div className="flex items-center justify-between mb-6">
         <h2 className="font-oswald text-lg font-semibold text-foreground tracking-wide">Мой кабинет</h2>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setPage("seller-register" as Page)}
-            className="border border-border text-muted-foreground font-medium px-3 py-2.5 rounded-xl hover:bg-secondary transition-colors text-sm flex items-center gap-2"
-          >
-            <Icon name="FileText" size={15} />
-            Реквизиты
-          </button>
           {isSupported && pushStatus !== "denied" && (
             <button
               onClick={async () => {
@@ -243,22 +284,6 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
             </button>
           )}
         </div>
-      </div>
-
-      {/* Статистика */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        {[
-          { icon: "Package", value: String(products.length), label: "Товаров" },
-          { icon: "Radio", value: String(myStreams.length), label: "Эфиров" },
-          { icon: "ShoppingBag", value: "0", label: "Продаж" },
-          { icon: "Wallet", value: "0 ₽", label: "Выручка" },
-        ].map((s, i) => (
-          <div key={i} className="bg-card border border-border rounded-xl p-4">
-            <Icon name={s.icon} size={16} className="text-muted-foreground mb-2" />
-            <div className="font-oswald text-xl font-semibold text-foreground">{s.value}</div>
-            <div className="text-xs text-muted-foreground mt-0.5">{s.label}</div>
-          </div>
-        ))}
       </div>
 
       {/* Табы */}
