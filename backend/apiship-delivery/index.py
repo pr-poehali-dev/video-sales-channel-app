@@ -206,6 +206,17 @@ def create_apiship_order(order: dict) -> dict:
     assessed_cost = round(float(goods_total or order.get("goods_total", goods_total)), 2)
     delivery_cost = round(float(order.get("delivery_cost", 0) or 0), 2)
 
+    # Предоплата: payment_method = 'tbank' или статус 'paid'
+    is_prepaid = order.get("payment_method") in ("tbank", "online") or order.get("status") == "paid"
+
+    # codCost: если предоплата — 0, иначе товары + доставка
+    if is_prepaid:
+        cod_cost = 0
+        cod_delivery = 0
+    else:
+        cod_cost = int(assessed_cost + delivery_cost)
+        cod_delivery = int(delivery_cost)
+
     delivery_type_out = 2 if not is_pvz else 1  # 1=ПВЗ, 2=курьер
 
     payload = {
@@ -220,12 +231,12 @@ def create_apiship_order(order: dict) -> dict:
         "cost": {
             "assessedCost": int(assessed_cost),
             "deliveryCost": int(delivery_cost),
-            "codCost": int(assessed_cost),
+            "codCost": cod_cost,
         },
         "costs": [{
             "assessedCost": int(assessed_cost),
             "deliveryCost": int(delivery_cost),
-            "codCost": int(assessed_cost),
+            "codCost": cod_cost,
             "connectionId": 37900,
         }],
         "sender": {
@@ -257,9 +268,8 @@ def create_apiship_order(order: dict) -> dict:
                     "description": item.get("name", "Товар")[:255],
                     "articul": str(item.get("id", i)),
                     "quantity": int(item.get("qty", 1)),
-                    "cost": int(float(item.get("price", 0))),
+                    "cost": 0 if is_prepaid else int(float(item.get("price", 0))),
                     "assessedCost": int(float(item.get("price", 0))),
-                    "codCost": int(float(item.get("price", 0))),
                     "weight": max(weight_g // items_count, 100),
                 }
                 for i, item in enumerate(items_list)
