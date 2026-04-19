@@ -220,12 +220,12 @@ def create_apiship_order(order: dict) -> dict:
         "cost": {
             "assessedCost": int(assessed_cost),
             "deliveryCost": int(delivery_cost),
-            "codCost": int(assessed_cost),
+            "codCost": 0,
         },
         "costs": [{
             "assessedCost": int(assessed_cost),
             "deliveryCost": int(delivery_cost),
-            "codCost": int(assessed_cost),
+            "codCost": 0,
             "connectionId": 37900,
         }],
         "sender": {
@@ -258,7 +258,7 @@ def create_apiship_order(order: dict) -> dict:
                     "articul": str(item.get("id", i)),
                     "quantity": int(item.get("qty", 1)),
                     "assessedCost": int(float(item.get("price", 0))),
-                    "codCost": int(float(item.get("price", 0))),
+                    "codCost": 0,
                     "weight": max(weight_g // items_count, 100),
                 }
                 for i, item in enumerate(items_list)
