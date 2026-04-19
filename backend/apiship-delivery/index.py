@@ -201,8 +201,6 @@ def create_apiship_order(order: dict) -> dict:
     # Для ПВЗ адрес может быть пустым — подставляем город
     address_str = delivery_address if delivery_address else city_name
     address_to = {"cityName": city_name, "address": address_str}
-    if is_pvz and pvz_code:
-        address_to["pointOutId"] = pvz_code
 
     assessed_cost = round(float(goods_total or order.get("goods_total", goods_total)), 2)
     delivery_cost = round(float(order.get("delivery_cost", 0) or 0), 2)
@@ -229,7 +227,7 @@ def create_apiship_order(order: dict) -> dict:
         "weight": max(weight_g, 100),
         "pickupType": 1,
         "deliveryType": delivery_type_out,
-        "pointOutId": pvz_apiship_id if is_pvz and pvz_apiship_id else (pvz_code if is_pvz and pvz_code else None),
+        "pointOutId": int(pvz_apiship_id) if is_pvz and pvz_apiship_id else None,
         "cost": {
             "assessedCost": int(assessed_cost),
             "deliveryCost": int(delivery_cost),
