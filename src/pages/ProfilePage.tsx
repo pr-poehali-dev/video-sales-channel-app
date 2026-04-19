@@ -1,7 +1,30 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import type { Page } from "@/App";
 import { useAuth } from "@/context/AuthContext";
+
+const STORE_API = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c";
+
+const STATUS_LABEL: Record<string, { label: string; color: string }> = {
+  new:       { label: "Ожидает оплаты", color: "text-yellow-500" },
+  paid:      { label: "Оплачен",         color: "text-green-500" },
+  shipped:   { label: "В доставке",      color: "text-blue-500"  },
+  delivered: { label: "Доставлен",       color: "text-green-600" },
+  cancelled: { label: "Отменён",         color: "text-red-400"   },
+};
+
+interface OrderItem {
+  id: string; name: string; price: number; qty: number; image?: string;
+}
+interface Order {
+  id: string;
+  status: string;
+  items: OrderItem[];
+  goods_total: number;
+  order_total: number;
+  delivery_city_name: string;
+  created_at: string;
+}
 
 interface ProfilePageProps {
   setPage: (p: Page) => void;
@@ -14,6 +37,19 @@ export default function ProfilePage({ setPage }: ProfilePageProps) {
   const [phone, setPhone] = useState(user?.phone ?? "");
   const [city, setCity] = useState(user?.city ?? "");
   const [saved, setSaved] = useState(false);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    setOrdersLoading(true);
+    fetch(`${STORE_API}?action=get_orders&buyer_id=${user.id}`)
+      .then(r => r.json())
+      .then(d => setOrders(Array.isArray(d) ? d : []))
+      .catch(() => setOrders([]))
+      .finally(() => setOrdersLoading(false));
+  }, [user?.id]);
 
   if (!user) {
     return (
@@ -184,6 +220,94 @@ export default function ProfilePage({ setPage }: ProfilePageProps) {
           <Icon name="ChevronRight" size={16} className="text-muted-foreground" />
         </button>
       )}
+
+      {/* Покупки */}
+      <div className="mb-5">
+        <h3 className="font-oswald text-lg font-semibold text-foreground mb-3 tracking-wide">Покупки</h3>
+
+        {ordersLoading && (
+          <div className="flex items-center justify-center py-8 text-muted-foreground text-sm gap-2">
+            <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+            Загружаем...
+          </div>
+        )}
+
+        {!ordersLoading && orders.length === 0 && (
+          <div className="bg-card border border-border rounded-2xl p-6 text-center">
+            <Icon name="ShoppingBag" size={32} className="mx-auto mb-2 text-muted-foreground/30" />
+            <p className="text-sm text-muted-foreground">Покупок пока нет</p>
+          </div>
+        )}
+
+        {!ordersLoading && orders.length > 0 && (
+          <div className="space-y-3">
+            {orders.map(order => {
+              const st = STATUS_LABEL[order.status] ?? { label: order.status, color: "text-muted-foreground" };
+              const date = order.created_at
+                ? new Date(order.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })
+                : "";
+              const isOpen = expandedOrder === order.id;
+              const preview = order.items?.[0];
+
+              return (
+                <div key={order.id} className="bg-card border border-border rounded-2xl overflow-hidden">
+                  <button
+                    onClick={() => setExpandedOrder(isOpen ? null : order.id)}
+                    className="w-full flex items-center gap-3 p-4 hover:bg-secondary/50 transition-colors text-left"
+                  >
+                    {preview?.image ? (
+                      <img src={preview.image} alt={preview.name} className="w-12 h-12 rounded-xl object-cover flex-shrink-0 bg-secondary" />
+                    ) : (
+                      <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center flex-shrink-0">
+                        <Icon name="Package" size={20} className="text-muted-foreground" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-muted-foreground mb-0.5">№ {order.id.replace("order_", "")}</p>
+                      <p className="text-sm font-semibold text-foreground">
+                        {Number(order.order_total).toLocaleString("ru-RU")} ₽
+                      </p>
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        <span className={`text-xs font-medium ${st.color}`}>{st.label}</span>
+                        {date && <span className="text-xs text-muted-foreground">· {date}</span>}
+                        {order.delivery_city_name && (
+                          <span className="text-xs text-muted-foreground">· {order.delivery_city_name}</span>
+                        )}
+                      </div>
+                    </div>
+                    <Icon name={isOpen ? "ChevronUp" : "ChevronDown"} size={16} className="text-muted-foreground flex-shrink-0" />
+                  </button>
+
+                  {isOpen && (
+                    <div className="border-t border-border px-4 pb-4 pt-3 space-y-2 animate-fade-in">
+                      {order.items?.map((item, i) => (
+                        <div key={i} className="flex items-center gap-3">
+                          {item.image ? (
+                            <img src={item.image} alt={item.name} className="w-9 h-9 rounded-lg object-cover bg-secondary flex-shrink-0" />
+                          ) : (
+                            <div className="w-9 h-9 rounded-lg bg-secondary flex-shrink-0" />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-foreground truncate">{item.name}</p>
+                            <p className="text-xs text-muted-foreground">{item.qty} шт. × {Number(item.price).toLocaleString("ru-RU")} ₽</p>
+                          </div>
+                          <p className="text-sm font-semibold text-foreground flex-shrink-0">
+                            {(item.qty * item.price).toLocaleString("ru-RU")} ₽
+                          </p>
+                        </div>
+                      ))}
+                      <div className="pt-2 border-t border-border flex justify-between text-sm">
+                        <span className="text-muted-foreground">Итого с доставкой</span>
+                        <span className="font-semibold text-foreground">{Number(order.order_total).toLocaleString("ru-RU")} ₽</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* Выход */}
       <button
