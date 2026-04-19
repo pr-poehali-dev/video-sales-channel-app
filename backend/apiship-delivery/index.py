@@ -11,7 +11,9 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 
 
-APISHIP_TOKEN = os.environ.get("APISHIP_TOKEN", "")
+# Если есть боевой токен — используем его, иначе тестовый (только для расчётов)
+APISHIP_TOKEN = os.environ.get("APISHIP_TOKEN_REAL", "") or os.environ.get("APISHIP_TOKEN", "")
+APISHIP_SHOP_ID = int(os.environ.get("APISHIP_SHOP_ID", "0") or "0")
 APISHIP_API = "https://api.apiship.ru/v1"
 
 FROM_CITY_NAME = "Краснодар"
@@ -205,7 +207,7 @@ def create_apiship_order(order: dict) -> dict:
         "clientNumber": str(order.get("order_id", "")),
         "providerKey": order.get("provider", "cdek"),
         "tariffId": int(order["delivery_tariff_code"]) if str(order.get("delivery_tariff_code", "")).isdigit() else None,
-        "shopId": 3388,
+        "shopId": APISHIP_SHOP_ID or None,
         "weight": max(weight_g, 100),
         "pickupType": 1,
         "deliveryType": delivery_type_out,
@@ -252,6 +254,8 @@ def create_apiship_order(order: dict) -> dict:
     }
     if payload["tariffId"] is None:
         payload.pop("tariffId")
+    if payload["shopId"] is None:
+        payload.pop("shopId")
 
     print(f"[APISHIP] create_order payload: {json.dumps(payload, ensure_ascii=False)}")
     try:
