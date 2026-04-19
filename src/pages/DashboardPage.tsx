@@ -24,7 +24,7 @@ interface DashboardPageProps {
   setPage: (p: Page) => void;
 }
 
-const TABS = ["Заказы от покупателей", "Мои покупки", "Товары", "Мои эфиры", "Статистика"];
+
 const STORE_API = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c";
 
 export default function DashboardPage({ setPage }: DashboardPageProps) {
@@ -35,7 +35,7 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
   const myStreams = user ? getSellerStreams(user.id) : [];
   const activeStream = myStreams.find(s => s.isLive) ?? null;
 
-  const [tab, setTab] = useState("Заказы от покупателей");
+  const [tab, setTab] = useState<string | null>(null);
   const [stoppingStream, setStoppingStream] = useState<string | null>(null);
 
   // Профиль
@@ -101,128 +101,96 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
     <div className="max-w-5xl mx-auto px-4 py-6 animate-fade-in">
 
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        {/* Магазин / Реквизиты */}
-        <button
-          onClick={() => setPage("seller-register" as Page)}
-          className="bg-card border border-border rounded-xl p-4 text-left hover:border-primary/40 transition-colors"
-        >
+      {/* ── Грид карточек ────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 gap-3 mb-3">
+        {/* Данные и реквизиты */}
+        <button onClick={() => setPage("seller-register" as Page)}
+          className="bg-card border border-border rounded-xl p-4 text-left hover:border-primary/40 transition-colors">
           <div className="w-8 h-8 rounded-full bg-primary/20 text-primary text-xs font-bold flex items-center justify-center font-oswald mb-2">{user.avatar}</div>
           <div className="font-oswald text-xl font-semibold text-foreground truncate">{user.name}</div>
           <div className="text-xs text-muted-foreground mt-0.5">Данные и реквизиты</div>
         </button>
-        {/* Товаров */}
-        <div className="bg-card border border-border rounded-xl p-4">
+
+        {/* Товары */}
+        <button onClick={() => setTab(tab === "Товары" ? null : "Товары")}
+          className={`bg-card border rounded-xl p-4 text-left hover:border-primary/40 transition-colors ${tab === "Товары" ? "border-primary/50 ring-1 ring-primary/20" : "border-border"}`}>
           <Icon name="Package" size={16} className="text-muted-foreground mb-2" />
           <div className="font-oswald text-xl font-semibold text-foreground">{products.length}</div>
           <div className="text-xs text-muted-foreground mt-0.5">Товаров</div>
-        </div>
+        </button>
 
-        {/* Эфиров */}
-        <div className="bg-card border border-border rounded-xl p-4">
+        {/* Эфиры */}
+        <button onClick={() => setTab(tab === "Мои эфиры" ? null : "Мои эфиры")}
+          className={`bg-card border rounded-xl p-4 text-left hover:border-primary/40 transition-colors ${tab === "Мои эфиры" ? "border-primary/50 ring-1 ring-primary/20" : "border-border"}`}>
           <Icon name="Radio" size={16} className="text-muted-foreground mb-2" />
           <div className="font-oswald text-xl font-semibold text-foreground">{myStreams.length}</div>
           <div className="text-xs text-muted-foreground mt-0.5">Эфиров</div>
-        </div>
+        </button>
 
-        {/* Продаж */}
-        <div className="bg-card border border-border rounded-xl p-4">
+        {/* Заказы от покупателей */}
+        <button onClick={() => setTab(tab === "Заказы от покупателей" ? null : "Заказы от покупателей")}
+          className={`bg-card border rounded-xl p-4 text-left hover:border-primary/40 transition-colors ${tab === "Заказы от покупателей" ? "border-primary/50 ring-1 ring-primary/20" : "border-border"}`}>
           <Icon name="ShoppingBag" size={16} className="text-muted-foreground mb-2" />
           <div className="font-oswald text-xl font-semibold text-foreground">0</div>
-          <div className="text-xs text-muted-foreground mt-0.5">Продаж</div>
-        </div>
+          <div className="text-xs text-muted-foreground mt-0.5">Заказы от покупателей</div>
+        </button>
 
-        {/* Выручка */}
-        <div className="bg-card border border-border rounded-xl p-4">
+        {/* Мои покупки */}
+        <button onClick={() => setTab(tab === "Мои покупки" ? null : "Мои покупки")}
+          className={`bg-card border rounded-xl p-4 text-left hover:border-primary/40 transition-colors ${tab === "Мои покупки" ? "border-primary/50 ring-1 ring-primary/20" : "border-border"}`}>
           <Icon name="Wallet" size={16} className="text-muted-foreground mb-2" />
+          <div className="font-oswald text-xl font-semibold text-foreground">Мои</div>
+          <div className="text-xs text-muted-foreground mt-0.5">Покупки</div>
+        </button>
+
+        {/* Статистика */}
+        <button onClick={() => setTab(tab === "Статистика" ? null : "Статистика")}
+          className={`bg-card border rounded-xl p-4 text-left hover:border-primary/40 transition-colors ${tab === "Статистика" ? "border-primary/50 ring-1 ring-primary/20" : "border-border"}`}>
+          <Icon name="BarChart2" size={16} className="text-muted-foreground mb-2" />
           <div className="font-oswald text-xl font-semibold text-foreground">0 ₽</div>
-          <div className="text-xs text-muted-foreground mt-0.5">Выручка</div>
-        </div>
+          <div className="text-xs text-muted-foreground mt-0.5">Статистика</div>
+        </button>
       </div>
 
-      {/* Выйти */}
-      <button
-        onClick={handleLogout}
-        className="w-full flex items-center gap-2 text-destructive text-sm font-medium py-2 mb-4 hover:opacity-70 transition-opacity"
-      >
-        <Icon name="LogOut" size={14} />
-        Выйти из аккаунта
-      </button>
-
-
-
-      {/* ── Заголовок кабинета + кнопки ──────────────────────────── */}
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="font-oswald text-lg font-semibold text-foreground tracking-wide">Мой кабинет</h2>
-        <div className="flex items-center gap-2">
-          {isSupported && pushStatus !== "denied" && (
-            <button
-              onClick={async () => {
-                setPushLoading(true);
-                if (subscribed) await unsubscribe();
-                else await subscribe();
-                setPushLoading(false);
-              }}
-              disabled={pushLoading}
-              title={subscribed ? "Уведомления включены — нажми чтобы отключить" : "Включить уведомления о заказах"}
-              className={`relative p-2.5 rounded-xl border transition-colors disabled:opacity-50 ${
-                subscribed
-                  ? "bg-primary/10 border-primary/30 text-primary"
-                  : "border-border text-muted-foreground hover:bg-secondary"
-              }`}
-            >
-              {pushLoading
-                ? <Icon name="Loader" size={16} className="animate-spin" />
-                : <Icon name={subscribed ? "BellRing" : "BellOff"} size={16} />
-              }
-              {subscribed && (
-                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-primary rounded-full" />
-              )}
-            </button>
-          )}
-          {activeStream ? (
-            <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 px-4 py-2.5 rounded-xl">
-              <span className="w-2 h-2 rounded-full bg-red-500 animate-live-pulse flex-shrink-0" />
-              <span className="text-sm font-semibold text-red-500 truncate max-w-[120px]">{activeStream.title}</span>
-              <button
-                onClick={() => handleStopStream(activeStream.id)}
-                disabled={stoppingStream === activeStream.id}
-                className="ml-1 text-xs font-semibold text-red-500 border border-red-500/40 px-2 py-1 rounded-lg hover:bg-red-500/10 transition-colors disabled:opacity-50 flex items-center gap-1 flex-shrink-0"
-              >
-                {stoppingStream === activeStream.id
-                  ? <Icon name="Loader" size={12} className="animate-spin" />
-                  : <Icon name="Square" size={12} />}
-                Стоп
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => setPage("broadcast")}
-              className="bg-primary text-primary-foreground font-semibold px-4 py-2.5 rounded-xl hover:opacity-90 transition-opacity text-sm flex items-center gap-2"
-            >
-              <span className="w-2 h-2 rounded-full bg-white animate-live-pulse" />
-              Начать эфир
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Табы */}
-      <div className="flex gap-1 mb-6 overflow-x-auto scrollbar-hide bg-secondary rounded-xl p-1 w-fit max-w-full">
-        {TABS.map(t => (
-          <button key={t} onClick={() => setTab(t)}
-            className={`relative flex-shrink-0 px-4 py-2 text-sm rounded-lg font-medium transition-all ${
-              tab === t ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-            }`}>
-            {t}
+      {/* Кнопка эфира + уведомления */}
+      <div className="flex items-center gap-2 mb-4">
+        {isSupported && pushStatus !== "denied" && (
+          <button
+            onClick={async () => { setPushLoading(true); if (subscribed) await unsubscribe(); else await subscribe(); setPushLoading(false); }}
+            disabled={pushLoading}
+            title={subscribed ? "Уведомления включены" : "Включить уведомления о заказах"}
+            className={`relative p-2.5 rounded-xl border transition-colors disabled:opacity-50 ${subscribed ? "bg-primary/10 border-primary/30 text-primary" : "border-border text-muted-foreground hover:bg-secondary"}`}
+          >
+            {pushLoading ? <Icon name="Loader" size={16} className="animate-spin" /> : <Icon name={subscribed ? "BellRing" : "BellOff"} size={16} />}
+            {subscribed && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-primary rounded-full" />}
           </button>
-        ))}
+        )}
+        {activeStream ? (
+          <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 px-4 py-2.5 rounded-xl flex-1">
+            <span className="w-2 h-2 rounded-full bg-red-500 animate-live-pulse flex-shrink-0" />
+            <span className="text-sm font-semibold text-red-500 truncate flex-1">{activeStream.title}</span>
+            <button onClick={() => handleStopStream(activeStream.id)} disabled={stoppingStream === activeStream.id}
+              className="text-xs font-semibold text-red-500 border border-red-500/40 px-2 py-1 rounded-lg hover:bg-red-500/10 transition-colors disabled:opacity-50 flex items-center gap-1">
+              {stoppingStream === activeStream.id ? <Icon name="Loader" size={12} className="animate-spin" /> : <Icon name="Square" size={12} />}
+              Стоп
+            </button>
+          </div>
+        ) : (
+          <button onClick={() => setPage("broadcast")}
+            className="flex-1 bg-primary text-primary-foreground font-semibold px-4 py-2.5 rounded-xl hover:opacity-90 transition-opacity text-sm flex items-center justify-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-white animate-live-pulse" />
+            Начать эфир
+          </button>
+        )}
+        <button onClick={handleLogout} className="p-2.5 rounded-xl border border-destructive/20 bg-destructive/5 hover:bg-destructive/10 transition-colors" title="Выйти">
+          <Icon name="LogOut" size={15} className="text-destructive" />
+        </button>
       </div>
 
+      {/* ── Контент раздела ──────────────────────────────────────── */}
       {tab === "Заказы от покупателей" && <DashboardOrdersTab />}
       {tab === "Мои покупки" && <MyPurchasesTab />}
       {tab === "Товары" && <DashboardProductsTab warehouses={warehouses} />}
-
       {tab === "Мои эфиры" && <DashboardStreamsTab setPage={setPage} />}
       {tab === "Статистика" && (
         <div className="animate-fade-in text-center py-16">
