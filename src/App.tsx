@@ -134,8 +134,6 @@ function AppInner() {
           <ProductPage
             productId={selectedProductId}
             addToCart={addToCart}
-            updateQty={updateQty}
-            cart={cart}
             onBack={goBack}
             onSellerClick={openSeller}
           />
