@@ -228,6 +228,7 @@ def create_apiship_order(order: dict) -> dict:
         "weight": max(weight_g, 100),
         "pickupType": 1,
         "deliveryType": delivery_type_out,
+        "pointOutId": pvz_code if is_pvz and pvz_code else None,
         "cost": {
             "assessedCost": int(assessed_cost),
             "deliveryCost": int(delivery_cost),
@@ -280,6 +281,8 @@ def create_apiship_order(order: dict) -> dict:
         payload.pop("tariffId")
     if payload["shopId"] is None:
         payload.pop("shopId")
+    if payload.get("pointOutId") is None:
+        payload.pop("pointOutId", None)
 
     print(f"[APISHIP] create_order payload: {json.dumps(payload, ensure_ascii=False)}")
     try:
@@ -505,6 +508,12 @@ def handler(event: dict, context) -> dict:
                 "status": info.get("statusName") or info.get("status", ""),
                 "track_url": info.get("trackingUrl", ""),
             }, ensure_ascii=False)}
+
+        if action == "order_debug":
+            apiship_id = qs.get("id") or body.get("id")
+            info = apiship_request(f"/orders/{apiship_id}")
+            print(f"[APISHIP] order_debug {apiship_id}: {json.dumps(info, ensure_ascii=False)[:3000]}")
+            return {"statusCode": 200, "headers": headers, "body": json.dumps(info, ensure_ascii=False)}
 
     except urllib.error.HTTPError as e:
         raw = e.read().decode() if hasattr(e, "read") else ""
