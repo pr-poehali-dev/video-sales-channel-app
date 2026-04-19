@@ -123,9 +123,9 @@ export default function DeliverySelector({
   useEffect(() => {
     if (!savedPvz || !selectedCity || selectedPvz) return;
     if (savedPvz.cityCode !== selectedCity.code) return;
-    setSelectedPvz({ code: savedPvz.code, name: savedPvz.name, address: savedPvz.address, work_time: "", lat: 0, lon: 0, phones: [] });
+    setSelectedPvz({ code: savedPvz.code, apiship_id: savedPvz.apiship_id, name: savedPvz.name, address: savedPvz.address, work_time: "", lat: 0, lon: 0, phones: [] });
     if (selectedTariff) {
-      onSelect(selectedTariff, selectedCity, savedPvz.code, savedPvz.address);
+      onSelect(selectedTariff, selectedCity, savedPvz.code, savedPvz.address, savedPvz.apiship_id);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tariffs, savedPvz, selectedCity]);

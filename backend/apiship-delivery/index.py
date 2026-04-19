@@ -198,12 +198,11 @@ def create_apiship_order(order: dict) -> dict:
     city_name = city_name_raw.split(",")[0].strip()
     delivery_address = order.get("delivery_address", "") or ""
     # Для ПВЗ адрес может быть пустым — подставляем город
-    address_str = delivery_address if delivery_address else city_name
-    address_to = {"cityName": city_name, "address": address_str}
-    if is_pvz and pvz_apiship_id:
-        address_to["pointOutId"] = int(pvz_apiship_id)
-    if is_pvz and pvz_code:
-        address_to["officeCode"] = pvz_code
+    if is_pvz:
+        address_to = {"cityName": city_name}
+    else:
+        address_str = delivery_address if delivery_address else city_name
+        address_to = {"cityName": city_name, "address": address_str}
 
     delivery_cost = int(round(float(order.get("delivery_cost", 0) or 0)))
 
@@ -221,7 +220,7 @@ def create_apiship_order(order: dict) -> dict:
         for item in items_list
     ))
 
-    delivery_type_out = 2 if not is_pvz else 1  # 1=ПВЗ, 2=курьер
+    delivery_type_out = 2 if is_pvz else 1  # 2=ПВЗ, 1=курьер
 
     payload = {
         "clientNumber": str(order.get("order_id", "")),
