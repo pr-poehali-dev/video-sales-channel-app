@@ -261,7 +261,7 @@ def create_apiship_order(order: dict) -> dict:
                     "description": item.get("name", "Товар")[:255],
                     "articul": str(item.get("id", i)),
                     "quantity": int(item.get("qty", 1)),
-                    "cost": int(float(item.get("price", 0))),
+                    "cost": 0,
                     "assessedCost": int(float(item.get("price", 0))),
                     "weight": max(weight_g // items_count, 100),
                 }
