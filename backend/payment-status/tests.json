@@ -1,10 +1,10 @@
 {
   "tests": [
     {
-      "name": "No credentials returns 503",
+      "name": "Missing payment_id returns 400",
       "method": "GET",
       "path": "/",
-      "expectedStatus": 503,
+      "expectedStatus": 400,
       "bodyMatcher": "partial"
     }
   ]

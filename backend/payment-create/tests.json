@@ -1,11 +1,11 @@
 {
   "tests": [
     {
-      "name": "No credentials returns 503",
+      "name": "Missing amount returns 400",
       "method": "POST",
       "path": "/",
-      "body": {"amount": 1000, "description": "Тест"},
-      "expectedStatus": 503,
+      "body": {"description": "Тест"},
+      "expectedStatus": 400,
       "bodyMatcher": "partial"
     }
   ]

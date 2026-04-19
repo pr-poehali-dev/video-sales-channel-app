@@ -25,8 +25,8 @@ def tbank_token(params: dict, password: str) -> str:
 
 
 def tbank_request(method: str, payload: dict) -> dict:
-    terminal_key = os.environ.get("TBANK_TERMINAL_KEY", "")
-    secret_key = os.environ.get("TBANK_SECRET_KEY", "")
+    terminal_key = os.environ.get("TBANK_TERMINAL_KEY", "TinkoffBankTest")
+    secret_key = os.environ.get("TBANK_SECRET_KEY", "TinkoffBankTest")
     payload["TerminalKey"] = terminal_key
     payload["Token"] = tbank_token(payload, secret_key)
     data = json.dumps(payload).encode()
@@ -52,11 +52,8 @@ def handler(event: dict, context) -> dict:
     if event.get("httpMethod") == "OPTIONS":
         return {"statusCode": 200, "headers": headers, "body": ""}
 
-    terminal_key = os.environ.get("TBANK_TERMINAL_KEY", "")
-    secret_key = os.environ.get("TBANK_SECRET_KEY", "")
-
-    if not terminal_key or not secret_key:
-        return {"statusCode": 503, "headers": headers, "body": json.dumps({"error": "Платёжный шлюз не настроен"})}
+    terminal_key = os.environ.get("TBANK_TERMINAL_KEY", "TinkoffBankTest")
+    secret_key = os.environ.get("TBANK_SECRET_KEY", "TinkoffBankTest")
 
     params = event.get("queryStringParameters") or {}
     payment_id = params.get("payment_id", "")
