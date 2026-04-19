@@ -510,8 +510,11 @@ def handler(event: dict, context) -> dict:
 
     except urllib.error.HTTPError as e:
         raw = e.read().decode() if hasattr(e, "read") else ""
+        print(f"[APISHIP] HTTPError action={action}: {e.code}: {raw[:800]}")
         return {"statusCode": 200, "headers": headers, "body": json.dumps({"error": f"ApiShip {e.code}: {raw[:400]}"})}
     except Exception as e:
+        import traceback
+        print(f"[APISHIP] Exception action={action}: {traceback.format_exc()}")
         return {"statusCode": 200, "headers": headers, "body": json.dumps({"error": str(e)})}
 
     return {"statusCode": 400, "headers": headers, "body": json.dumps({"error": "unknown action"})}
