@@ -269,10 +269,13 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
       if (payData.payment_url) {
         window.location.href = payData.payment_url;
       } else {
-        setOrderDone(true);
+        const errMsg = payData.error || "Не удалось создать платёж";
+        setSubmitError(errMsg);
+        setSubmitting(false);
       }
-    } catch {
-      setOrderDone(true);
+    } catch (e: unknown) {
+      setSubmitError(e instanceof Error ? e.message : "Ошибка при создании платежа");
+      setSubmitting(false);
     }
   };
 

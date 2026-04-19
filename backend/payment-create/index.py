@@ -67,6 +67,8 @@ def handler(event: dict, context) -> dict:
         return {"statusCode": 400, "headers": headers, "body": json.dumps({"error": "Укажите сумму платежа"})}
 
     amount_kopecks = int(float(amount) * 100)
+    email = body.get("email", "").strip()
+    phone = body.get("phone", "").strip()
 
     payload = {
         "OrderId": order_id,
@@ -74,25 +76,28 @@ def handler(event: dict, context) -> dict:
         "Description": description,
         "SuccessURL": return_url,
         "FailURL": return_url,
-        "NotificationURL": body.get("notification_url", ""),
-        "Receipt": {
-            "Email": body.get("email", ""),
-            "Phone": body.get("phone", ""),
-            "Taxation": "usn_income",
-            "Items": [
-                {
-                    "Name": item.get("name", "Товар")[:128],
-                    "Price": int(float(item.get("price", 0)) * 100),
-                    "Quantity": int(item.get("qty", 1)),
-                    "Amount": int(float(item.get("price", 0)) * 100) * int(item.get("qty", 1)),
-                    "Tax": "none",
-                    "PaymentMethod": "full_prepayment",
-                    "PaymentObject": "commodity",
-                }
-                for item in items
-            ],
-        },
     }
+
+    # Receipt — только если есть email или телефон (Т-Банк требует хотя бы одно)
+    if (email or phone) and items:
+        receipt: dict = {"Taxation": "usn_income", "Items": []}
+        if email:
+            receipt["Email"] = email
+        if phone:
+            receipt["Phone"] = phone
+        for item in items:
+            price_kopecks = int(float(item.get("price", 0)) * 100)
+            qty = int(item.get("qty", 1))
+            receipt["Items"].append({
+                "Name": item.get("name", "Товар")[:128],
+                "Price": price_kopecks,
+                "Quantity": qty,
+                "Amount": price_kopecks * qty,
+                "Tax": "none",
+                "PaymentMethod": "full_prepayment",
+                "PaymentObject": "commodity",
+            })
+        payload["Receipt"] = receipt
 
     # Мультирасчёты: если передан seller_account — делим платёж
     # platform_fee_pct — процент комиссии площадки (по умолчанию 10%)
@@ -109,7 +114,9 @@ def handler(event: dict, context) -> dict:
             }
         ]
 
+    print(f"[PAYMENT] Init payload: {json.dumps(payload, ensure_ascii=False)}")
     result = tbank_request("Init", payload)
+    print(f"[PAYMENT] Init result: {json.dumps(result, ensure_ascii=False)}")
 
     if not result.get("Success"):
         return {
