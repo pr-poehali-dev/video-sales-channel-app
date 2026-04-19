@@ -202,12 +202,21 @@ def create_apiship_order(order: dict) -> dict:
     address_str = delivery_address if delivery_address else city_name
     address_to = {"cityName": city_name, "address": address_str}
 
-    assessed_cost = round(float(goods_total or order.get("goods_total", goods_total)), 2)
-    delivery_cost = round(float(order.get("delivery_cost", 0) or 0), 2)
+    delivery_cost = int(round(float(order.get("delivery_cost", 0) or 0)))
 
-    # Наложенный платёж не используется — всегда 0
-    cod_cost = 0
-    cod_delivery = 0
+    # Все заказы — предоплата онлайн, наложенный платёж не используется
+    # Формула ApiShip: codCost = SUM(item.cost * item.qty) + deliveryCost
+    # При предоплате: item.cost=0, deliveryCost=0, codCost=0
+    # assessedCost = SUM(item.assessedCost * item.qty) — оценочная стоимость для страховки
+    item_cost_per_unit = 0       # стоимость к получению за единицу (предоплата = 0)
+    item_delivery_cost = 0       # стоимость доставки при наложке (предоплата = 0)
+    cod_cost = 0                 # итого к получению (предоплата = 0)
+
+    # assessedCost = сумма оценочных стоимостей всех единиц товара
+    assessed_cost = int(sum(
+        int(float(item.get("price", 0))) * int(item.get("qty", 1))
+        for item in items_list
+    ))
 
     delivery_type_out = 2 if not is_pvz else 1  # 1=ПВЗ, 2=курьер
 
@@ -216,18 +225,20 @@ def create_apiship_order(order: dict) -> dict:
         "providerKey": order.get("provider", "cdek"),
         "tariffId": int(order["delivery_tariff_code"]) if str(order.get("delivery_tariff_code", "")).isdigit() else None,
         "shopId": APISHIP_SHOP_ID or None,
-        "connectionId": 37900,  # ID подключения СДЭК в аккаунте ApiShip
+        "connectionId": 37900,
         "weight": max(weight_g, 100),
         "pickupType": 1,
         "deliveryType": delivery_type_out,
         "pointOutId": int(pvz_apiship_id) if is_pvz and pvz_apiship_id else None,
         "cost": {
-            "assessedCost": int(assessed_cost),
-            "deliveryCost": int(delivery_cost),
+            "assessedCost": assessed_cost,
+            "deliveryCost": item_delivery_cost,
+            "codCost": cod_cost,
         },
         "costs": [{
-            "assessedCost": int(assessed_cost),
-            "deliveryCost": int(delivery_cost),
+            "assessedCost": assessed_cost,
+            "deliveryCost": item_delivery_cost,
+            "codCost": cod_cost,
             "connectionId": 37900,
         }],
         "sender": {
@@ -259,6 +270,7 @@ def create_apiship_order(order: dict) -> dict:
                     "description": item.get("name", "Товар")[:255],
                     "articul": str(item.get("id", i)),
                     "quantity": int(item.get("qty", 1)),
+                    "cost": item_cost_per_unit,
                     "assessedCost": int(float(item.get("price", 0))),
                     "weight": max(weight_g // items_count, 100),
                 }
