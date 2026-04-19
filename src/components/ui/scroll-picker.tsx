@@ -1,22 +1,23 @@
 import { useRef, useEffect, useState, useCallback } from "react";
 
-const ITEM_H = 48;
-const VISIBLE = 5;
+const ITEM_H = 52;
+const VISIBLE = 3; // только 3 строки — компактно
 
 interface ScrollPickerProps {
   value: number;
   onChange: (v: number) => void;
   items: number[];
+  label: string;
   dark?: boolean;
 }
 
-export function ScrollPicker({ value, onChange, items, dark = false }: ScrollPickerProps) {
+export function ScrollPicker({ value, onChange, items, label, dark = false }: ScrollPickerProps) {
   const listRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [editing, setEditing] = useState(false);
   const [inputVal, setInputVal] = useState("");
 
-  const pad = Math.floor(VISIBLE / 2);
+  const pad = Math.floor(VISIBLE / 2); // = 1
   const totalH = ITEM_H * VISIBLE;
 
   const scrollToIdx = useCallback((idx: number, smooth = true) => {
@@ -52,32 +53,41 @@ export function ScrollPicker({ value, onChange, items, dark = false }: ScrollPic
   };
 
   const fg = dark ? "white" : "hsl(var(--foreground))";
-  const muted = dark ? "rgba(255,255,255,0.22)" : "rgba(0,0,0,0.18)";
+  const muted = dark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.15)";
   const maskTop = dark
-    ? "linear-gradient(to bottom, rgb(24,24,27) 0%, rgba(24,24,27,0.5) 60%, transparent 100%)"
-    : "linear-gradient(to bottom, white 0%, rgba(255,255,255,0.7) 50%, transparent 100%)";
+    ? "linear-gradient(to bottom, rgb(24,24,27) 0%, rgba(24,24,27,0.4) 70%, transparent 100%)"
+    : "linear-gradient(to bottom, white 0%, rgba(255,255,255,0.6) 60%, transparent 100%)";
   const maskBot = dark
-    ? "linear-gradient(to top, rgb(24,24,27) 0%, rgba(24,24,27,0.5) 60%, transparent 100%)"
-    : "linear-gradient(to top, white 0%, rgba(255,255,255,0.7) 50%, transparent 100%)";
-  const highlightBg = dark ? "rgba(255,255,255,0.1)" : "hsl(var(--primary)/0.06)";
-  const highlightBorder = dark ? "rgba(255,255,255,0.1)" : "hsl(var(--primary)/0.25)";
+    ? "linear-gradient(to top, rgb(24,24,27) 0%, rgba(24,24,27,0.4) 70%, transparent 100%)"
+    : "linear-gradient(to top, white 0%, rgba(255,255,255,0.6) 60%, transparent 100%)";
 
   return (
     <div className="relative select-none" style={{ width: "100%", height: totalH }}>
 
-      {/* Подсветка центральной строки */}
+      {/* Подсветка центральной строки с меткой внутри */}
       <div
-        className="absolute left-0 right-0 pointer-events-none z-10"
+        className="absolute left-0 right-0 z-10 pointer-events-none flex flex-col items-center justify-end pb-1"
         style={{
           top: pad * ITEM_H,
           height: ITEM_H,
-          background: highlightBg,
-          border: `1px solid ${highlightBorder}`,
+          background: dark ? "rgba(255,255,255,0.1)" : "hsl(var(--primary)/0.07)",
+          border: `1px solid ${dark ? "rgba(255,255,255,0.12)" : "hsl(var(--primary)/0.22)"}`,
           borderRadius: 12,
         }}
-      />
+      >
+        <span
+          className="font-medium leading-none"
+          style={{
+            fontSize: 9,
+            color: dark ? "rgba(255,255,255,0.35)" : "hsl(var(--primary)/0.6)",
+            letterSpacing: "0.02em",
+          }}
+        >
+          {label}
+        </span>
+      </div>
 
-      {/* Скролл */}
+      {/* Скролл-список */}
       <div
         ref={listRef}
         onScroll={handleScroll}
@@ -125,13 +135,13 @@ export function ScrollPicker({ value, onChange, items, dark = false }: ScrollPic
                     if (e.key === "Escape") { setEditing(false); setInputVal(""); }
                   }}
                   className="w-full text-center outline-none bg-transparent font-oswald font-bold"
-                  style={{ fontSize: 22, color: fg, border: "none", padding: "0 4px" }}
+                  style={{ fontSize: 22, color: fg, border: "none", padding: "0 2px" }}
                 />
               ) : (
                 <span
                   className="font-oswald transition-all duration-100 leading-none"
                   style={{
-                    fontSize: selected ? 22 : 16,
+                    fontSize: selected ? 22 : 15,
                     fontWeight: selected ? 700 : 400,
                     color: selected ? fg : muted,
                   }}
@@ -189,10 +199,6 @@ export function DimensionPicker({
   heightCm, setHeightCm,
   dark = false,
 }: DimensionPickerProps) {
-  const lbl = dark
-    ? "text-[10px] text-white/40 text-center mb-1 block"
-    : "text-[10px] text-muted-foreground text-center mb-1 block";
-
   const cols = [
     { label: "Вес, г",   items: WEIGHTS, val: snapWeight(weightG),  set: (v: number) => setWeightG(String(v)) },
     { label: "Дл., см",  items: DIMS,    val: snapDim(lengthCm),     set: (v: number) => setLengthCm(String(v)) },
@@ -203,10 +209,14 @@ export function DimensionPicker({
   return (
     <div className="grid grid-cols-4 gap-2">
       {cols.map(c => (
-        <div key={c.label}>
-          <span className={lbl}>{c.label}</span>
-          <ScrollPicker value={c.val} onChange={c.set} items={c.items} dark={dark} />
-        </div>
+        <ScrollPicker
+          key={c.label}
+          label={c.label}
+          value={c.val}
+          onChange={c.set}
+          items={c.items}
+          dark={dark}
+        />
       ))}
     </div>
   );
