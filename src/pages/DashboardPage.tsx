@@ -16,8 +16,8 @@ import DashboardProductsTab from "./dashboard/DashboardProductsTab";
 import DashboardStreamsTab from "./dashboard/DashboardStreamsTab";
 import DashboardWarehousesTab, { type Warehouse } from "./dashboard/DashboardWarehousesTab";
 import DashboardOrdersTab from "./dashboard/DashboardOrdersTab";
-
 import MyPurchasesTab from "./dashboard/MyPurchasesTab";
+import SellerRegisterPage from "./SellerRegisterPage";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 
 interface DashboardPageProps {
@@ -104,8 +104,8 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
       {/* ── Грид карточек ────────────────────────────────────────── */}
       <div className="grid grid-cols-3 gap-2 mb-3">
         {/* Данные и реквизиты */}
-        <button onClick={() => setPage("seller-register" as Page)}
-          className="bg-card border border-border rounded-xl p-2.5 text-left hover:border-primary/40 transition-colors">
+        <button onClick={() => setTab(tab === "Профиль" ? null : "Профиль")}
+          className={`bg-card border rounded-xl p-2.5 text-left hover:border-primary/40 transition-colors ${tab === "Профиль" ? "border-primary/50 ring-1 ring-primary/20" : "border-border"}`}>
           <div className="w-6 h-6 rounded-full bg-primary/20 text-primary text-[9px] font-bold flex items-center justify-center font-oswald mb-1.5">{user.avatar}</div>
           <div className="font-oswald text-sm font-semibold text-foreground truncate leading-tight">{user.name}</div>
           <div className="text-[10px] text-muted-foreground mt-0.5 leading-tight">Данные и реквизиты</div>
@@ -188,6 +188,11 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
       </div>
 
       {/* ── Контент раздела ──────────────────────────────────────── */}
+      {tab === "Профиль" && (
+        <div className="animate-fade-in">
+          <SellerRegisterPage setPage={(p) => { if (p === "dashboard") setTab(null); else setPage(p); }} />
+        </div>
+      )}
       {tab === "Заказы от покупателей" && <DashboardOrdersTab />}
       {tab === "Мои покупки" && <MyPurchasesTab />}
       {tab === "Товары" && <DashboardProductsTab warehouses={warehouses} />}
