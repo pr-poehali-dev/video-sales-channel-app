@@ -97,20 +97,18 @@ export default function ProductPage({ productId, addToCart, onBack, onSellerClic
 
       {/* ── ВЕРХНЯЯ ЧАСТЬ: видео + кнопка ── */}
       <div className="flex-shrink-0 bg-background">
-        {/* Кнопка назад — вплотную к верху */}
-        <div className="px-4 pt-1 pb-1">
-          <button
-            onClick={onBack}
-            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <Icon name="ArrowLeft" size={13} />
-            Назад
-          </button>
-        </div>
 
-        {/* Медиа */}
+        {/* Медиа — кнопка Назад поверх видео */}
         <div className="px-4 relative">
           <div className="w-full aspect-video max-h-[280px] rounded-xl overflow-hidden bg-secondary relative border border-border">
+            {/* Кнопка назад поверх видео */}
+            <button
+              onClick={onBack}
+              className="absolute top-2 left-2 z-10 flex items-center gap-1 text-xs text-white bg-black/40 hover:bg-black/60 transition-colors rounded-lg px-2 py-1 backdrop-blur-sm"
+            >
+              <Icon name="ArrowLeft" size={13} />
+              Назад
+            </button>
             {showVideo && videoUrl ? (
               <video src={videoUrl} autoPlay loop muted playsInline controls className="w-full h-full object-cover" />
             ) : product.images.length > 0 ? (
