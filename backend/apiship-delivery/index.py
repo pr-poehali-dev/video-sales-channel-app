@@ -182,7 +182,8 @@ def create_apiship_order(order: dict) -> dict:
     phone = f"+{digits}" if digits else "+70000000000"
 
     is_pvz = order.get("delivery_type") == "cdek_pvz" or order.get("delivery_to") == "pvz"
-    pvz_apiship_id = order.get("cdek_pvz_apiship_id")  # числовой ID ПВЗ в ApiShip
+    pvz_apiship_id = order.get("cdek_pvz_apiship_id")  # числовой ID ПВЗ в ApiShip (для pointOutId)
+    pvz_code = order.get("cdek_pvz_code", "") or ""     # строковый код ПВЗ СДЭК (для officeCode)
     weight_g = int(order.get("weight_g", 500))
     items_list = order.get("items", [])
     items_count = max(len(items_list), 1)
@@ -194,15 +195,15 @@ def create_apiship_order(order: dict) -> dict:
         buyer_name_safe = "Получатель"
 
     city_name_raw = str(order.get("delivery_city_name", "") or order.get("delivery_city_code", "") or "")
-    # Берём только название города без региона (до первой запятой)
     city_name = city_name_raw.split(",")[0].strip()
     delivery_address = order.get("delivery_address", "") or ""
-    pvz_code = order.get("cdek_pvz_code", "") or ""
     # Для ПВЗ адрес может быть пустым — подставляем город
     address_str = delivery_address if delivery_address else city_name
     address_to = {"cityName": city_name, "address": address_str}
     if is_pvz and pvz_apiship_id:
         address_to["pointOutId"] = int(pvz_apiship_id)
+    if is_pvz and pvz_code:
+        address_to["officeCode"] = pvz_code
 
     delivery_cost = int(round(float(order.get("delivery_cost", 0) or 0)))
 
