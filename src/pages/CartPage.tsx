@@ -90,8 +90,9 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
     }, 400);
   }, []);
 
-  const [deliveryType, setDeliveryType]   = useState<DeliveryType>("cdek_pvz");
-  const [cdekPvzCode, setCdekPvzCode]     = useState<string | undefined>(undefined);
+  const [deliveryType, setDeliveryType]       = useState<DeliveryType>("cdek_pvz");
+  const [cdekPvzCode, setCdekPvzCode]         = useState<string | undefined>(undefined);
+  const [cdekPvzApishipId, setCdekPvzApishipId] = useState<number | undefined>(undefined);
   const [deliveryAddress, setDeliveryAddress] = useState("");
 
   const cartQtyKey = cart.map(c => `${c.id}:${c.qty}:${selectedIds.has(c.id) ? 1 : 0}`).join(",");
@@ -185,6 +186,7 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
         delivery_tariff_name: delivery.tariff?.name || "",
         delivery_cost:        deliveryCost || 0,
         cdek_pvz_code:        cdekPvzCode || "",
+        cdek_pvz_apiship_id:  cdekPvzApishipId || undefined,
         items: selectedCart.map(c => ({ id: c.id, name: c.name, price: getItemPrice(c, mode), qty: c.qty, image: c.image, videoUrl: c.videoUrl || "", sellerId: c.sellerId || "" })),
         payment_method: "",
         goods_total:    goodsTotal,
@@ -364,9 +366,10 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
               sellerId={sellerIdForDelivery}
               savedCity={user?.city || ""}
               savedPvz={user?.savedPvz}
-              onSelect={(tariff, city, pvzCode, pvzAddress) => {
+              onSelect={(tariff, city, pvzCode, pvzAddress, pvzApishipId) => {
                 setDelivery({ tariff, city });
                 setCdekPvzCode(pvzCode);
+                setCdekPvzApishipId(pvzApishipId);
                 setDeliveryType(tariff?.delivery_to === "pvz" ? "cdek_pvz" : "cdek_courier");
                 if (pvzAddress) setDeliveryAddress(pvzAddress);
                 if (city && user) {

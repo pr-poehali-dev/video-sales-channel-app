@@ -182,6 +182,7 @@ def create_apiship_order(order: dict) -> dict:
     phone = f"+{digits}" if digits else "+70000000000"
 
     is_pvz = order.get("delivery_type") == "cdek_pvz" or order.get("delivery_to") == "pvz"
+    pvz_apiship_id = order.get("cdek_pvz_apiship_id")  # числовой ID ПВЗ в ApiShip
     weight_g = int(order.get("weight_g", 500))
     items_list = order.get("items", [])
     items_count = max(len(items_list), 1)
@@ -228,7 +229,7 @@ def create_apiship_order(order: dict) -> dict:
         "weight": max(weight_g, 100),
         "pickupType": 1,
         "deliveryType": delivery_type_out,
-        "pointOutId": pvz_code if is_pvz and pvz_code else None,
+        "pointOutId": pvz_apiship_id if is_pvz and pvz_apiship_id else (pvz_code if is_pvz and pvz_code else None),
         "cost": {
             "assessedCost": int(assessed_cost),
             "deliveryCost": int(delivery_cost),
@@ -449,6 +450,7 @@ def handler(event: dict, context) -> dict:
                     continue
                 points.append({
                     "code": str(p.get("code") or p.get("id") or ""),
+                    "apiship_id": p.get("id"),
                     "name": p.get("name") or p.get("address") or "",
                     "address": p.get("address") or "",
                     "work_time": p.get("timetable") or p.get("workTime") or "",

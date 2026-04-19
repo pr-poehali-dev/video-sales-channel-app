@@ -24,6 +24,7 @@ interface Tariff {
 
 interface PvzPoint {
   code: string;
+  apiship_id?: number;
   name: string;
   address: string;
   work_time: string;
@@ -38,7 +39,7 @@ interface DeliveryProps {
   sellerId?: string;
   savedCity?: string;
   savedPvz?: SavedPvz | null;
-  onSelect: (tariff: Tariff | null, city: City | null, pvzCode?: string, pvzAddress?: string) => void;
+  onSelect: (tariff: Tariff | null, city: City | null, pvzCode?: string, pvzAddress?: string, pvzApishipId?: number) => void;
   onClearCity?: () => void;
   onClearPvz?: () => void;
   onSavePvz?: (pvz: SavedPvz) => void;
@@ -428,9 +429,10 @@ export default function DeliverySelector({
           onSelect={(pvz) => {
             setSelectedPvz(pvz);
             setShowPvzMap(false);
-            if (selectedTariff) onSelect(selectedTariff, selectedCity, pvz.code, pvz.address);
+            if (selectedTariff) onSelect(selectedTariff, selectedCity, pvz.code, pvz.address, pvz.apiship_id);
             onSavePvz?.({
               code: pvz.code,
+              apiship_id: pvz.apiship_id,
               name: pvz.name,
               address: pvz.address,
               cityCode: selectedCity.code,

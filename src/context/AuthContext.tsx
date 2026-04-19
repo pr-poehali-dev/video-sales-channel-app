@@ -4,6 +4,7 @@ export type UserRole = "user" | "admin";
 
 export interface SavedPvz {
   code: string;
+  apiship_id?: number;
   address: string;
   name: string;
   cityCode: string;

@@ -5,6 +5,7 @@ const CDEK_URL = "https://functions.poehali.dev/a73e197d-7da4-4945-bd28-4d0de6b0
 
 interface PvzPoint {
   code: string;
+  apiship_id?: number;
   name: string;
   address: string;
   work_time: string;
