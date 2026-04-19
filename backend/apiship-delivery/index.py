@@ -253,7 +253,9 @@ def create_apiship_order(order: dict) -> dict:
     if payload["tariffId"] is None:
         payload.pop("tariffId")
 
-    print(f"[APISHIP] create_order payload: {json.dumps(payload, ensure_ascii=False)[:800]}")
+    items_sum = sum(it["assessedCost"] for it in payload["places"][0]["items"])
+    print(f"[APISHIP] codCost={payload['cost']['codCost']} items_sum={items_sum} match={items_sum==payload['cost']['codCost']}")
+    print(f"[APISHIP] create_order payload: {json.dumps(payload, ensure_ascii=False)}")
     try:
         result = apiship_request("/orders", payload, "POST")
         print(f"[APISHIP] create_order result: {json.dumps(result, ensure_ascii=False)[:600]}")
