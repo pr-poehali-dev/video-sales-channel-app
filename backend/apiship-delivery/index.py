@@ -212,7 +212,7 @@ def create_apiship_order(order: dict) -> dict:
         "cost": {
             "assessedCost": int(assessed_cost),
             "deliveryCost": int(delivery_cost),
-            # codCost убран: оплата проходит онлайн, наложенный платёж не нужен
+            "codCost": int(assessed_cost),  # = сумма товаров, совпадает с items[].assessedCost
         },
         "sender": {
             "name": "ИП Буцкий Денис Алексеевич",
@@ -243,7 +243,7 @@ def create_apiship_order(order: dict) -> dict:
                     "description": item.get("name", "Товар")[:255],
                     "articul": str(item.get("id", i)),
                     "quantity": int(item.get("qty", 1)),
-                    "assessedCost": int(float(item.get("price", 0))),
+                    "assessedCost": int(float(item.get("price", 0)) * int(item.get("qty", 1))),
                     "weight": max(weight_g // items_count, 100),
                 }
                 for i, item in enumerate(order.get("items", []))
