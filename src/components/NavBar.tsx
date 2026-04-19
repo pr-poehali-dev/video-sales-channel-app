@@ -17,8 +17,9 @@ export default function NavBar({ page, setPage, cartCount }: NavBarProps) {
     { id: "home", label: "Главная", icon: "Home" },
     { id: "streams", label: "Эфиры", icon: "Radio" },
     { id: "catalog", label: "Каталог", icon: "ShoppingBag" },
+    { id: "cart", label: "Корзина", icon: "ShoppingCart" },
     ...(user && user.role !== "admin" ? [{ id: "dashboard" as Page, label: "Кабинет", icon: "LayoutDashboard" }] : []),
-    ...(user && user.role !== "admin" ? [{ id: "support" as Page, label: "Поддержка", icon: "MessageCircle" }] : []),
+    ...(user && user.role !== "admin" ? [{ id: "support" as Page, label: "Поддержка", icon: "Headphones" }] : []),
     ...(user?.role === "admin" ? [{ id: "admin" as Page, label: "Админ", icon: "ShieldCheck" }] : []),
     ...(user?.role === "admin" ? [{ id: "support-admin" as Page, label: "Чаты", icon: "MessageSquare" }] : []),
   ];
@@ -28,6 +29,7 @@ export default function NavBar({ page, setPage, cartCount }: NavBarProps) {
     { id: "favorites" as Page, label: "Избранное", icon: "Heart" },
     { id: "catalog" as Page, label: "Каталог", icon: "ShoppingBag" },
     { id: "cart" as Page, label: "Корзина", icon: "ShoppingCart" },
+    ...(user && user.role !== "admin" ? [{ id: "support" as Page, label: "Поддержка", icon: "Headphones" }] : []),
     { id: (user ? "dashboard" : "auth") as Page, label: user ? "Профиль" : "Войти", icon: "User" },
   ];
 
@@ -78,21 +80,6 @@ export default function NavBar({ page, setPage, cartCount }: NavBarProps) {
               </button>
             )}
 
-            {/* Корзина — десктоп */}
-            <button
-              onClick={() => setPage("cart")}
-              className={`hidden md:flex relative items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                page === "cart" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground hover:bg-secondary"
-              }`}
-            >
-              <Icon name="ShoppingCart" size={18} />
-              {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
-                  {cartCount}
-                </span>
-              )}
-            </button>
-
             {/* Профиль — десктоп */}
             <button
               onClick={() => setPage(user ? "profile" : "auth")}
@@ -110,33 +97,6 @@ export default function NavBar({ page, setPage, cartCount }: NavBarProps) {
                 <Icon name="User" size={18} />
               )}
               <span>{user ? user.name.split(" ")[0] : "Войти"}</span>
-            </button>
-
-            {/* Поддержка — мобиль (в хедере) */}
-            {user && user.role !== "admin" && (
-              <button
-                onClick={() => setPage("support")}
-                className={`md:hidden flex items-center px-2 py-2 rounded-md transition-colors ${
-                  page === "support" ? "text-primary" : "text-muted-foreground"
-                }`}
-              >
-                <Icon name="MessageCircle" size={22} />
-              </button>
-            )}
-
-            {/* Корзина — мобиль (в хедере справа) */}
-            <button
-              onClick={() => setPage("cart")}
-              className={`md:hidden relative flex items-center px-2 py-2 rounded-md transition-colors ${
-                page === "cart" ? "text-primary" : "text-muted-foreground"
-              }`}
-            >
-              <Icon name="ShoppingCart" size={22} />
-              {cartCount > 0 && (
-                <span className="absolute top-0.5 right-0 bg-primary text-primary-foreground text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
-                  {cartCount}
-                </span>
-              )}
             </button>
 
             {/* Эфир — мобиль (в хедере) */}
