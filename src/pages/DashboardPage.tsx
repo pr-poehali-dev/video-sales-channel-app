@@ -221,7 +221,7 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
       )}
       {tab === "Заказы от покупателей" && <DashboardOrdersTab />}
       {tab === "Мои покупки" && <MyPurchasesTab />}
-      {tab === "Товары" && <DashboardProductsTab warehouses={warehouses} />}
+      {tab === "Товары" && <DashboardProductsTab warehouses={warehouses} onGoToProfile={() => setTab("Профиль")} />}
       {tab === "Мои эфиры" && <DashboardStreamsTab setPage={setPage} />}
       {tab === "Статистика" && (
         <div className="animate-fade-in text-center py-16">

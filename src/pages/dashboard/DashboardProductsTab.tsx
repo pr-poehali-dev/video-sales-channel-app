@@ -4,6 +4,9 @@ import { useStore } from "@/context/StoreContext";
 import ProductList from "./products/ProductList";
 import ProductFormModal from "./products/ProductFormModal";
 import ProductCameraRecorder from "./products/ProductCameraRecorder";
+import Icon from "@/components/ui/icon";
+import { useSellerProfileCheck } from "@/hooks/useSellerProfileCheck";
+import type { SellerProfileIssue } from "@/hooks/useSellerProfileCheck";
 
 const CATEGORIES = [
   "Украшения", "Одежда", "Красота", "Аксессуары",
@@ -17,17 +20,21 @@ interface CdekCity { code: string; city: string; region: string; }
 
 interface Props {
   warehouses: { id: string; cityCode: string; cityName: string; isDefault: boolean; }[];
+  onGoToProfile?: () => void;
 }
 
-export default function DashboardProductsTab({ warehouses }: Props) {
+export default function DashboardProductsTab({ warehouses, onGoToProfile }: Props) {
   const { user } = useAuth();
   const { addProduct, updateProduct, deleteProduct, getSellerProducts } = useStore();
+  const { check, checking } = useSellerProfileCheck(user?.id);
 
   const products = user ? getSellerProducts(user.id) : [];
 
   const [showForm,       setShowForm]       = useState(false);
   const [editId,         setEditId]         = useState<string | null>(null);
   const [confirmDelete,  setConfirmDelete]  = useState<string | null>(null);
+  const [profileIssues,  setProfileIssues]  = useState<SellerProfileIssue[] | null>(null);
+  const [profileExists,  setProfileExists]  = useState(true);
 
   // ── Поля формы ────────────────────────────────────────────────────────────
   const [fName,          setFName]          = useState("");
@@ -178,7 +185,13 @@ export default function DashboardProductsTab({ warehouses }: Props) {
     if (fVideoBlobUrl) { URL.revokeObjectURL(fVideoBlobUrl); setFVideoBlobUrl(null); }
   };
 
-  const openAddForm = () => {
+  const openAddForm = async () => {
+    const result = await check();
+    if (!result.ok) {
+      setProfileExists(result.profileExists);
+      setProfileIssues(result.issues);
+      return;
+    }
     setEditId(null);
     resetForm();
     if (user?.shopCityCode) {
@@ -344,6 +357,64 @@ export default function DashboardProductsTab({ warehouses }: Props) {
           onClose={closeCamera}
           onStartRecording={startRecording}
         />
+      )}
+
+      {profileIssues && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setProfileIssues(null)}>
+          <div className="bg-card rounded-2xl p-6 w-full max-w-sm shadow-xl space-y-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-amber-500/15 flex items-center justify-center flex-shrink-0">
+                <Icon name="TriangleAlert" size={20} className="text-amber-500" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground text-sm">
+                  {profileExists ? "Профиль заполнен не полностью" : "Заполните профиль продавца"}
+                </h3>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {profileExists
+                    ? "Для корректного расчёта и выплат нужно дополнить профиль"
+                    : "Для добавления товаров необходимо заполнить профиль продавца"}
+                </p>
+              </div>
+            </div>
+
+            {profileExists && profileIssues.length > 0 && (
+              <div className="bg-secondary rounded-xl p-3 space-y-1.5">
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Не заполнено:</p>
+                {profileIssues.map(issue => (
+                  <div key={issue.field} className="flex items-center gap-2 text-xs text-foreground">
+                    <Icon name="CircleX" size={13} className="text-red-400 flex-shrink-0" />
+                    {issue.label}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={() => setProfileIssues(null)}
+                className="flex-1 py-2.5 rounded-xl border border-border text-sm text-muted-foreground hover:bg-secondary transition-colors"
+              >
+                Отмена
+              </button>
+              <button
+                onClick={() => { setProfileIssues(null); onGoToProfile?.(); }}
+                className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity"
+              >
+                Перейти в профиль
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {checking && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+          <div className="bg-card rounded-2xl px-6 py-4 flex items-center gap-3 shadow-xl">
+            <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <span className="text-sm text-foreground">Проверка профиля…</span>
+          </div>
+        </div>
       )}
     </div>
   );
