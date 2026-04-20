@@ -58,6 +58,7 @@ export default function DashboardProductsTab({ warehouses, onGoToProfile }: Prop
   const [fCityLoading,   setFCityLoading]   = useState(false);
   const [fWholesalePrice, setFWholesalePrice] = useState("");
   const [fRetailMarkup,  setFRetailMarkup]  = useState("0");
+  const [fIsUsed,        setFIsUsed]        = useState(false);
 
   // ── Видео/камера ──────────────────────────────────────────────────────────
   const [fVideoUrl,      setFVideoUrl]      = useState<string | null>(null);
@@ -181,6 +182,7 @@ export default function DashboardProductsTab({ warehouses, onGoToProfile }: Prop
     setFCdek(true); setFNalog(false); setFFitting(false);
     setFInStock("1"); setFFromCityCode(""); setFFromCityName(""); setFCityQuery(""); setFCitySuggestions([]);
     setFWholesalePrice(""); setFRetailMarkup("0");
+    setFIsUsed(false);
     setFVideoUrl(null);
     if (fVideoBlobUrl) { URL.revokeObjectURL(fVideoBlobUrl); setFVideoBlobUrl(null); }
   };
@@ -234,6 +236,7 @@ export default function DashboardProductsTab({ warehouses, onGoToProfile }: Prop
     setFVideoUrl((p as { videoUrl?: string }).videoUrl ?? null);
     setFWholesalePrice(p.wholesalePrice != null ? String(p.wholesalePrice) : "");
     setFRetailMarkup(String(p.retailMarkupPct ?? 0));
+    setFIsUsed(p.isUsed ?? false);
     setFVideoBlobUrl(null);
     setShowForm(true);
     document.body.style.overflow = "hidden";
@@ -264,6 +267,7 @@ export default function DashboardProductsTab({ warehouses, onGoToProfile }: Prop
       inStock: Number(fInStock) || 1,
       wholesalePrice: wholesaleNum,
       retailMarkupPct: Number(fRetailMarkup) || 0,
+      isUsed: fIsUsed,
     };
     if (editId) {
       updateProduct(editId, {
@@ -343,6 +347,7 @@ export default function DashboardProductsTab({ warehouses, onGoToProfile }: Prop
           fCdek={fCdek} setFCdek={setFCdek}
           fNalog={fNalog} setFNalog={setFNalog}
           fFitting={fFitting} setFFitting={setFFitting}
+          fIsUsed={fIsUsed} setFIsUsed={setFIsUsed}
           fError={fError}
           onSave={handleSave}
           onClose={closeForm}

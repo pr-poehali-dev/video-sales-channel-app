@@ -46,6 +46,9 @@ interface ProductFormModalProps {
   setFCdek?: (v: boolean) => void;
   setFNalog?: (v: boolean) => void;
   setFFitting?: (v: boolean) => void;
+  // Б/у
+  fIsUsed: boolean;
+  setFIsUsed: (v: boolean) => void;
   // Ошибка и действия
   fError: string | null;
   onSave: () => void;
@@ -67,6 +70,7 @@ export default function ProductFormModal({
   fWidthCm, setFWidthCm,
   fHeightCm, setFHeightCm,
   fImages, setFImages,
+  fIsUsed, setFIsUsed,
   fError,
   onSave, onClose,
 }: ProductFormModalProps) {
@@ -213,6 +217,22 @@ export default function ProductFormModal({
               placeholder="Например: Серьги золотые с жемчугом"
               className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors" />
           </div>
+
+          {/* Б/у */}
+          <button type="button" onClick={() => setFIsUsed(!fIsUsed)}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition-all text-left ${
+              fIsUsed ? "border-orange-500/50 bg-orange-500/8" : "border-border bg-secondary hover:border-border/80"
+            }`}>
+            <div className={`w-5 h-5 rounded flex-shrink-0 border-2 flex items-center justify-center transition-all ${
+              fIsUsed ? "bg-orange-500 border-orange-500" : "border-border"
+            }`}>
+              {fIsUsed && <Icon name="Check" size={12} className="text-white" />}
+            </div>
+            <div>
+              <p className={`text-sm font-medium ${fIsUsed ? "text-orange-700" : "text-foreground"}`}>Товар б/у (бывший в употреблении)</p>
+              <p className="text-[11px] text-muted-foreground">На карточке появится пометка «б/у»</p>
+            </div>
+          </button>
 
           {/* Категория */}
           <div>

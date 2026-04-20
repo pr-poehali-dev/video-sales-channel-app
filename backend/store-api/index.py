@@ -403,8 +403,8 @@ def handler(event: dict, context) -> dict:
             cur.execute("""
                 INSERT INTO products (id,name,price,category,description,images,seller_id,seller_name,seller_avatar,
                     in_stock,weight_g,length_cm,width_cm,height_cm,cdek_enabled,nalog_enabled,fitting_enabled,
-                    from_city_code,from_city_name,video_url,wholesale_price,retail_markup_pct,moderation_status)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING *
+                    from_city_code,from_city_name,video_url,wholesale_price,retail_markup_pct,moderation_status,is_used)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING *
             """, (pid, body["name"], body["price"], body.get("category",""),
                   body.get("description",""), safe_images,
                   body["seller_id"], body["seller_name"], body.get("seller_avatar",""),
@@ -417,7 +417,8 @@ def handler(event: dict, context) -> dict:
                   body.get("video_url",""),
                   body.get("wholesale_price") or None,
                   body.get("retail_markup_pct", 0),
-                  "pending"))
+                  "pending",
+                  bool(body.get("isUsed", False))))
             conn.commit()
             return ok(_fmt_product(cur.fetchone()), 201)
 
@@ -1010,6 +1011,7 @@ def _fmt_product(r):
         "createdAt":         r["created_at"].strftime("%d %B %Y") if r["created_at"] else "",
         "moderationStatus":  r.get("moderation_status") or "approved",
         "moderationComment": r.get("moderation_comment") or "",
+        "isUsed":            bool(r.get("is_used", False)),
     }
 
 def _fmt_stream(r):

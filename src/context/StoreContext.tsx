@@ -46,6 +46,7 @@ export interface StoreProduct {
   retailMarkupPct?: number;
   moderationStatus?: "pending" | "approved" | "rejected";
   moderationComment?: string;
+  isUsed?: boolean;
 }
 
 export interface StoreStream {

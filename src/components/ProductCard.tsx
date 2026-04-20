@@ -145,7 +145,12 @@ export default function ProductCard({ product, addToCart, updateQty, cartQty = 0
           />
         </button>
 
-        {inStock > 0 && inStock <= 5 && (
+        {product.isUsed && (
+          <div className="absolute top-2 left-2 z-10 bg-orange-500/90 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full">
+            б/у
+          </div>
+        )}
+        {!product.isUsed && inStock > 0 && inStock <= 5 && (
           <div className="absolute top-2 left-2 bg-orange-500/90 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full">
             Осталось {inStock} шт.
           </div>
