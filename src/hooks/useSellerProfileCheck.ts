@@ -11,6 +11,7 @@ export interface SellerProfileCheckResult {
   ok: boolean;
   issues: SellerProfileIssue[];
   profileExists: boolean;
+  legalType?: string;
 }
 
 export function useSellerProfileCheck(userId: string | undefined) {
@@ -52,7 +53,7 @@ export function useSellerProfileCheck(userId: string | undefined) {
       if (!data.agreedOffer) issues.push({ field: "agreedOffer", label: "Согласие с договором оферты" });
       if (!data.agreedPd) issues.push({ field: "agreedPd", label: "Согласие на обработку персональных данных" });
 
-      return { ok: issues.length === 0, issues, profileExists: true };
+      return { ok: issues.length === 0, issues, profileExists: true, legalType: lt };
     } catch {
       return { ok: false, issues: [{ field: "network", label: "Ошибка соединения" }], profileExists: false };
     } finally {

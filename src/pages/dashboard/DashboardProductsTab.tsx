@@ -196,6 +196,7 @@ export default function DashboardProductsTab({ warehouses, onGoToProfile }: Prop
     }
     setEditId(null);
     resetForm();
+    if (result.legalType === "individual") setFIsUsed(true);
     if (user?.shopCityCode) {
       setFFromCityCode(user.shopCityCode);
       setFFromCityName(user.shopCityName || "");
