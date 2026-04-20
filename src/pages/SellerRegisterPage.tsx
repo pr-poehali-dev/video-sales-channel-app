@@ -394,23 +394,37 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
 
   const handleSaveAll = async () => {
     setError(null);
+    const lt = form.legalType;
 
-    if (!pName.trim()) { setError("Введите имя"); return; }
+    // ── Общие поля ──
+    if (!pName.trim()) { setError("Введите ваше имя"); return; }
     if (!pPhone.trim()) { setError("Введите телефон"); return; }
-    if (!form.legalName.trim()) { setError("Введите ФИО или название организации"); return; }
-    if (form.legalType !== "individual") {
-      if (!form.inn.trim()) { setError("Введите ИНН"); return; }
-      if (!innCheck.valid) { setError(innCheck.error || "Неверный ИНН"); return; }
+
+    // ── Валидация по типу ──
+    if (lt === "individual") {
+      if (!form.legalName.trim()) { setError("Введите ФИО полностью"); return; }
+      if (!form.cardNumber.trim()) { setError("Введите номер карты для выплат"); return; }
     }
 
-    const isIpOoo = form.legalType === "ip" || form.legalType === "ooo";
-    const isSelfEmployed = form.legalType === "self_employed";
+    if (lt === "self_employed") {
+      if (!form.legalName.trim()) { setError("Введите ФИО полностью"); return; }
+      if (!form.inn.trim()) { setError("Введите ИНН"); return; }
+      if (!innCheck.valid) { setError(innCheck.error || "Неверный ИНН"); return; }
+      if (!form.phoneForTax.trim()) { setError("Введите телефон, привязанный к «Мой налог»"); return; }
+      if (form.payoutMethod === "card" && !form.cardNumber.trim()) { setError("Введите номер карты для выплат"); return; }
+      if (form.payoutMethod === "account" && !form.bankAccount.trim()) { setError("Введите расчётный счёт"); return; }
+      if (form.payoutMethod === "account" && !form.bik.trim()) { setError("Введите БИК банка"); return; }
+    }
 
-    if (isIpOoo && !form.bankAccount.trim()) { setError("Введите расчётный счёт"); return; }
-    if (isIpOoo && !form.bik.trim()) { setError("Введите БИК банка"); return; }
-    if (isSelfEmployed && form.payoutMethod === "card" && !form.cardNumber.trim()) { setError("Введите номер карты"); return; }
-    if (isSelfEmployed && form.payoutMethod === "account" && !form.bankAccount.trim()) { setError("Введите расчётный счёт"); return; }
-    if (form.legalType === "individual" && !form.cardNumber.trim()) { setError("Введите номер карты"); return; }
+    if (lt === "ip" || lt === "ooo") {
+      if (!form.inn.trim()) { setError(lt === "ip" ? "Введите ИНН (12 цифр)" : "Введите ИНН (10 цифр)"); return; }
+      if (!innCheck.valid) { setError(innCheck.error || "Неверный ИНН"); return; }
+      if (!form.legalName.trim()) { setError(lt === "ip" ? "Введите полное наименование ИП" : "Введите полное наименование организации"); return; }
+      if (!form.ogrn.trim()) { setError(lt === "ip" ? "Введите ОГРНИП" : "Введите ОГРН"); return; }
+      if (!form.legalAddress.trim()) { setError("Введите юридический адрес"); return; }
+      if (!form.bankAccount.trim()) { setError("Введите расчётный счёт"); return; }
+      if (!form.bik.trim()) { setError("Введите БИК банка"); return; }
+    }
 
     if (!form.agreedOffer) { setError("Необходимо принять условия договора оферты"); return; }
     if (!form.agreedPd) { setError("Необходимо дать согласие на обработку персональных данных"); return; }
@@ -450,7 +464,8 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
       if (!res.ok) throw new Error("Ошибка сохранения");
       setSaved(true);
       setSavedLegalType(form.legalType);
-      setTimeout(() => setSaved(false), 3000);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      setTimeout(() => setSaved(false), 4000);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Ошибка сохранения");
     } finally {
@@ -945,8 +960,14 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
         )}
 
         {saved && (
-          <div className="flex items-center gap-2 bg-green-500/10 text-green-600 text-sm px-4 py-3 rounded-xl">
-            <Icon name="CheckCircle" size={16} />Данные успешно сохранены!
+          <div className="flex items-center gap-3 bg-green-500/10 border border-green-500/30 text-green-700 px-4 py-3 rounded-xl animate-fade-in">
+            <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+              <Icon name="Check" size={16} className="text-white" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold">Данные сохранены!</p>
+              <p className="text-xs text-green-600 mt-0.5">Галочка появилась на вашем типе регистрации</p>
+            </div>
           </div>
         )}
 
@@ -954,7 +975,9 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
           className="w-full bg-primary text-primary-foreground font-semibold py-4 rounded-2xl hover:bg-primary/90 transition-all disabled:opacity-50 flex items-center justify-center gap-2 text-sm">
           {saving
             ? <><Icon name="Loader" size={16} className="animate-spin" />Сохраняем...</>
-            : <><Icon name="Save" size={16} />Сохранить все данные</>}
+            : savedLegalType
+              ? <><Icon name="CheckCircle" size={16} />Обновить данные</>
+              : <><Icon name="Save" size={16} />Сохранить все данные</>}
         </button>
 
       </div>
