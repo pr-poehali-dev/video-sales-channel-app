@@ -642,16 +642,20 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
                 </div>
               )}
 
-              {/* Банковские реквизиты */}
+              {/* Банковские реквизиты — появляются после заполнения ОГРН и названия */}
               <div className="bg-secondary/60 rounded-xl p-3 space-y-3">
                 <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                   <Icon name="Landmark" size={13} />
                   Банковские реквизиты
                 </p>
-                <Field label="Расчётный счёт * (20 цифр)">
-                  <input value={form.bankAccount} onChange={e => set("bankAccount", e.target.value.replace(/\D/g, ""))}
-                    placeholder="40702810000000000000" maxLength={20} className={inputCls} />
-                </Field>
+                {(innFieldsVisible && form.ogrn && form.legalName) ? (
+                  <Field label="Расчётный счёт * (20 цифр)">
+                    <input value={form.bankAccount} onChange={e => set("bankAccount", e.target.value.replace(/\D/g, ""))}
+                      placeholder="40702810000000000000" maxLength={20} className={inputCls} />
+                  </Field>
+                ) : !innFieldsVisible && (
+                  <p className="text-[11px] text-muted-foreground">Заполните ИНН, ОГРН и название — поля появятся автоматически</p>
+                )}
                 <BikBlock
                   bik={form.bik}
                   corrAccount={form.corrAccount}
