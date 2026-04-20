@@ -533,13 +533,6 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
               <Field label="Телефон *">
                 <input value={pPhone} onChange={e => setPPhone(e.target.value)} placeholder="+7 900 000-00-00" className={inputCls} />
               </Field>
-              <InnField
-                value={form.inn}
-                maxLength={12}
-                placeholder="123456789012"
-                label="ИНН (12 цифр) *"
-                onChange={v => set("inn", v)}
-              />
               <Field label="Номер карты для выплат *" hint="На эту карту будут переводиться деньги за продажи">
                 <input value={form.cardNumber} onChange={e => set("cardNumber", e.target.value.replace(/\D/g, ""))}
                   placeholder="1234 5678 9012 3456" maxLength={16} className={inputCls} />
