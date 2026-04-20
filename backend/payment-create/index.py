@@ -117,9 +117,9 @@ def handler(event: dict, context) -> dict:
     seller_account = body.get("seller_account", "")
     multimarket_enabled = os.environ.get("TBANK_MULTIMARKET_ENABLED", "false").lower() == "true"
     if seller_account and multimarket_enabled:
-        platform_fee_pct = int(body.get("platform_fee_pct", 10))
-        platform_fee = int(amount_kopecks * platform_fee_pct / 100)
-        seller_amount = amount_kopecks - platform_fee
+        platform_fee_pct = 0
+        platform_fee = 0
+        seller_amount = amount_kopecks
         payload["Shops"] = [
             {
                 "ShopCode": seller_account,
@@ -163,8 +163,8 @@ def handler(event: dict, context) -> dict:
             if order_row:
                 seller_id_val = order_row[0] or ""
                 full_amount = float(order_row[1] or amount)
-                marketplace_fee = round(full_amount * 0.10, 2)
-                seller_amount = round(full_amount - marketplace_fee, 2)
+                marketplace_fee = 0.0
+                seller_amount = round(full_amount, 2)
 
                 # Upsert транзакции — фиксируем холд
                 cur.execute("""

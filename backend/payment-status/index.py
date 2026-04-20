@@ -90,8 +90,8 @@ def handler(event: dict, context) -> dict:
                 # Транзакции не было — создаём (резервный путь)
                 tbank_amount = result.get("Amount", 0)
                 full_amount = float(tbank_amount) / 100 if tbank_amount else 0
-                marketplace_fee = round(full_amount * 0.10, 2)
-                seller_amount = round(full_amount - marketplace_fee, 2)
+                marketplace_fee = 0.0
+                seller_amount = round(full_amount, 2)
                 cur.execute("""
                     INSERT INTO "t_p63706319_video_sales_channel_".transactions
                         (order_id, full_amount, seller_amount, marketplace_fee,

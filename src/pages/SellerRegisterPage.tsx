@@ -520,7 +520,7 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
             <div className="space-y-3 pt-1">
               <div className="flex items-center gap-2 text-xs text-orange-700 bg-orange-500/10 px-3 py-2 rounded-lg">
                 <Icon name="Info" size={13} />
-                Физлица могут продавать только б/у товары. Комиссия сайта — 10% с каждой продажи.
+                Физлица могут продавать только б/у товары. Размещение бесплатно.
               </div>
               <div>
                 <label className={labelCls}>Email</label>

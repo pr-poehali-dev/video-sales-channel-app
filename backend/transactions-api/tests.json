@@ -20,7 +20,7 @@
       "path": "/",
       "body": {"action": "create", "order_id": "test-order-001", "seller_id": "seller-1", "full_amount": 1000, "payment_id": "pay-123", "status": "hold"},
       "expectedStatus": 200,
-      "expectedBody": {"ok": true, "marketplace_fee": 100.0, "seller_amount": 900.0},
+      "expectedBody": {"ok": true, "marketplace_fee": 0.0, "seller_amount": 1000.0},
       "bodyMatcher": "partial"
     },
     {

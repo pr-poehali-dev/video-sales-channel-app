@@ -68,7 +68,7 @@ export default function AdminTransactionsTab() {
 
   const downloadCSV = () => {
     if (!rows.length) return;
-    const headers = ["Дата", "Заказ", "Продавец", "Сумма заказа", "Выплата продавцу", "Комиссия (10%)", "Статус", "Payment ID"];
+    const headers = ["Дата", "Заказ", "Продавец", "Сумма заказа", "Выплата продавцу", "Комиссия", "Статус", "Payment ID"];
     const lines = [
       headers.join(";"),
       ...rows.map(r => [
@@ -124,7 +124,7 @@ export default function AdminTransactionsTab() {
           {[
             { label: "Заказов", value: summary.total_orders.toString(), icon: "ShoppingBag", color: "text-primary" },
             { label: "Оборот", value: fmt(summary.total_turnover), icon: "TrendingUp", color: "text-blue-500" },
-            { label: "Комиссия (доход ИП)", value: fmt(summary.total_fee), icon: "Percent", color: "text-green-600" },
+            { label: "Комиссия", value: fmt(summary.total_fee), icon: "Percent", color: "text-muted-foreground" },
             { label: "Выплачено продавцам", value: fmt(summary.total_seller_payout), icon: "Wallet", color: "text-purple-500" },
           ].map(s => (
             <div key={s.label} className="bg-card border border-border rounded-2xl p-4">
@@ -154,8 +154,8 @@ export default function AdminTransactionsTab() {
                   <th className="text-left px-4 py-3 text-xs text-muted-foreground font-medium">Дата</th>
                   <th className="text-left px-4 py-3 text-xs text-muted-foreground font-medium">Заказ</th>
                   <th className="text-right px-4 py-3 text-xs text-muted-foreground font-medium">Сумма</th>
-                  <th className="text-right px-4 py-3 text-xs text-muted-foreground font-medium text-green-600">Комиссия 10%</th>
-                  <th className="text-right px-4 py-3 text-xs text-muted-foreground font-medium">Продавцу 90%</th>
+                  <th className="text-right px-4 py-3 text-xs text-muted-foreground font-medium">Комиссия</th>
+                  <th className="text-right px-4 py-3 text-xs text-muted-foreground font-medium">Продавцу</th>
                   <th className="text-left px-4 py-3 text-xs text-muted-foreground font-medium">Статус</th>
                 </tr>
               </thead>
@@ -167,7 +167,7 @@ export default function AdminTransactionsTab() {
                       <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">{fmtDate(row.created_at)}</td>
                       <td className="px-4 py-3 font-mono text-xs text-foreground max-w-[120px] truncate">{row.order_id}</td>
                       <td className="px-4 py-3 text-right font-semibold text-foreground">{fmt(row.full_amount)}</td>
-                      <td className="px-4 py-3 text-right font-bold text-green-600">{fmt(row.marketplace_fee)}</td>
+                      <td className="px-4 py-3 text-right text-muted-foreground">{fmt(row.marketplace_fee)}</td>
                       <td className="px-4 py-3 text-right text-muted-foreground">{fmt(row.seller_amount)}</td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${st.color}`}>

@@ -277,23 +277,7 @@ export default function ProductFormModal({
                 </p>
               </div>
             </div>
-            {fPrice && Number(fPrice) > 0 && (() => {
-              const retail = Number(fPrice);
-              const commission = Math.round(retail * 0.1);
-              const payout = retail - commission;
-              return (
-                <div className="flex items-center justify-between bg-orange-500/8 border border-orange-500/20 rounded-lg px-3 py-2">
-                  <div className="flex items-center gap-1.5 text-xs text-orange-700">
-                    <Icon name="Info" size={12} />
-                    <span>Комиссия сайта 10%</span>
-                    <span className="font-semibold">−{commission.toLocaleString("ru")} ₽</span>
-                  </div>
-                  <div className="text-xs font-semibold text-green-600">
-                    Вам: {payout.toLocaleString("ru")} ₽
-                  </div>
-                </div>
-              );
-            })()}
+
           </div>
 
           {/* Описание */}

@@ -159,9 +159,9 @@ def handler(event: dict, context) -> dict:
                 if not order_id:
                     return err("Укажите order_id")
 
-                fee_pct         = 0.10
-                marketplace_fee = round(full_amount * fee_pct, 2)
-                seller_amount   = round(full_amount - marketplace_fee, 2)
+                fee_pct         = 0.0
+                marketplace_fee = 0.0
+                seller_amount   = round(full_amount, 2)
                 hold_date       = datetime.now(timezone.utc).isoformat()
 
                 # upsert — обновляем если уже есть
