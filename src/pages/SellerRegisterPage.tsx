@@ -475,6 +475,18 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
                 <Icon name="Info" size={13} />
                 Для C2C сделок. Нужен паспорт для идентификации по 115-ФЗ
               </div>
+              <Field label="Имя *">
+                <input value={pName} onChange={e => setPName(e.target.value)} className={inputCls} />
+              </Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Город">
+                  <input value={pCity} onChange={e => setPCity(e.target.value)} placeholder="Москва" className={inputCls} />
+                </Field>
+                <div>
+                  <label className={labelCls}>Email</label>
+                  <div className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 text-sm text-muted-foreground truncate">{user.email}</div>
+                </div>
+              </div>
               <Field label="ФИО полностью *">
                 <input value={form.legalName} onChange={e => set("legalName", e.target.value)}
                   placeholder="Иванов Иван Иванович" className={inputCls} />
@@ -505,6 +517,21 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
               <div className="flex items-center gap-2 text-xs text-blue-600 bg-blue-500/10 px-3 py-2 rounded-lg">
                 <Icon name="Info" size={13} />
                 Статус проверяется автоматически через API «Мой налог»
+              </div>
+              <Field label="Имя *">
+                <input value={pName} onChange={e => setPName(e.target.value)} className={inputCls} />
+              </Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Телефон *">
+                  <input value={pPhone} onChange={e => setPPhone(e.target.value)} placeholder="+7 900 000-00-00" className={inputCls} />
+                </Field>
+                <Field label="Город">
+                  <input value={pCity} onChange={e => setPCity(e.target.value)} placeholder="Москва" className={inputCls} />
+                </Field>
+              </div>
+              <div>
+                <label className={labelCls}>Email</label>
+                <div className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 text-sm text-muted-foreground truncate">{user.email}</div>
               </div>
               <Field label="ФИО полностью *">
                 <input value={form.legalName} onChange={e => set("legalName", e.target.value)}
@@ -581,6 +608,21 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
                 <Icon name="Info" size={13} />
                 {lt === "ip" ? "Для ИП — ОГРНИП 15 цифр, ИНН 12 цифр" : "Для ООО — ОГРН 13 цифр, ИНН 10 цифр"}
               </div>
+              <Field label="Имя *">
+                <input value={pName} onChange={e => setPName(e.target.value)} className={inputCls} />
+              </Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Телефон *">
+                  <input value={pPhone} onChange={e => setPPhone(e.target.value)} placeholder="+7 900 000-00-00" className={inputCls} />
+                </Field>
+                <Field label="Город">
+                  <input value={pCity} onChange={e => setPCity(e.target.value)} placeholder="Москва" className={inputCls} />
+                </Field>
+              </div>
+              <div>
+                <label className={labelCls}>Email</label>
+                <div className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 text-sm text-muted-foreground truncate">{user.email}</div>
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <InnField
                   value={form.inn}
@@ -627,32 +669,6 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
               </div>
             </div>
           )}
-        </div>
-
-        {/* ── Личные данные ── */}
-        <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
-          <h2 className="text-sm font-semibold text-foreground">Личные данные</h2>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="col-span-2">
-              <Field label="Имя *">
-                <input value={pName} onChange={e => setPName(e.target.value)} className={inputCls} />
-              </Field>
-            </div>
-            <div>
-              <Field label="Телефон *">
-                <input value={pPhone} onChange={e => setPPhone(e.target.value)} placeholder="+7 900 000-00-00" className={inputCls} />
-              </Field>
-            </div>
-            <div>
-              <Field label="Город">
-                <input value={pCity} onChange={e => setPCity(e.target.value)} placeholder="Москва" className={inputCls} />
-              </Field>
-            </div>
-            <div className="col-span-2">
-              <label className={labelCls}>Email</label>
-              <div className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 text-sm text-muted-foreground">{user.email}</div>
-            </div>
-          </div>
         </div>
 
         {/* ── Магазин ── */}
