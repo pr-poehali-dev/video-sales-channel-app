@@ -175,6 +175,16 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
               <div className="text-[10px] text-muted-foreground">Управление и удаление</div>
             </div>
           </button>
+          <button onClick={() => setPage("admin-users")}
+            className="bg-primary/5 border border-primary/20 rounded-xl p-2.5 text-left hover:border-primary/40 transition-colors flex items-center gap-2.5 col-span-2">
+            <div className="w-8 h-8 rounded-lg bg-primary/15 flex items-center justify-center flex-shrink-0">
+              <Icon name="Users" size={14} className="text-primary" />
+            </div>
+            <div>
+              <div className="font-oswald text-sm font-semibold text-foreground leading-tight">Пользователи</div>
+              <div className="text-[10px] text-muted-foreground">Управление и удаление</div>
+            </div>
+          </button>
         </div>
       )}
 

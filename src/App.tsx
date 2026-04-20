@@ -17,6 +17,7 @@ import AuthPage from "@/pages/AuthPage";
 import AdminPage from "@/pages/AdminPage";
 import AdminProductsPage from "@/pages/AdminProductsPage";
 import AdminStreamsPage from "@/pages/AdminStreamsPage";
+import AdminUsersPage from "@/pages/AdminUsersPage";
 import SellerRegisterPage from "@/pages/SellerRegisterPage";
 import SupportPage from "@/pages/SupportPage";
 import SupportAdminPage from "@/pages/SupportAdminPage";
@@ -33,7 +34,7 @@ const BroadcastPage = lazy(() => import("@/pages/BroadcastPage"));
 export type Page =
   | "home" | "streams" | "catalog" | "profile" | "cart" | "favorites"
   | "dashboard" | "product" | "seller" | "auth" | "broadcast" | "admin" | "seller-register"
-  | "support" | "support-admin" | "order-success" | "admin-products" | "admin-streams"
+  | "support" | "support-admin" | "order-success" | "admin-products" | "admin-streams" | "admin-users"
   | "oferta-seller" | "oferta-buyer";
 
 export interface CartItem {
@@ -132,6 +133,7 @@ function AppInner() {
         {page === "admin" && <AdminPage setPage={navSetPage} />}
         {page === "admin-products" && <AdminProductsPage setPage={navSetPage} />}
         {page === "admin-streams" && <AdminStreamsPage setPage={navSetPage} />}
+        {page === "admin-users" && <AdminUsersPage setPage={navSetPage} />}
         {page === "seller-register" && <SellerRegisterPage setPage={navSetPage} />}
         {page === "support" && <SupportPage setPage={navSetPage} />}
         {page === "support-admin" && <SupportAdminPage setPage={navSetPage} />}
