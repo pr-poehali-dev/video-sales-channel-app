@@ -116,22 +116,7 @@ export default function ProfilePage({ setPage }: ProfilePageProps) {
   return (
     <div className="max-w-xl mx-auto px-4 py-6 animate-fade-in">
 
-      {/* Шапка */}
-      <div className="flex items-center gap-4 mb-4">
-        <div className="w-14 h-14 rounded-full bg-primary/20 text-primary text-xl font-bold flex items-center justify-center font-oswald flex-shrink-0">
-          {user.avatar}
-        </div>
-        <div className="flex-1 min-w-0">
-          <h1 className="font-oswald text-xl font-semibold text-foreground tracking-wide truncate">{user.name}</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">Покупатель · с {user.joinedAt}</p>
-        </div>
-        <button onClick={handleLogout}
-          className="p-2.5 rounded-xl border border-destructive/20 bg-destructive/5 hover:bg-destructive/10 transition-colors" title="Выйти">
-          <Icon name="LogOut" size={15} className="text-destructive" />
-        </button>
-      </div>
-
-      {/* Кабинет продавца или кнопка "Стать продавцом" */}
+      {/* Кабинет продавца или кнопка "Стать продавцом" — ВВЕРХУ */}
       {isSeller ? (
         <button onClick={() => setPage("dashboard")}
           className="w-full flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-xl p-3.5 mb-4 hover:border-primary/40 transition-colors">
@@ -157,6 +142,21 @@ export default function ProfilePage({ setPage }: ProfilePageProps) {
           <Icon name="ChevronRight" size={16} className="text-muted-foreground" />
         </button>
       )}
+
+      {/* Шапка — НИЖЕ */}
+      <div className="flex items-center gap-4 mb-4">
+        <div className="w-14 h-14 rounded-full bg-primary/20 text-primary text-xl font-bold flex items-center justify-center font-oswald flex-shrink-0">
+          {user.avatar}
+        </div>
+        <div className="flex-1 min-w-0">
+          <h1 className="font-oswald text-xl font-semibold text-foreground tracking-wide truncate">{user.name}</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">Покупатель · с {user.joinedAt}</p>
+        </div>
+        <button onClick={handleLogout}
+          className="p-2.5 rounded-xl border border-destructive/20 bg-destructive/5 hover:bg-destructive/10 transition-colors" title="Выйти">
+          <Icon name="LogOut" size={15} className="text-destructive" />
+        </button>
+      </div>
 
       {/* ── МОИ ПОКУПКИ ── */}
       <div className="animate-fade-in">
