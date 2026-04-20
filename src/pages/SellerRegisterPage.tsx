@@ -237,6 +237,8 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
   const [innLoading, setInnLoading] = useState(false);
   const [innResolved, setInnResolved] = useState(false);
   const [innError, setInnError] = useState<string | null>(null);
+  // Показываем поля сразу если данные уже были сохранены ранее
+  const [innFieldsVisible, setInnFieldsVisible] = useState(false);
 
   // Автозаполнение банка по БИК
   const [bikLoading, setBikLoading] = useState(false);
@@ -288,6 +290,7 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
         if (data.error) {
           setInnError(data.error);
           setInnResolved(false);
+          setInnFieldsVisible(true);
         } else {
           setForm(prev => ({
             ...prev,
@@ -296,6 +299,7 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
             legalAddress: data.address || prev.legalAddress,
           }));
           setInnResolved(true);
+          setInnFieldsVisible(true);
         }
       } catch { setInnError("Ошибка запроса к dadata"); }
       finally { setInnLoading(false); }
@@ -365,6 +369,7 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
             agreedOffer: data.agreedOffer || false,
             agreedPd: data.agreedPd || false,
           }));
+          if (data.inn) setInnFieldsVisible(true);
         }
       })
       .catch(() => {})
@@ -599,7 +604,7 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
                 <div className="relative">
                   <input
                     value={form.inn}
-                    onChange={v => { set("inn", v.target.value.replace(/\D/g, "")); setInnResolved(false); setInnError(null); }}
+                    onChange={v => { set("inn", v.target.value.replace(/\D/g, "")); setInnResolved(false); setInnError(null); setInnFieldsVisible(false); }}
                     placeholder={lt === "ip" ? "123456789012" : "1234567890"}
                     maxLength={lt === "ip" ? 12 : 10}
                     className={inputCls + " pr-8 " + (innResolved ? "border-green-500/60" : innCheck.valid && !innCheck.error ? "" : "")}
@@ -612,24 +617,30 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
                 </div>
                 {innLoading && <p className="text-[11px] text-primary mt-1 flex items-center gap-1"><Icon name="Loader" size={10} className="animate-spin" />Ищем в реестре ФНС...</p>}
                 {innResolved && <p className="text-[11px] text-green-600 mt-1 flex items-center gap-1"><Icon name="CheckCircle" size={10} />Данные подтянуты автоматически</p>}
-                {innError && <p className="text-[11px] text-destructive mt-1 flex items-center gap-1"><Icon name="AlertCircle" size={10} />{innError}</p>}
+                {innError && <p className="text-[11px] text-destructive mt-1 flex items-center gap-1"><Icon name="AlertCircle" size={10} />{innError} — заполните вручную</p>}
               </div>
-              <Field label={lt === "ip" ? "ОГРНИП *" : "ОГРН *"}>
-                <input value={form.ogrn} onChange={e => set("ogrn", e.target.value.replace(/\D/g, ""))}
-                  placeholder={lt === "ip" ? "15 цифр" : "13 цифр"}
-                  maxLength={lt === "ip" ? 15 : 13}
-                  className={inputCls + (innResolved && form.ogrn ? " border-green-500/40 bg-green-500/5" : "")} />
-              </Field>
-              <Field label={lt === "ip" ? "Полное наименование (ИП Иванов И.И.) *" : "Полное наименование (ООО «Ромашка») *"}>
-                <input value={form.legalName} onChange={e => set("legalName", e.target.value)}
-                  placeholder={lt === "ip" ? "ИП Иванов Иван Иванович" : 'ООО "Ромашка"'}
-                  className={inputCls + (innResolved && form.legalName ? " border-green-500/40 bg-green-500/5" : "")} />
-              </Field>
-              <Field label="Юридический адрес *">
-                <input value={form.legalAddress} onChange={e => set("legalAddress", e.target.value)}
-                  placeholder="129110, г. Москва, ул. Примерная, д. 1"
-                  className={inputCls + (innResolved && form.legalAddress ? " border-green-500/40 bg-green-500/5" : "")} />
-              </Field>
+
+              {/* ОГРН, название, адрес — скрыты до автозаполнения по ИНН */}
+              {innFieldsVisible && (
+                <div className="space-y-3 animate-fade-in">
+                  <Field label={lt === "ip" ? "ОГРНИП *" : "ОГРН *"}>
+                    <input value={form.ogrn} onChange={e => set("ogrn", e.target.value.replace(/\D/g, ""))}
+                      placeholder={lt === "ip" ? "15 цифр" : "13 цифр"}
+                      maxLength={lt === "ip" ? 15 : 13}
+                      className={inputCls + (innResolved && form.ogrn ? " border-green-500/40 bg-green-500/5" : "")} />
+                  </Field>
+                  <Field label={lt === "ip" ? "Полное наименование (ИП Иванов И.И.) *" : "Полное наименование (ООО «Ромашка») *"}>
+                    <input value={form.legalName} onChange={e => set("legalName", e.target.value)}
+                      placeholder={lt === "ip" ? "ИП Иванов Иван Иванович" : 'ООО "Ромашка"'}
+                      className={inputCls + (innResolved && form.legalName ? " border-green-500/40 bg-green-500/5" : "")} />
+                  </Field>
+                  <Field label="Юридический адрес *">
+                    <input value={form.legalAddress} onChange={e => set("legalAddress", e.target.value)}
+                      placeholder="129110, г. Москва, ул. Примерная, д. 1"
+                      className={inputCls + (innResolved && form.legalAddress ? " border-green-500/40 bg-green-500/5" : "")} />
+                  </Field>
+                </div>
+              )}
 
               {/* Банковские реквизиты */}
               <div className="bg-secondary/60 rounded-xl p-3 space-y-3">
