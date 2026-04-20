@@ -17,6 +17,7 @@ interface CartPageProps {
   removeFromCart: (id: string) => void;
   updateQty: (id: string, qty: number) => void;
   onGoToAuth?: (email?: string) => void;
+  setPage?: (page: string) => void;
 }
 
 interface SelectedDelivery {
@@ -33,7 +34,7 @@ function getItemPrice(item: CartItem, mode: "retail" | "wholesale"): number {
   return Math.round(item.wholesalePrice! * (1 + (item.retailMarkupPct ?? 0) / 100));
 }
 
-export default function CartPage({ cart, removeFromCart, updateQty, onGoToAuth }: CartPageProps) {
+export default function CartPage({ cart, removeFromCart, updateQty, onGoToAuth, setPage }: CartPageProps) {
   const { user, updateUser, register } = useAuth();
   const { mode } = usePriceMode();
 
@@ -167,6 +168,7 @@ export default function CartPage({ cart, removeFromCart, updateQty, onGoToAuth }
   const [buyerEmail, setBuyerEmail] = useState(user?.email || "");
   const [buyerPassword, setBuyerPassword] = useState("");
   const [showBuyerPass, setShowBuyerPass] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [orderDone,  setOrderDone]  = useState(false);
   const [orderId,    setOrderId]    = useState<string | null>(null);
   const [cdekTrack,  setCdekTrack]  = useState<string | null>(null);
@@ -270,6 +272,10 @@ export default function CartPage({ cart, removeFromCart, updateQty, onGoToAuth }
     }
     if (buyerPhone.replace(/\D/g, "").length !== 11) {
       setValidationError("Введите полный номер телефона (11 цифр)");
+      return;
+    }
+    if (!agreedToTerms) {
+      setValidationError("Необходимо принять условия оферты и согласие на обработку данных");
       return;
     }
     if (!user && buyerEmail.trim() && buyerPassword && buyerPassword.length < 6) {
@@ -549,6 +555,29 @@ export default function CartPage({ cart, removeFromCart, updateQty, onGoToAuth }
                 </div>
               </div>
             )}
+          </div>
+
+          {/* Согласие с офертой */}
+          <div className="bg-card border border-border rounded-xl p-4">
+            <button
+              type="button"
+              onClick={() => setAgreedToTerms(!agreedToTerms)}
+              className="flex items-start gap-3 w-full text-left"
+            >
+              <div className={`w-5 h-5 mt-0.5 flex-shrink-0 rounded border-2 flex items-center justify-center transition-colors ${
+                agreedToTerms ? "bg-primary border-primary" : "border-muted-foreground"
+              }`}>
+                {agreedToTerms && <Icon name="Check" size={12} className="text-primary-foreground" />}
+              </div>
+              <span className="text-sm text-foreground leading-relaxed">
+                Я принимаю условия{" "}
+                <button type="button" onClick={e => { e.stopPropagation(); setPage?.("oferta-buyer"); }}
+                  className="text-primary underline underline-offset-2 hover:opacity-80">
+                  Пользовательского соглашения
+                </button>{" "}
+                и даю согласие на обработку персональных данных
+              </span>
+            </button>
           </div>
 
         </div>
