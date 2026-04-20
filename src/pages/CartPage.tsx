@@ -268,6 +268,10 @@ export default function CartPage({ cart, removeFromCart, updateQty, onGoToAuth }
       setValidationError("Введите номер телефона");
       return;
     }
+    if (buyerPhone.replace(/\D/g, "").length !== 11) {
+      setValidationError("Введите полный номер телефона (11 цифр)");
+      return;
+    }
     if (!user && buyerEmail.trim() && buyerPassword && buyerPassword.length < 6) {
       setValidationError("Пароль должен быть не менее 6 символов");
       return;
@@ -493,27 +497,31 @@ export default function CartPage({ cart, removeFromCart, updateQty, onGoToAuth }
                   className="w-full bg-secondary border border-border rounded-xl px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors" />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Телефон *</label>
-                <input
-                  value={buyerPhone}
-                  onChange={e => {
-                    const digits = e.target.value.replace(/\D/g, "");
-                    if (digits.length === 0) { setBuyerPhone(""); return; }
-                    const normalized = digits.startsWith("8") ? "7" + digits.slice(1) : digits.startsWith("7") ? digits : "7" + digits;
-                    const d = normalized.slice(0, 11);
-                    let formatted = "+7";
-                    if (d.length > 1) formatted += " (" + d.slice(1, 4);
-                    if (d.length >= 4) formatted += ") " + d.slice(4, 7);
-                    if (d.length >= 7) formatted += "-" + d.slice(7, 9);
-                    if (d.length >= 9) formatted += "-" + d.slice(9, 11);
-                    setBuyerPhone(formatted);
-                  }}
-                  placeholder="+7 (900) 000-00-00"
-                  inputMode="tel"
-                  className="w-full bg-secondary border border-border rounded-xl px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors" />
-              </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Телефон *</label>
+              <input
+                value={buyerPhone}
+                onChange={e => {
+                  const digits = e.target.value.replace(/\D/g, "");
+                  if (digits.length === 0) { setBuyerPhone(""); return; }
+                  const normalized = digits.startsWith("8") ? "7" + digits.slice(1) : digits.startsWith("7") ? digits : "7" + digits;
+                  const d = normalized.slice(0, 11);
+                  let formatted = "+7";
+                  if (d.length > 1) formatted += " (" + d.slice(1, 4);
+                  if (d.length >= 4) formatted += ") " + d.slice(4, 7);
+                  if (d.length >= 7) formatted += "-" + d.slice(7, 9);
+                  if (d.length >= 9) formatted += "-" + d.slice(9, 11);
+                  setBuyerPhone(formatted);
+                }}
+                placeholder="+7 (900) 000-00-00"
+                inputMode="tel"
+                className={`w-full bg-secondary border rounded-xl px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors ${
+                  buyerPhone && buyerPhone.replace(/\D/g, "").length !== 11 ? "border-destructive/60" : "border-border"
+                }`}
+              />
+              {buyerPhone && buyerPhone.replace(/\D/g, "").length !== 11 && (
+                <p className="text-xs text-destructive mt-1">Введите полный номер телефона</p>
+              )}
             </div>
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Email {!user && <span className="text-muted-foreground/60">(для чека)</span>}</label>
