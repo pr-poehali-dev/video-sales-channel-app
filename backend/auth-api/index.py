@@ -80,6 +80,7 @@ def fmt_user(r: dict) -> dict:
         "shopCityCode": r.get("shop_city_code") or "",
         "shopCityName": r.get("shop_city_name") or "",
         "shopCityGuid": r.get("shop_city_guid") or "",
+        "shopCarriers": [c for c in (r.get("shop_carriers") or "").split(",") if c] or ["СДЭК"],
     }
 
 ADMIN_EMAIL = "admin@yugastore.ru"
@@ -232,6 +233,8 @@ def handler(event: dict, context) -> dict:
             shop_city_code = (body.get("shop_city_code") or "").strip()
             shop_city_name = (body.get("shop_city_name") or "").strip()
             shop_city_guid = (body.get("shop_city_guid") or "").strip()
+            shop_carriers_list = body.get("shop_carriers") or []
+            shop_carriers = ",".join(shop_carriers_list) if isinstance(shop_carriers_list, list) else ""
 
             if not name:
                 return err("Имя не может быть пустым")
@@ -239,7 +242,7 @@ def handler(event: dict, context) -> dict:
             avatar = make_avatar(name)
 
             cur.execute(
-                "UPDATE users SET name='%s', phone='%s', city='%s', avatar='%s', shop_name='%s', shop_city_code='%s', shop_city_name='%s', shop_city_guid='%s' WHERE id='%s'" % (
+                "UPDATE users SET name='%s', phone='%s', city='%s', avatar='%s', shop_name='%s', shop_city_code='%s', shop_city_name='%s', shop_city_guid='%s', shop_carriers='%s' WHERE id='%s'" % (
                     name.replace("'", "''"),
                     phone.replace("'", "''"),
                     city.replace("'", "''"),
@@ -248,6 +251,7 @@ def handler(event: dict, context) -> dict:
                     shop_city_code.replace("'", "''"),
                     shop_city_name.replace("'", "''"),
                     shop_city_guid.replace("'", "''"),
+                    shop_carriers.replace("'", "''"),
                     user_id.replace("'", "''"),
                 )
             )

@@ -128,6 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         shop_city_code: updateData.shopCityCode ?? user.shopCityCode ?? "",
         shop_city_name: updateData.shopCityName ?? user.shopCityName ?? "",
         shop_city_guid: updateData.shopCityGuid ?? user.shopCityGuid ?? "",
+        shop_carriers: updateData.shopCarriers ?? user.shopCarriers ?? ["СДЭК"],
       });
       if (!data.error) {
         saveSession({ ...data.user, savedPvz: updateData.savedPvz !== undefined ? updateData.savedPvz : user.savedPvz });
