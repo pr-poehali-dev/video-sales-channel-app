@@ -166,7 +166,8 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const contactFilled = buyerName.trim() && buyerPhone.trim();
+  const fioValid = buyerName.trim().split(/\s+/).length >= 2;
+  const contactFilled = buyerName.trim() && fioValid && buyerPhone.trim();
 
   // ── Оформление заказа ─────────────────────────────────────────────────────
   const createOrder = async (): Promise<string | null> => {
@@ -249,8 +250,16 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
 
   const handleCheckout = async () => {
     setValidationError(null);
-    if (!contactFilled) {
-      setValidationError(!buyerName.trim() ? "Введите имя получателя" : "Введите номер телефона");
+    if (!buyerName.trim()) {
+      setValidationError("Введите фамилию, имя и отчество получателя");
+      return;
+    }
+    if (!fioValid) {
+      setValidationError("Укажите полностью: Фамилия Имя Отчество");
+      return;
+    }
+    if (!buyerPhone.trim()) {
+      setValidationError("Введите номер телефона");
       return;
     }
     if (deliveryCost === null) {
@@ -442,14 +451,13 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
               <Icon name="User" size={15} className="text-muted-foreground" />
               Контактные данные
             </p>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Фамилия Имя Отчество *</label>
+              <input value={buyerName} onChange={e => setBuyerName(e.target.value)}
+                placeholder="Иванов Иван Иванович"
+                className="w-full bg-secondary border border-border rounded-xl px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors" />
+            </div>
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Имя *</label>
-                <input value={buyerName} onChange={e => setBuyerName(e.target.value)}
-                  onBlur={e => { if (e.target.value.trim().length > 0 && e.target.value.trim().length < 3) setBuyerName(e.target.value.trim() + " (получатель)"); }}
-                  placeholder="Иван Иванов"
-                  className="w-full bg-secondary border border-border rounded-xl px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors" />
-              </div>
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Телефон *</label>
                 <input
