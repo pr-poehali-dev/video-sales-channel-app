@@ -105,6 +105,22 @@
       "expectedStatus": 403,
       "expectedBody": {"error": "forbidden"},
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "get_products_pending returns 200",
+      "method": "GET",
+      "path": "/?action=get_products_pending",
+      "expectedStatus": 200,
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "moderate_product without id returns 400",
+      "method": "POST",
+      "path": "/?action=moderate_product",
+      "body": {},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "id and status (approved|rejected) required"},
+      "bodyMatcher": "partial"
     }
   ]
 }

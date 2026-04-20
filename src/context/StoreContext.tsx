@@ -44,6 +44,8 @@ export interface StoreProduct {
   videoUrl?: string;
   wholesalePrice?: number | null;
   retailMarkupPct?: number;
+  moderationStatus?: "pending" | "approved" | "rejected";
+  moderationComment?: string;
 }
 
 export interface StoreStream {
@@ -115,6 +117,8 @@ interface StoreContextType {
   hasUserReviewed: (productId: string, userId: string) => boolean;
   getSellerReviews: (sellerId: string) => Promise<{ reviews: SellerReview[]; avg: number; count: number }>;
   addSellerReview: (data: Omit<SellerReview, "id" | "createdAt">) => Promise<SellerReview>;
+  moderateProduct: (id: string, status: "approved" | "rejected", comment?: string) => Promise<void>;
+  getPendingProducts: () => Promise<StoreProduct[]>;
 }
 
 const StoreContext = createContext<StoreContextType | null>(null);
@@ -197,6 +201,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const deleteProduct = useCallback(async (id: string) => {
     await api("delete_product", "POST", { id });
     setProducts(prev => prev.filter(p => p.id !== id));
+  }, []);
+
+  const moderateProduct = useCallback(async (id: string, status: "approved" | "rejected", comment = "") => {
+    const updated = await api("moderate_product", "POST", { id, status, comment });
+    setProducts(prev => prev.map(p => p.id === id ? updated : p));
+  }, []);
+
+  const getPendingProducts = useCallback(async (): Promise<StoreProduct[]> => {
+    return api("get_products_pending");
   }, []);
 
   /* ── STREAMS ── */
@@ -297,6 +310,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       getStreamMessages, addChatMessage, banChatUser, unbanChatUser,
       getProductReviews, addReview, hasUserReviewed,
       getSellerReviews, addSellerReview,
+      moderateProduct, getPendingProducts,
     }}>
       {children}
     </StoreContext.Provider>

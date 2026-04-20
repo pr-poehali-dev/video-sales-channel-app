@@ -354,21 +354,24 @@ def handler(event: dict, context) -> dict:
         if action == "get_products":
             seller_id = qs.get("seller_id")
             if seller_id:
+                # Продавец видит все свои товары (включая pending/rejected)
                 cur.execute("""
                     SELECT p.*, COALESCE(NULLIF(u.shop_name,''), p.seller_name) AS effective_seller_name,
-                           COALESCE(NULLIF(u.shop_city_code,''), p.from_city_code) AS effective_from_city_code,
+                           COALESCE(NULLIF(u.shop_city_code,''), p.from_city_code::text) AS effective_from_city_code,
                            COALESCE(NULLIF(u.shop_city_name,''), p.from_city_name) AS effective_from_city_name,
                            COALESCE(NULLIF(u.shop_city_guid,''), '') AS effective_from_city_guid
                     FROM products p LEFT JOIN users u ON u.id = p.seller_id
                     WHERE p.seller_id=%s ORDER BY p.created_at DESC
                 """, (seller_id,))
             else:
+                # Публичный каталог — только одобренные товары
                 cur.execute("""
                     SELECT p.*, COALESCE(NULLIF(u.shop_name,''), p.seller_name) AS effective_seller_name,
-                           COALESCE(NULLIF(u.shop_city_code,''), p.from_city_code) AS effective_from_city_code,
+                           COALESCE(NULLIF(u.shop_city_code,''), p.from_city_code::text) AS effective_from_city_code,
                            COALESCE(NULLIF(u.shop_city_name,''), p.from_city_name) AS effective_from_city_name,
                            COALESCE(NULLIF(u.shop_city_guid,''), '') AS effective_from_city_guid
                     FROM products p LEFT JOIN users u ON u.id = p.seller_id
+                    WHERE p.moderation_status = 'approved'
                     ORDER BY p.created_at DESC
                 """)
             rows = cur.fetchall()
@@ -380,8 +383,8 @@ def handler(event: dict, context) -> dict:
             cur.execute("""
                 INSERT INTO products (id,name,price,category,description,images,seller_id,seller_name,seller_avatar,
                     in_stock,weight_g,length_cm,width_cm,height_cm,cdek_enabled,nalog_enabled,fitting_enabled,
-                    from_city_code,from_city_name,video_url,wholesale_price,retail_markup_pct)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING *
+                    from_city_code,from_city_name,video_url,wholesale_price,retail_markup_pct,moderation_status)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING *
             """, (pid, body["name"], body["price"], body.get("category",""),
                   body.get("description",""), safe_images,
                   body["seller_id"], body["seller_name"], body.get("seller_avatar",""),
@@ -393,9 +396,37 @@ def handler(event: dict, context) -> dict:
                   body.get("from_city_code",0), body.get("from_city_name",""),
                   body.get("video_url",""),
                   body.get("wholesale_price") or None,
-                  body.get("retail_markup_pct", 0)))
+                  body.get("retail_markup_pct", 0),
+                  "pending"))
             conn.commit()
             return ok(_fmt_product(cur.fetchone()), 201)
+
+        if action == "moderate_product":
+            pid = body.get("id")
+            status = body.get("status")  # approved | rejected
+            comment = body.get("comment", "")
+            if not pid or status not in ("approved", "rejected"):
+                return err("id and status (approved|rejected) required")
+            cur.execute(
+                "UPDATE products SET moderation_status=%s, moderation_comment=%s WHERE id=%s RETURNING *",
+                (status, comment, pid)
+            )
+            conn.commit()
+            row = cur.fetchone()
+            return ok(_fmt_product(row)) if row else err("not found", 404)
+
+        if action == "get_products_pending":
+            cur.execute("""
+                SELECT p.*, COALESCE(NULLIF(u.shop_name,''), p.seller_name) AS effective_seller_name,
+                       COALESCE(NULLIF(u.shop_city_code,''), p.from_city_code::text) AS effective_from_city_code,
+                       COALESCE(NULLIF(u.shop_city_name,''), p.from_city_name) AS effective_from_city_name,
+                       COALESCE(NULLIF(u.shop_city_guid,''), '') AS effective_from_city_guid
+                FROM products p LEFT JOIN users u ON u.id = p.seller_id
+                WHERE p.moderation_status = 'pending'
+                ORDER BY p.created_at DESC
+            """)
+            rows = cur.fetchall()
+            return ok([_fmt_product(r) for r in rows])
 
         if action == "update_product":
             pid = body.get("id") or qs.get("id")
@@ -949,6 +980,8 @@ def _fmt_product(r):
         "wholesalePrice":    float(r["wholesale_price"]) if r.get("wholesale_price") is not None else None,
         "retailMarkupPct":   r.get("retail_markup_pct") or 0,
         "createdAt":         r["created_at"].strftime("%d %B %Y") if r["created_at"] else "",
+        "moderationStatus":  r.get("moderation_status") or "approved",
+        "moderationComment": r.get("moderation_comment") or "",
     }
 
 def _fmt_stream(r):
