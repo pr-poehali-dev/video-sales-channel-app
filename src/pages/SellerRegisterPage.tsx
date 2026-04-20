@@ -67,6 +67,76 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
   );
 }
 
+interface BikBlockProps {
+  bik: string;
+  corrAccount: string;
+  bankName: string;
+  bikLoading: boolean;
+  bikResolved: boolean;
+  onBikChange: (v: string) => void;
+  onCorrChange: (v: string) => void;
+  onBankNameChange: (v: string) => void;
+}
+
+function BikBlock({ bik, corrAccount, bankName, bikLoading, bikResolved, onBikChange, onCorrChange, onBankNameChange }: BikBlockProps) {
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-3">
+        {/* БИК */}
+        <div>
+          <label className={labelCls}>БИК банка * (9 цифр)</label>
+          <div className="relative">
+            <input
+              value={bik}
+              onChange={e => onBikChange(e.target.value.replace(/\D/g, ""))}
+              placeholder="044525225"
+              maxLength={9}
+              className={inputCls + " pr-8"}
+            />
+            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+              {bikLoading && <Icon name="Loader" size={14} className="text-muted-foreground animate-spin" />}
+              {!bikLoading && bikResolved && <Icon name="CheckCircle" size={14} className="text-green-500" />}
+            </div>
+          </div>
+        </div>
+        {/* Корр. счёт */}
+        <div>
+          <label className={labelCls}>
+            Корр. счёт
+            {bikResolved && <span className="ml-1 text-green-500 font-medium">· заполнен авто</span>}
+          </label>
+          <input
+            value={corrAccount}
+            onChange={e => onCorrChange(e.target.value.replace(/\D/g, ""))}
+            placeholder="30101810..."
+            maxLength={20}
+            className={inputCls + (bikResolved && corrAccount ? " border-green-500/40 bg-green-500/5" : "")}
+          />
+        </div>
+      </div>
+      {/* Название банка */}
+      <div>
+        <label className={labelCls}>
+          Название банка
+          {bikResolved && <span className="ml-1 text-green-500 font-medium">· определён по БИК</span>}
+        </label>
+        <input
+          value={bankName}
+          onChange={e => onBankNameChange(e.target.value)}
+          placeholder="ПАО «Сбербанк»"
+          className={inputCls + (bikResolved && bankName ? " border-green-500/40 bg-green-500/5" : "")}
+        />
+        {bikResolved && bankName && (
+          <p className="text-[11px] text-green-600 mt-1 flex items-center gap-1">
+            <Icon name="CheckCircle" size={10} />
+            Банк найден автоматически
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 const PRODUCT_CATEGORIES = [
   "Одежда и аксессуары", "Электроника", "Красота и здоровье", "Дом и интерьер",
   "Детские товары", "Спорт и отдых", "Еда и напитки", "Украшения и бижутерия",
@@ -93,6 +163,10 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
   const [cityName, setCityName] = useState(user?.shopCityName || "");
   const [suggestions, setSuggestions] = useState<CdekCity[]>([]);
   const [cityLoading, setCityLoading] = useState(false);
+
+  // Автозаполнение банка по БИК
+  const [bikLoading, setBikLoading] = useState(false);
+  const [bikResolved, setBikResolved] = useState(false);
 
   // Реквизиты
   const [form, setForm] = useState<SellerProfile>({
@@ -128,6 +202,31 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
     }, 400);
     return () => clearTimeout(t);
   }, [cityQuery, cityName]);
+
+  // Автозаполнение по БИК через API ЦБ (dadatabank.ru)
+  useEffect(() => {
+    const bik = form.bik;
+    if (bik.length !== 9) { setBikResolved(false); return; }
+    const t = setTimeout(async () => {
+      setBikLoading(true);
+      try {
+        const r = await fetch(`https://www.bik-info.ru/api.html?type=json&bik=${bik}`);
+        const data = await r.json();
+        if (data && data.name) {
+          setForm(prev => ({
+            ...prev,
+            bankName: data.name || prev.bankName,
+            corrAccount: data.ks || prev.corrAccount,
+          }));
+          setBikResolved(true);
+        } else {
+          setBikResolved(false);
+        }
+      } catch { setBikResolved(false); }
+      finally { setBikLoading(false); }
+    }, 600);
+    return () => clearTimeout(t);
+  }, [form.bik]);
 
   useEffect(() => {
     if (!user) return;
@@ -461,16 +560,16 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
                     <input value={form.bankAccount} onChange={e => set("bankAccount", e.target.value.replace(/\D/g, ""))}
                       placeholder="40802810000000000000" maxLength={20} className={inputCls} />
                   </Field>
-                  <div className="grid grid-cols-2 gap-3">
-                    <Field label="БИК банка *" hint="9 цифр">
-                      <input value={form.bik} onChange={e => set("bik", e.target.value.replace(/\D/g, ""))}
-                        placeholder="044525225" maxLength={9} className={inputCls} />
-                    </Field>
-                    <Field label="Корр. счёт">
-                      <input value={form.corrAccount} onChange={e => set("corrAccount", e.target.value.replace(/\D/g, ""))}
-                        placeholder="30101810..." maxLength={20} className={inputCls} />
-                    </Field>
-                  </div>
+                  <BikBlock
+                    bik={form.bik}
+                    corrAccount={form.corrAccount}
+                    bankName={form.bankName}
+                    bikLoading={bikLoading}
+                    bikResolved={bikResolved}
+                    onBikChange={v => { set("bik", v); setBikResolved(false); }}
+                    onCorrChange={v => set("corrAccount", v)}
+                    onBankNameChange={v => set("bankName", v)}
+                  />
                 </div>
               )}
             </div>
@@ -514,20 +613,16 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
                   <input value={form.bankAccount} onChange={e => set("bankAccount", e.target.value.replace(/\D/g, ""))}
                     placeholder="40702810000000000000" maxLength={20} className={inputCls} />
                 </Field>
-                <div className="grid grid-cols-2 gap-3">
-                  <Field label="БИК банка * (9 цифр)">
-                    <input value={form.bik} onChange={e => set("bik", e.target.value.replace(/\D/g, ""))}
-                      placeholder="044525225" maxLength={9} className={inputCls} />
-                  </Field>
-                  <Field label="Корр. счёт" hint="Подтягивается по БИК">
-                    <input value={form.corrAccount} onChange={e => set("corrAccount", e.target.value.replace(/\D/g, ""))}
-                      placeholder="30101810..." maxLength={20} className={inputCls} />
-                  </Field>
-                </div>
-                <Field label="Название банка">
-                  <input value={form.bankName} onChange={e => set("bankName", e.target.value)}
-                    placeholder="ПАО «Сбербанк»" className={inputCls} />
-                </Field>
+                <BikBlock
+                  bik={form.bik}
+                  corrAccount={form.corrAccount}
+                  bankName={form.bankName}
+                  bikLoading={bikLoading}
+                  bikResolved={bikResolved}
+                  onBikChange={v => { set("bik", v); setBikResolved(false); }}
+                  onCorrChange={v => set("corrAccount", v)}
+                  onBankNameChange={v => set("bankName", v)}
+                />
               </div>
             </div>
           )}
