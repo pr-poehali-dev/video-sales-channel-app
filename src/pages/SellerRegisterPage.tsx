@@ -11,9 +11,10 @@ interface CdekCity { code: string; city: string; region: string; guid?: string; 
 interface CdekPvz { code: string; name: string; address: string; work_time: string; type: string; }
 
 // Налоговый статус продавца
-type LegalType = "self_employed" | "ip" | "ooo";
+type LegalType = "individual" | "self_employed" | "ip" | "ooo";
 
 const LEGAL_LABELS: Record<LegalType, { short: string; long: string; icon: string }> = {
+  individual:     { short: "Физлицо",      long: "Физическое лицо (б/у товары)", icon: "User" },
   self_employed:  { short: "Самозанятый",  long: "Самозанятый (НПД)", icon: "Briefcase" },
   ip:             { short: "ИП",           long: "Индивидуальный предприниматель", icon: "Building" },
   ooo:            { short: "ООО / ЗАО",   long: "Юридическое лицо",  icon: "Building2" },
@@ -468,7 +469,7 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
   const lt = form.legalType;
   const isIpOoo = lt === "ip" || lt === "ooo";
   const isSelf = lt === "self_employed";
-  const isIndividual = false;
+  const isIndividual = lt === "individual";
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 animate-fade-in">
@@ -513,6 +514,38 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
               );
             })}
           </div>
+
+          {/* ── Блок: Физическое лицо ── */}
+          {isIndividual && (
+            <div className="space-y-3 pt-1">
+              <div className="flex items-center gap-2 text-xs text-orange-700 bg-orange-500/10 px-3 py-2 rounded-lg">
+                <Icon name="Info" size={13} />
+                Физлица могут продавать только б/у товары. Комиссия сайта — 10% с каждой продажи.
+              </div>
+              <div>
+                <label className={labelCls}>Email</label>
+                <div className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 text-sm text-muted-foreground truncate">{user.email}</div>
+              </div>
+              <Field label="ФИО полностью *">
+                <input value={form.legalName} onChange={e => set("legalName", e.target.value)}
+                  placeholder="Иванов Иван Иванович" className={inputCls} />
+              </Field>
+              <Field label="Телефон *">
+                <input value={pPhone} onChange={e => setPPhone(e.target.value)} placeholder="+7 900 000-00-00" className={inputCls} />
+              </Field>
+              <InnField
+                value={form.inn}
+                maxLength={12}
+                placeholder="123456789012"
+                label="ИНН (12 цифр) *"
+                onChange={v => set("inn", v)}
+              />
+              <Field label="Номер карты для выплат *" hint="На эту карту будут переводиться деньги за продажи">
+                <input value={form.cardNumber} onChange={e => set("cardNumber", e.target.value.replace(/\D/g, ""))}
+                  placeholder="1234 5678 9012 3456" maxLength={16} className={inputCls} />
+              </Field>
+            </div>
+          )}
 
           {/* ── Блок: Самозанятый ── */}
           {isSelf && (

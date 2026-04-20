@@ -117,7 +117,7 @@ export default function ProfilePage({ setPage }: ProfilePageProps) {
     <div className="max-w-xl mx-auto px-4 py-6 animate-fade-in">
 
       {/* Шапка */}
-      <div className="flex items-center gap-4 mb-6">
+      <div className="flex items-center gap-4 mb-4">
         <div className="w-14 h-14 rounded-full bg-primary/20 text-primary text-xl font-bold flex items-center justify-center font-oswald flex-shrink-0">
           {user.avatar}
         </div>
@@ -131,8 +131,8 @@ export default function ProfilePage({ setPage }: ProfilePageProps) {
         </button>
       </div>
 
-      {/* Кабинет продавца — переход */}
-      {isSeller && (
+      {/* Кабинет продавца или кнопка "Стать продавцом" */}
+      {isSeller ? (
         <button onClick={() => setPage("dashboard")}
           className="w-full flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-xl p-3.5 mb-4 hover:border-primary/40 transition-colors">
           <div className="w-9 h-9 rounded-xl bg-primary/15 flex items-center justify-center flex-shrink-0">
@@ -144,24 +144,22 @@ export default function ProfilePage({ setPage }: ProfilePageProps) {
           </div>
           <Icon name="ChevronRight" size={16} className="text-muted-foreground" />
         </button>
+      ) : (
+        <button onClick={() => setPage("seller-register")}
+          className="w-full flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-xl p-3.5 mb-4 hover:border-primary/40 transition-colors">
+          <div className="w-9 h-9 rounded-xl bg-primary/15 flex items-center justify-center flex-shrink-0">
+            <Icon name="Store" size={16} className="text-primary" />
+          </div>
+          <div className="flex-1 text-left">
+            <p className="text-sm font-semibold text-foreground">Стать продавцом</p>
+            <p className="text-xs text-muted-foreground">Продавай новые и б/у товары в эфире</p>
+          </div>
+          <Icon name="ChevronRight" size={16} className="text-muted-foreground" />
+        </button>
       )}
 
-      {/* Вкладки */}
-      <div className="flex bg-secondary rounded-xl p-1 mb-5">
-        {([["orders", "Мои покупки", "ShoppingBag"], ["account", "Стать продавцом", "Store"]] as const).map(([id, label, icon]) => (
-          <button key={id} onClick={() => setTab(id)}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-sm font-medium rounded-lg transition-all ${
-              tab === id ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-            }`}>
-            <Icon name={icon} size={14} />
-            {label}
-          </button>
-        ))}
-      </div>
-
       {/* ── МОИ ПОКУПКИ ── */}
-      {tab === "orders" && (
-        <div className="animate-fade-in">
+      <div className="animate-fade-in">
           {ordersLoading ? (
             <div className="flex items-center justify-center py-16 text-muted-foreground text-sm gap-2">
               <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
@@ -249,97 +247,7 @@ export default function ProfilePage({ setPage }: ProfilePageProps) {
               })}
             </div>
           )}
-        </div>
-      )}
-
-      {/* ── МОЙ АККАУНТ ── */}
-      {tab === "account" && (
-        <div className="animate-fade-in space-y-4">
-          {saved && (
-            <div className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 text-sm font-medium px-4 py-3 rounded-xl animate-fade-in">
-              <Icon name="CircleCheck" size={15} /> Данные сохранены
-            </div>
-          )}
-          {passSaved && (
-            <div className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 text-sm font-medium px-4 py-3 rounded-xl animate-fade-in">
-              <Icon name="CircleCheck" size={15} /> Пароль изменён
-            </div>
-          )}
-
-          {/* Данные */}
-          <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-foreground">Личные данные</h3>
-              <button onClick={() => { setEditing(!editing); setName(user.name); setPhone(user.phone); setCity(user.city); }}
-                className="p-1.5 rounded-lg border border-border hover:bg-secondary transition-colors">
-                <Icon name={editing ? "X" : "Pencil"} size={14} className="text-muted-foreground" />
-              </button>
-            </div>
-
-            {editing ? (
-              <div className="space-y-3">
-                <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Имя и фамилия</label>
-                  <input value={name} onChange={e => setName(e.target.value)}
-                    className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground outline-none focus:border-primary/50 transition-colors" />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">Телефон</label>
-                    <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+7 900 000-00-00"
-                      className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground outline-none focus:border-primary/50 transition-colors" />
-                  </div>
-                  <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">Город</label>
-                    <input value={city} onChange={e => setCity(e.target.value)} placeholder="Москва"
-                      className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground outline-none focus:border-primary/50 transition-colors" />
-                  </div>
-                </div>
-                <div className="flex gap-3 pt-1">
-                  <button onClick={handleSave}
-                    className="bg-primary text-primary-foreground font-semibold px-5 py-2.5 rounded-xl hover:opacity-90 transition-opacity text-sm">
-                    Сохранить
-                  </button>
-                  <button onClick={() => setEditing(false)} className="text-sm text-muted-foreground hover:text-foreground transition-colors px-3">Отмена</button>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {[
-                  { label: "Email", value: email || user.email, icon: "Mail" },
-                  { label: "Телефон", value: user.phone || "Не указан", icon: "Phone" },
-                  { label: "Город", value: user.city || "Не указан", icon: "MapPin" },
-                ].map(row => (
-                  <div key={row.label} className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
-                      <Icon name={row.icon} size={14} className="text-muted-foreground" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">{row.label}</p>
-                      <p className="text-sm text-foreground">{row.value}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Стать продавцом */}
-          {!isSeller && (
-            <button onClick={() => setPage("seller-register")}
-              className="w-full flex items-center gap-3 bg-card border border-border rounded-2xl p-4 hover:border-primary/30 transition-colors">
-              <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                <Icon name="Store" size={16} className="text-primary" />
-              </div>
-              <div className="flex-1 text-left">
-                <p className="text-sm font-semibold text-foreground">Стать продавцом</p>
-                <p className="text-xs text-muted-foreground">Открой свой магазин и продавай в эфире</p>
-              </div>
-              <Icon name="ChevronRight" size={16} className="text-muted-foreground" />
-            </button>
-          )}
-        </div>
-      )}
+      </div>
     </div>
   );
 }
