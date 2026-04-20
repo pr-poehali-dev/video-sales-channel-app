@@ -5,6 +5,7 @@ import type { Page } from "@/App";
 
 const STORE_API = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c";
 const CDEK_API = "https://functions.poehali.dev/a73e197d-7da4-4945-bd28-4d0de6b02bb7";
+const INN_API = "https://functions.poehali.dev/9326a2b2-0003-49fb-ae73-c8c36b2c03a8";
 
 interface CdekCity { code: string; city: string; region: string; guid?: string; }
 
@@ -232,6 +233,11 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
   const [suggestions, setSuggestions] = useState<CdekCity[]>([]);
   const [cityLoading, setCityLoading] = useState(false);
 
+  // Автозаполнение по ИНН через dadata
+  const [innLoading, setInnLoading] = useState(false);
+  const [innResolved, setInnResolved] = useState(false);
+  const [innError, setInnError] = useState<string | null>(null);
+
   // Автозаполнение банка по БИК
   const [bikLoading, setBikLoading] = useState(false);
   const [bikResolved, setBikResolved] = useState(false);
@@ -257,6 +263,45 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
 
   // Валидация ИНН (реактивно пересчитывается при каждом вводе)
   const innCheck = validateInn(form.inn);
+
+  // Автозаполнение по ИНН через dadata (для ИП и ООО)
+  useEffect(() => {
+    const inn = form.inn;
+    const lt = form.legalType;
+    if (lt === "self_employed") return;
+    const expectedLen = lt === "ip" ? 12 : 10;
+    if (inn.length !== expectedLen || !innCheck.valid) {
+      setInnResolved(false);
+      setInnError(null);
+      return;
+    }
+    const t = setTimeout(async () => {
+      setInnLoading(true);
+      setInnError(null);
+      try {
+        const r = await fetch(INN_API, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ inn }),
+        });
+        const data = await r.json();
+        if (data.error) {
+          setInnError(data.error);
+          setInnResolved(false);
+        } else {
+          setForm(prev => ({
+            ...prev,
+            legalName: data.name_short || data.name_full || prev.legalName,
+            ogrn: data.ogrn || prev.ogrn,
+            legalAddress: data.address || prev.legalAddress,
+          }));
+          setInnResolved(true);
+        }
+      } catch { setInnError("Ошибка запроса к dadata"); }
+      finally { setInnLoading(false); }
+    }, 700);
+    return () => clearTimeout(t);
+  }, [form.inn, form.legalType, innCheck.valid]);
 
   useEffect(() => {
     if (cityQuery.length < 2 || cityQuery === cityName) { setSuggestions([]); return; }
@@ -549,25 +594,41 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
                 <label className={labelCls}>Email</label>
                 <div className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 text-sm text-muted-foreground truncate">{user.email}</div>
               </div>
-              <InnField
-                value={form.inn}
-                maxLength={lt === "ip" ? 12 : 10}
-                placeholder={lt === "ip" ? "123456789012" : "1234567890"}
-                label={lt === "ip" ? "ИНН (12 цифр) *" : "ИНН (10 цифр) *"}
-                onChange={v => set("inn", v)}
-              />
+              <div>
+                <label className={labelCls}>{lt === "ip" ? "ИНН (12 цифр) *" : "ИНН (10 цифр) *"}</label>
+                <div className="relative">
+                  <input
+                    value={form.inn}
+                    onChange={v => { set("inn", v.target.value.replace(/\D/g, "")); setInnResolved(false); setInnError(null); }}
+                    placeholder={lt === "ip" ? "123456789012" : "1234567890"}
+                    maxLength={lt === "ip" ? 12 : 10}
+                    className={inputCls + " pr-8 " + (innResolved ? "border-green-500/60" : innCheck.valid && !innCheck.error ? "" : "")}
+                  />
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                    {innLoading && <Icon name="Loader" size={14} className="text-primary animate-spin" />}
+                    {!innLoading && innResolved && <Icon name="CheckCircle" size={14} className="text-green-500" />}
+                    {!innLoading && innError && <Icon name="XCircle" size={14} className="text-destructive" />}
+                  </div>
+                </div>
+                {innLoading && <p className="text-[11px] text-primary mt-1 flex items-center gap-1"><Icon name="Loader" size={10} className="animate-spin" />Ищем в реестре ФНС...</p>}
+                {innResolved && <p className="text-[11px] text-green-600 mt-1 flex items-center gap-1"><Icon name="CheckCircle" size={10} />Данные подтянуты автоматически</p>}
+                {innError && <p className="text-[11px] text-destructive mt-1 flex items-center gap-1"><Icon name="AlertCircle" size={10} />{innError}</p>}
+              </div>
               <Field label={lt === "ip" ? "ОГРНИП *" : "ОГРН *"}>
                 <input value={form.ogrn} onChange={e => set("ogrn", e.target.value.replace(/\D/g, ""))}
                   placeholder={lt === "ip" ? "15 цифр" : "13 цифр"}
-                  maxLength={lt === "ip" ? 15 : 13} className={inputCls} />
+                  maxLength={lt === "ip" ? 15 : 13}
+                  className={inputCls + (innResolved && form.ogrn ? " border-green-500/40 bg-green-500/5" : "")} />
               </Field>
               <Field label={lt === "ip" ? "Полное наименование (ИП Иванов И.И.) *" : "Полное наименование (ООО «Ромашка») *"}>
                 <input value={form.legalName} onChange={e => set("legalName", e.target.value)}
-                  placeholder={lt === "ip" ? "ИП Иванов Иван Иванович" : 'ООО "Ромашка"'} className={inputCls} />
+                  placeholder={lt === "ip" ? "ИП Иванов Иван Иванович" : 'ООО "Ромашка"'}
+                  className={inputCls + (innResolved && form.legalName ? " border-green-500/40 bg-green-500/5" : "")} />
               </Field>
               <Field label="Юридический адрес *">
                 <input value={form.legalAddress} onChange={e => set("legalAddress", e.target.value)}
-                  placeholder="129110, г. Москва, ул. Примерная, д. 1" className={inputCls} />
+                  placeholder="129110, г. Москва, ул. Примерная, д. 1"
+                  className={inputCls + (innResolved && form.legalAddress ? " border-green-500/40 bg-green-500/5" : "")} />
               </Field>
 
               {/* Банковские реквизиты */}
