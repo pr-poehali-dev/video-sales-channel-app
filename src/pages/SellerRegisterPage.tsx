@@ -471,42 +471,12 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
           {/* ── Блок: Физлицо ── */}
           {isIndividual && (
             <div className="space-y-3 pt-1">
-              <div className="flex items-center gap-2 text-xs text-amber-600 bg-amber-500/10 px-3 py-2 rounded-lg">
+              <div className="flex items-center gap-2 text-xs text-blue-600 bg-blue-500/10 px-3 py-2 rounded-lg">
                 <Icon name="Info" size={13} />
-                Для C2C сделок. Нужен паспорт для идентификации по 115-ФЗ
-              </div>
-              <Field label="Имя *">
-                <input value={pName} onChange={e => setPName(e.target.value)} className={inputCls} />
-              </Field>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Город">
-                  <input value={pCity} onChange={e => setPCity(e.target.value)} placeholder="Москва" className={inputCls} />
-                </Field>
-                <div>
-                  <label className={labelCls}>Email</label>
-                  <div className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 text-sm text-muted-foreground truncate">{user.email}</div>
-                </div>
-              </div>
-              <Field label="ФИО полностью *">
-                <input value={form.legalName} onChange={e => set("legalName", e.target.value)}
-                  placeholder="Иванов Иван Иванович" className={inputCls} />
-              </Field>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Серия паспорта">
-                  <input value={form.passportSeries} onChange={e => set("passportSeries", e.target.value.replace(/\D/g, ""))}
-                    placeholder="0000" maxLength={4} className={inputCls} />
-                </Field>
-                <Field label="Номер паспорта">
-                  <input value={form.passportNumber} onChange={e => set("passportNumber", e.target.value.replace(/\D/g, ""))}
-                    placeholder="000000" maxLength={6} className={inputCls} />
-                </Field>
+                Остальные данные (имя, адрес) заполняются при оформлении заказа и сохраняются автоматически
               </div>
               <Field label="Телефон, привязанный к карте *">
                 <input value={pPhone} onChange={e => setPPhone(e.target.value)} placeholder="+7 900 000-00-00" className={inputCls} />
-              </Field>
-              <Field label="Номер карты для выплат *">
-                <input value={form.cardNumber} onChange={e => set("cardNumber", e.target.value.replace(/\D/g, ""))}
-                  placeholder="1234 5678 9012 3456" maxLength={16} className={inputCls} />
               </Field>
             </div>
           )}
