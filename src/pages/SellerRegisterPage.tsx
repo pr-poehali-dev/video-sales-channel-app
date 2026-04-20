@@ -237,7 +237,7 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
   const [cityName, setCityName] = useState(user?.shopCityName || "");
   const [suggestions, setSuggestions] = useState<CdekCity[]>([]);
   const [cityLoading, setCityLoading] = useState(false);
-  const [carriers, setCarriers] = useState<string[]>(user?.shopCarriers || []);
+  const [carriers, setCarriers] = useState<string[]>(user?.shopCarriers?.length ? user.shopCarriers : ["СДЭК"]);
 
   // Автозаполнение по ИНН через dadata
   const [innLoading, setInnLoading] = useState(false);
@@ -585,21 +585,30 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
                 <p className="text-[11px] text-muted-foreground mb-2">Выберите ТК, через которые отправляете заказы</p>
                 <div className="grid grid-cols-2 gap-2">
                   {([
-                    ["СДЭК", "Truck"],
-                    ["ПЭК", "Package"],
-                    ["Почта России", "Mail"],
-                    ["Деловые линии", "Container"],
-                  ] as const).map(([name, icon]) => {
+                    ["СДЭК", "Truck", true],
+                    ["ПЭК", "Package", false],
+                    ["Почта России", "Mail", false],
+                    ["Деловые линии", "Container", false],
+                  ] as const).map(([name, icon, available]) => {
                     const active = carriers.includes(name);
+                    if (!available) return (
+                      <div key={name} className="flex items-center gap-2 p-3 rounded-xl border border-border bg-secondary/40 opacity-50 cursor-not-allowed relative">
+                        <Icon name={icon} size={14} className="flex-shrink-0 text-muted-foreground" />
+                        <div className="min-w-0">
+                          <span className="text-xs font-medium leading-tight text-muted-foreground">{name}</span>
+                          <p className="text-[10px] text-muted-foreground/70 leading-tight">Скоро</p>
+                        </div>
+                      </div>
+                    );
                     return (
                       <button key={name} type="button"
                         onClick={() => setCarriers(prev => active ? prev.filter(c => c !== name) : [...prev, name])}
                         className={`flex items-center gap-2 p-3 rounded-xl border text-left transition-all ${
-                          active ? "border-primary bg-primary/10 text-primary" : "border-border bg-secondary text-muted-foreground hover:border-primary/30"
+                          active ? "border-green-500/50 bg-green-500/10 text-green-700" : "border-border bg-secondary text-muted-foreground hover:border-primary/30"
                         }`}>
                         <Icon name={icon} size={14} className="flex-shrink-0" />
                         <span className="text-xs font-medium leading-tight">{name}</span>
-                        {active && <Icon name="Check" size={12} className="ml-auto flex-shrink-0" />}
+                        {active && <Icon name="Check" size={12} className="ml-auto flex-shrink-0 text-green-600" />}
                       </button>
                     );
                   })}
@@ -831,21 +840,30 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
             <p className="text-[11px] text-muted-foreground mb-2">Выберите ТК, через которые отправляете заказы</p>
             <div className="grid grid-cols-2 gap-2">
               {([
-                ["СДЭК", "Truck"],
-                ["ПЭК", "Package"],
-                ["Почта России", "Mail"],
-                ["Деловые линии", "Container"],
-              ] as const).map(([name, icon]) => {
+                ["СДЭК", "Truck", true],
+                ["ПЭК", "Package", false],
+                ["Почта России", "Mail", false],
+                ["Деловые линии", "Container", false],
+              ] as const).map(([name, icon, available]) => {
                 const active = carriers.includes(name);
+                if (!available) return (
+                  <div key={name} className="flex items-center gap-2 p-3 rounded-xl border border-border bg-secondary/40 opacity-50 cursor-not-allowed">
+                    <Icon name={icon} size={14} className="flex-shrink-0 text-muted-foreground" />
+                    <div className="min-w-0">
+                      <span className="text-xs font-medium leading-tight text-muted-foreground">{name}</span>
+                      <p className="text-[10px] text-muted-foreground/70 leading-tight">Скоро</p>
+                    </div>
+                  </div>
+                );
                 return (
                   <button key={name} type="button"
                     onClick={() => setCarriers(prev => active ? prev.filter(c => c !== name) : [...prev, name])}
                     className={`flex items-center gap-2 p-3 rounded-xl border text-left transition-all ${
-                      active ? "border-primary bg-primary/10 text-primary" : "border-border bg-secondary text-muted-foreground hover:border-primary/30"
+                      active ? "border-green-500/50 bg-green-500/10 text-green-700" : "border-border bg-secondary text-muted-foreground hover:border-primary/30"
                     }`}>
                     <Icon name={icon} size={14} className="flex-shrink-0" />
                     <span className="text-xs font-medium leading-tight">{name}</span>
-                    {active && <Icon name="Check" size={12} className="ml-auto flex-shrink-0" />}
+                    {active && <Icon name="Check" size={12} className="ml-auto flex-shrink-0 text-green-600" />}
                   </button>
                 );
               })}
