@@ -215,9 +215,14 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
         else if (cdekData.cdek_uuid) setCdekTrack(cdekData.cdek_uuid);
       } catch (e) { console.error("[CDEK create_order error]", e); }
 
-      // Сохраняем телефон в профиль, если его ещё нет
-      if (user && !user.phone && buyerPhone.trim()) {
-        updateUser({ phone: buyerPhone.trim() }).catch(() => {});
+      // Автосохраняем имя и телефон в профиль после заказа
+      if (user) {
+        const updates: Record<string, string> = {};
+        if (buyerPhone.trim()) updates.phone = buyerPhone.trim();
+        if (buyerName.trim() && !user.name) updates.name = buyerName.trim();
+        if (Object.keys(updates).length > 0) {
+          updateUser(updates).catch(() => {});
+        }
       }
 
       return oid;
