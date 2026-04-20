@@ -169,39 +169,42 @@ function BikBlock({ bik, corrAccount, bankName, bikLoading, bikResolved, onBikCh
           </div>
         </div>
       </div>
-      {/* Корр. счёт */}
-      <div>
-        <label className={labelCls}>
-          Корр. счёт
-          {bikResolved && <span className="ml-1 text-green-500 font-medium">· заполнен авто</span>}
-        </label>
-        <input
-          value={corrAccount}
-          onChange={e => onCorrChange(e.target.value.replace(/\D/g, ""))}
-          placeholder="30101810..."
-          maxLength={20}
-          className={inputCls + (bikResolved && corrAccount ? " border-green-500/40 bg-green-500/5" : "")}
-        />
-      </div>
-      {/* Название банка */}
-      <div>
-        <label className={labelCls}>
-          Название банка
-          {bikResolved && <span className="ml-1 text-green-500 font-medium">· определён по БИК</span>}
-        </label>
-        <input
-          value={bankName}
-          onChange={e => onBankNameChange(e.target.value)}
-          placeholder="ПАО «Сбербанк»"
-          className={inputCls + (bikResolved && bankName ? " border-green-500/40 bg-green-500/5" : "")}
-        />
-        {bikResolved && bankName && (
-          <p className="text-[11px] text-green-600 mt-1 flex items-center gap-1">
-            <Icon name="CheckCircle" size={10} />
-            Банк найден автоматически
-          </p>
-        )}
-      </div>
+      {/* Корр. счёт и название банка — появляются после автозаполнения по БИК */}
+      {bikResolved && (
+        <div className="space-y-3 animate-fade-in">
+          <div>
+            <label className={labelCls}>
+              Корр. счёт
+              <span className="ml-1 text-green-500 font-medium">· заполнен авто</span>
+            </label>
+            <input
+              value={corrAccount}
+              onChange={e => onCorrChange(e.target.value.replace(/\D/g, ""))}
+              placeholder="30101810..."
+              maxLength={20}
+              className={inputCls + (corrAccount ? " border-green-500/40 bg-green-500/5" : "")}
+            />
+          </div>
+          <div>
+            <label className={labelCls}>
+              Название банка
+              <span className="ml-1 text-green-500 font-medium">· определён по БИК</span>
+            </label>
+            <input
+              value={bankName}
+              onChange={e => onBankNameChange(e.target.value)}
+              placeholder="ПАО «Сбербанк»"
+              className={inputCls + (bankName ? " border-green-500/40 bg-green-500/5" : "")}
+            />
+            {bankName && (
+              <p className="text-[11px] text-green-600 mt-1 flex items-center gap-1">
+                <Icon name="CheckCircle" size={10} />
+                Банк найден автоматически
+              </p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
