@@ -34,7 +34,7 @@ function getItemPrice(item: CartItem, mode: "retail" | "wholesale"): number {
 }
 
 export default function CartPage({ cart, removeFromCart, updateQty, onGoToAuth }: CartPageProps) {
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, register } = useAuth();
   const { mode } = usePriceMode();
 
   // ── Выбор товаров ─────────────────────────────────────────────────────────
@@ -165,6 +165,8 @@ export default function CartPage({ cart, removeFromCart, updateQty, onGoToAuth }
     return fmt;
   });
   const [buyerEmail, setBuyerEmail] = useState(user?.email || "");
+  const [buyerPassword, setBuyerPassword] = useState("");
+  const [showBuyerPass, setShowBuyerPass] = useState(false);
   const [orderDone,  setOrderDone]  = useState(false);
   const [orderId,    setOrderId]    = useState<string | null>(null);
   const [cdekTrack,  setCdekTrack]  = useState<string | null>(null);
@@ -266,12 +268,28 @@ export default function CartPage({ cart, removeFromCart, updateQty, onGoToAuth }
       setValidationError("Введите номер телефона");
       return;
     }
+    if (!user && buyerEmail.trim() && buyerPassword && buyerPassword.length < 6) {
+      setValidationError("Пароль должен быть не менее 6 символов");
+      return;
+    }
     if (deliveryCost === null) {
       setValidationError("Выберите город и способ доставки");
       return;
     }
     const oid = await createOrder();
     if (!oid) return;
+
+    // Авторегистрация если не залогинен и ввёл email + пароль
+    if (!user && buyerEmail.trim() && buyerPassword.length >= 6) {
+      await register({
+        name: buyerName || buyerFirstName,
+        email: buyerEmail.trim(),
+        phone: buyerPhone.trim(),
+        password: buyerPassword,
+        role: "user",
+        city: "",
+      });
+    }
 
     // Получаем seller_account первого продавца для Мультирасчётов
     const sellerIds = [...new Set(selectedCart.map(c => c.sellerId).filter(Boolean))];
@@ -498,11 +516,31 @@ export default function CartPage({ cart, removeFromCart, updateQty, onGoToAuth }
               </div>
             </div>
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Email</label>
+              <label className="text-xs text-muted-foreground mb-1 block">Email {!user && <span className="text-muted-foreground/60">(для чека)</span>}</label>
               <input value={buyerEmail} onChange={e => setBuyerEmail(e.target.value)}
                 placeholder="you@example.com"
                 className="w-full bg-secondary border border-border rounded-xl px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors" />
             </div>
+            {!user && buyerEmail.trim() && (
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">
+                  Пароль <span className="text-muted-foreground/60">(для входа в личный кабинет)</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type={showBuyerPass ? "text" : "password"}
+                    value={buyerPassword}
+                    onChange={e => setBuyerPassword(e.target.value)}
+                    placeholder="Минимум 6 символов"
+                    className="w-full bg-secondary border border-border rounded-xl px-3 py-2 pr-9 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors"
+                  />
+                  <button type="button" onClick={() => setShowBuyerPass(!showBuyerPass)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
+                    <Icon name={showBuyerPass ? "EyeOff" : "Eye"} size={14} />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
         </div>
