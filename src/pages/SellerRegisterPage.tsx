@@ -441,86 +441,6 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
 
       <div className="space-y-4">
 
-        {/* ── Личные данные ── */}
-        <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
-          <h2 className="text-sm font-semibold text-foreground">Личные данные</h2>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="col-span-2">
-              <Field label="Имя *">
-                <input value={pName} onChange={e => setPName(e.target.value)} className={inputCls} />
-              </Field>
-            </div>
-            <div>
-              <Field label="Телефон *">
-                <input value={pPhone} onChange={e => setPPhone(e.target.value)} placeholder="+7 900 000-00-00" className={inputCls} />
-              </Field>
-            </div>
-            <div>
-              <Field label="Город">
-                <input value={pCity} onChange={e => setPCity(e.target.value)} placeholder="Москва" className={inputCls} />
-              </Field>
-            </div>
-            <div className="col-span-2">
-              <label className={labelCls}>Email</label>
-              <div className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 text-sm text-muted-foreground">{user.email}</div>
-            </div>
-          </div>
-        </div>
-
-        {/* ── Магазин ── */}
-        <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
-          <h2 className="text-sm font-semibold text-foreground">Магазин</h2>
-          <Field label="Название магазина" hint="Отображается покупателям в корзине">
-            <input value={shopName} onChange={e => setShopName(e.target.value)}
-              placeholder="Например: Украшения Марины" className={inputCls} />
-          </Field>
-
-          {/* Категория товаров */}
-          <Field label="Категория товаров" hint="Используется для настройки ставок и комиссий">
-            <select
-              value={form.productCategory}
-              onChange={e => set("productCategory", e.target.value)}
-              className={inputCls + " cursor-pointer"}>
-              <option value="">— Выберите категорию —</option>
-              {PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </Field>
-
-          {/* Город СДЭК */}
-          <div className="relative">
-            <label className={labelCls}>Город отправки (для СДЭК)</label>
-            {cityCode && cityQuery === cityName ? (
-              <div className="flex items-center gap-3 bg-secondary border border-border rounded-xl px-4 py-2.5">
-                <Icon name="MapPin" size={14} className="text-primary flex-shrink-0" />
-                <span className="text-sm text-foreground flex-1">{cityName}</span>
-                <button onClick={() => { setCityCode(""); setCityQuery(""); setCityName(""); setCityGuid(""); }}>
-                  <Icon name="X" size={14} className="text-muted-foreground" />
-                </button>
-              </div>
-            ) : (
-              <div className="relative">
-                <Icon name="MapPin" size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <input value={cityQuery}
-                  onChange={e => { setCityQuery(e.target.value); setCityCode(""); setCityName(""); }}
-                  placeholder="Начните вводить город..."
-                  className={inputCls + " pl-9 pr-9"} />
-                {cityLoading && <Icon name="Loader" size={14} className="absolute right-3 top-3 text-muted-foreground animate-spin" />}
-              </div>
-            )}
-            {suggestions.length > 0 && (
-              <div className="absolute z-20 top-full left-0 right-0 bg-card border border-border rounded-xl shadow-xl mt-1 overflow-hidden">
-                {suggestions.map(c => (
-                  <button key={c.code} type="button" onMouseDown={() => selectCity(c)}
-                    className="w-full text-left px-4 py-2.5 text-sm hover:bg-secondary transition-colors border-b border-border/50 last:border-0">
-                    <span className="font-medium text-foreground">{c.city}</span>
-                    {c.region && <span className="text-muted-foreground text-xs ml-1.5">{c.region}</span>}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
         {/* ── Налоговый статус ── */}
         <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
           <div>
@@ -707,6 +627,86 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
               </div>
             </div>
           )}
+        </div>
+
+        {/* ── Личные данные ── */}
+        <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+          <h2 className="text-sm font-semibold text-foreground">Личные данные</h2>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2">
+              <Field label="Имя *">
+                <input value={pName} onChange={e => setPName(e.target.value)} className={inputCls} />
+              </Field>
+            </div>
+            <div>
+              <Field label="Телефон *">
+                <input value={pPhone} onChange={e => setPPhone(e.target.value)} placeholder="+7 900 000-00-00" className={inputCls} />
+              </Field>
+            </div>
+            <div>
+              <Field label="Город">
+                <input value={pCity} onChange={e => setPCity(e.target.value)} placeholder="Москва" className={inputCls} />
+              </Field>
+            </div>
+            <div className="col-span-2">
+              <label className={labelCls}>Email</label>
+              <div className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 text-sm text-muted-foreground">{user.email}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Магазин ── */}
+        <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+          <h2 className="text-sm font-semibold text-foreground">Магазин</h2>
+          <Field label="Название магазина" hint="Отображается покупателям в корзине">
+            <input value={shopName} onChange={e => setShopName(e.target.value)}
+              placeholder="Например: Украшения Марины" className={inputCls} />
+          </Field>
+
+          {/* Категория товаров */}
+          <Field label="Категория товаров" hint="Используется для настройки ставок и комиссий">
+            <select
+              value={form.productCategory}
+              onChange={e => set("productCategory", e.target.value)}
+              className={inputCls + " cursor-pointer"}>
+              <option value="">— Выберите категорию —</option>
+              {PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </Field>
+
+          {/* Город СДЭК */}
+          <div className="relative">
+            <label className={labelCls}>Город отправки (для СДЭК)</label>
+            {cityCode && cityQuery === cityName ? (
+              <div className="flex items-center gap-3 bg-secondary border border-border rounded-xl px-4 py-2.5">
+                <Icon name="MapPin" size={14} className="text-primary flex-shrink-0" />
+                <span className="text-sm text-foreground flex-1">{cityName}</span>
+                <button onClick={() => { setCityCode(""); setCityQuery(""); setCityName(""); setCityGuid(""); }}>
+                  <Icon name="X" size={14} className="text-muted-foreground" />
+                </button>
+              </div>
+            ) : (
+              <div className="relative">
+                <Icon name="MapPin" size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <input value={cityQuery}
+                  onChange={e => { setCityQuery(e.target.value); setCityCode(""); setCityName(""); }}
+                  placeholder="Начните вводить город..."
+                  className={inputCls + " pl-9 pr-9"} />
+                {cityLoading && <Icon name="Loader" size={14} className="absolute right-3 top-3 text-muted-foreground animate-spin" />}
+              </div>
+            )}
+            {suggestions.length > 0 && (
+              <div className="absolute z-20 top-full left-0 right-0 bg-card border border-border rounded-xl shadow-xl mt-1 overflow-hidden">
+                {suggestions.map(c => (
+                  <button key={c.code} type="button" onMouseDown={() => selectCity(c)}
+                    className="w-full text-left px-4 py-2.5 text-sm hover:bg-secondary transition-colors border-b border-border/50 last:border-0">
+                    <span className="font-medium text-foreground">{c.city}</span>
+                    {c.region && <span className="text-muted-foreground text-xs ml-1.5">{c.region}</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* ── Документы ── */}
