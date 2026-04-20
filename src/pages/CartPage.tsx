@@ -331,7 +331,7 @@ export default function CartPage({ cart, removeFromCart, updateQty, onGoToAuth }
   };
 
   // ── Guard screens ─────────────────────────────────────────────────────────
-  if (orderDone) return <CartOrderDone orderId={orderId} cdekTrack={cdekTrack} buyerEmail={buyerEmail} isLoggedIn={!!user} onGoToAuth={onGoToAuth} />;
+  if (orderDone) return <CartOrderDone orderId={orderId} cdekTrack={cdekTrack} />;
 
   if (cart.length === 0) {
     return (
