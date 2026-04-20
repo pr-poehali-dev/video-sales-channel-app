@@ -488,32 +488,25 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
                 <Icon name="Info" size={13} />
                 Статус проверяется автоматически через API «Мой налог»
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Телефон *">
-                  <input value={pPhone} onChange={e => setPPhone(e.target.value)} placeholder="+7 900 000-00-00" className={inputCls} />
-                </Field>
-                <div>
-                  <label className={labelCls}>Email</label>
-                  <div className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 text-sm text-muted-foreground truncate">{user.email}</div>
-                </div>
+              <div>
+                <label className={labelCls}>Email</label>
+                <div className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 text-sm text-muted-foreground truncate">{user.email}</div>
               </div>
               <Field label="ФИО полностью *">
                 <input value={form.legalName} onChange={e => set("legalName", e.target.value)}
                   placeholder="Иванов Иван Иванович" className={inputCls} />
               </Field>
-              <div className="grid grid-cols-2 gap-3">
-                <InnField
-                  value={form.inn}
-                  maxLength={12}
-                  placeholder="123456789012"
-                  label="ИНН * (12 цифр)"
-                  onChange={v => set("inn", v)}
-                />
-                <Field label="Телефон в «Мой налог» *">
-                  <input value={form.phoneForTax} onChange={e => set("phoneForTax", e.target.value)}
-                    placeholder="+7 900 000-00-00" className={inputCls} />
-                </Field>
-              </div>
+              <InnField
+                value={form.inn}
+                maxLength={12}
+                placeholder="123456789012"
+                label="ИНН * (12 цифр)"
+                onChange={v => set("inn", v)}
+              />
+              <Field label="Телефон в «Мой налог» *">
+                <input value={form.phoneForTax} onChange={e => set("phoneForTax", e.target.value)}
+                  placeholder="+7 900 000-00-00" className={inputCls} />
+              </Field>
 
               {/* Способ выплат */}
               <div>
@@ -572,14 +565,12 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
                 <Icon name="Info" size={13} />
                 {lt === "ip" ? "Для ИП — ОГРНИП 15 цифр, ИНН 12 цифр" : "Для ООО — ОГРН 13 цифр, ИНН 10 цифр"}
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Телефон *">
-                  <input value={pPhone} onChange={e => setPPhone(e.target.value)} placeholder="+7 900 000-00-00" className={inputCls} />
-                </Field>
-                <div>
-                  <label className={labelCls}>Email</label>
-                  <div className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 text-sm text-muted-foreground truncate">{user.email}</div>
-                </div>
+              <Field label="Телефон *">
+                <input value={pPhone} onChange={e => setPPhone(e.target.value)} placeholder="+7 900 000-00-00" className={inputCls} />
+              </Field>
+              <div>
+                <label className={labelCls}>Email</label>
+                <div className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 text-sm text-muted-foreground truncate">{user.email}</div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <InnField
