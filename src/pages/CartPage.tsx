@@ -145,7 +145,11 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
   const sellerIdForDelivery = cart[0]?.sellerId ?? "";
 
   // ── Контакты и оплата ─────────────────────────────────────────────────────
-  const [buyerName,  setBuyerName]  = useState(user?.name  || "");
+  const savedParts = (user?.name || "").trim().split(/\s+/);
+  const [buyerLastName,  setBuyerLastName]  = useState(savedParts[0] || "");
+  const [buyerFirstName, setBuyerFirstName] = useState(savedParts[1] || "");
+  const [buyerPatronymic, setBuyerPatronymic] = useState(savedParts.slice(2).join(" ") || "");
+  const buyerName = [buyerLastName, buyerFirstName, buyerPatronymic].filter(Boolean).join(" ");
   const [buyerPhone, setBuyerPhone] = useState(() => {
     const raw = user?.phone || "";
     const digits = raw.replace(/\D/g, "");
@@ -166,8 +170,7 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const fioValid = buyerName.trim().split(/\s+/).length >= 2;
-  const contactFilled = buyerName.trim() && fioValid && buyerPhone.trim();
+  const contactFilled = buyerLastName.trim() && buyerFirstName.trim() && buyerPhone.trim();
 
   // ── Оформление заказа ─────────────────────────────────────────────────────
   const createOrder = async (): Promise<string | null> => {
@@ -250,12 +253,12 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
 
   const handleCheckout = async () => {
     setValidationError(null);
-    if (!buyerName.trim()) {
-      setValidationError("Введите фамилию, имя и отчество получателя");
+    if (!buyerLastName.trim()) {
+      setValidationError("Введите фамилию получателя");
       return;
     }
-    if (!fioValid) {
-      setValidationError("Укажите полностью: Фамилия Имя Отчество");
+    if (!buyerFirstName.trim()) {
+      setValidationError("Введите имя получателя");
       return;
     }
     if (!buyerPhone.trim()) {
@@ -452,10 +455,24 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
               Контактные данные
             </p>
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Фамилия Имя Отчество *</label>
-              <input value={buyerName} onChange={e => setBuyerName(e.target.value)}
-                placeholder="Иванов Иван Иванович"
+              <label className="text-xs text-muted-foreground mb-1 block">Фамилия *</label>
+              <input value={buyerLastName} onChange={e => setBuyerLastName(e.target.value)}
+                placeholder="Иванов"
                 className="w-full bg-secondary border border-border rounded-xl px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Имя *</label>
+                <input value={buyerFirstName} onChange={e => setBuyerFirstName(e.target.value)}
+                  placeholder="Иван"
+                  className="w-full bg-secondary border border-border rounded-xl px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors" />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Отчество</label>
+                <input value={buyerPatronymic} onChange={e => setBuyerPatronymic(e.target.value)}
+                  placeholder="Иванович"
+                  className="w-full bg-secondary border border-border rounded-xl px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors" />
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
