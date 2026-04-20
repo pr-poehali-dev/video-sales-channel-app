@@ -35,6 +35,7 @@ export default function DashboardProductsTab({ warehouses, onGoToProfile }: Prop
   const [confirmDelete,  setConfirmDelete]  = useState<string | null>(null);
   const [profileIssues,  setProfileIssues]  = useState<SellerProfileIssue[] | null>(null);
   const [profileExists,  setProfileExists]  = useState(true);
+  const [sellerLegalType, setSellerLegalType] = useState<string>("");
 
   // ── Поля формы ────────────────────────────────────────────────────────────
   const [fName,          setFName]          = useState("");
@@ -196,6 +197,7 @@ export default function DashboardProductsTab({ warehouses, onGoToProfile }: Prop
     }
     setEditId(null);
     resetForm();
+    setSellerLegalType(result.legalType || "");
     if (result.legalType === "individual") setFIsUsed(true);
     if (user?.shopCityCode) {
       setFFromCityCode(user.shopCityCode);
@@ -349,6 +351,7 @@ export default function DashboardProductsTab({ warehouses, onGoToProfile }: Prop
           fNalog={fNalog} setFNalog={setFNalog}
           fFitting={fFitting} setFFitting={setFFitting}
           fIsUsed={fIsUsed} setFIsUsed={setFIsUsed}
+          isIndividual={sellerLegalType === "individual"}
           fError={fError}
           onSave={handleSave}
           onClose={closeForm}

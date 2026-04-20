@@ -49,6 +49,7 @@ interface ProductFormModalProps {
   // Б/у
   fIsUsed: boolean;
   setFIsUsed: (v: boolean) => void;
+  isIndividual?: boolean;
   // Ошибка и действия
   fError: string | null;
   onSave: () => void;
@@ -71,6 +72,7 @@ export default function ProductFormModal({
   fHeightCm, setFHeightCm,
   fImages, setFImages,
   fIsUsed, setFIsUsed,
+  isIndividual,
   fError,
   onSave, onClose,
 }: ProductFormModalProps) {
@@ -219,10 +221,11 @@ export default function ProductFormModal({
           </div>
 
           {/* Б/у */}
-          <button type="button" onClick={() => setFIsUsed(!fIsUsed)}
+          <button type="button" onClick={() => !isIndividual && setFIsUsed(!fIsUsed)}
+            disabled={isIndividual}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition-all text-left ${
               fIsUsed ? "border-orange-500/50 bg-orange-500/8" : "border-border bg-secondary hover:border-border/80"
-            }`}>
+            } ${isIndividual ? "opacity-70 cursor-not-allowed" : ""}`}>
             <div className={`w-5 h-5 rounded flex-shrink-0 border-2 flex items-center justify-center transition-all ${
               fIsUsed ? "bg-orange-500 border-orange-500" : "border-border"
             }`}>
@@ -230,7 +233,9 @@ export default function ProductFormModal({
             </div>
             <div>
               <p className={`text-sm font-medium ${fIsUsed ? "text-orange-700" : "text-foreground"}`}>Товар б/у (бывший в употреблении)</p>
-              <p className="text-[11px] text-muted-foreground">На карточке появится пометка «б/у»</p>
+              <p className="text-[11px] text-muted-foreground">
+                {isIndividual ? "Физлицам разрешено продавать только б/у товары" : "На карточке появится пометка «б/у»"}
+              </p>
             </div>
           </button>
 
