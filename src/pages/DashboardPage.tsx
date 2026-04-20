@@ -149,7 +149,12 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
         </button>
       </div>
 
-      {/* Панель администратора */}
+      {/* ====================================================================
+          !! ADMIN PANEL — НЕ ТРОГАТЬ ПРИ ПРАВКАХ ProfilePage !!
+          Этот блок — кабинет администратора (Товары/Эфиры/Пользователи).
+          Живёт ТОЛЬКО здесь, в DashboardPage. ProfilePage — отдельный файл.
+          Роутинг для admin: NavBar → "dashboard" (не "profile")!
+          ==================================================================== */}
       {user.role === "admin" && (
         <div className="grid grid-cols-2 gap-2 mb-3">
           <button onClick={() => setPage("admin-products")}

@@ -26,6 +26,12 @@ interface ProfilePageProps { setPage: (p: Page) => void; }
 
 type Tab = "orders" | "account";
 
+// ============================================================================
+// !! ВНИМАНИЕ: ProfilePage — это кабинет ПОКУПАТЕЛЯ (заказы + аккаунт) !!
+// Кабинет АДМИНИСТРАТОРА и ПРОДАВЦА живёт в DashboardPage.tsx — НЕ СЮДА!
+// Роутинг: admin → "dashboard", продавец → "dashboard", покупатель → "profile"
+// Не добавляй сюда admin-блоки — они сломаются при редактировании этого файла.
+// ============================================================================
 export default function ProfilePage({ setPage }: ProfilePageProps) {
   const { user, logout, updateUser } = useAuth();
   const [tab, setTab] = useState<Tab>("orders");

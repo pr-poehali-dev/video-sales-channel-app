@@ -80,11 +80,11 @@ export default function NavBar({ page, setPage, cartCount }: NavBarProps) {
               </button>
             )}
 
-            {/* Профиль — десктоп */}
+            {/* Профиль — десктоп. ВАЖНО: admin → "dashboard", остальные → "profile" */}
             <button
-              onClick={() => setPage(user ? "profile" : "auth")}
+              onClick={() => setPage(user?.role === "admin" ? "dashboard" : user ? "profile" : "auth")}
               className={`hidden md:flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                page === "profile" || page === "auth"
+                page === "profile" || page === "auth" || (user?.role === "admin" && page === "dashboard")
                   ? "text-primary bg-primary/10"
                   : "text-muted-foreground hover:text-foreground hover:bg-secondary"
               }`}
