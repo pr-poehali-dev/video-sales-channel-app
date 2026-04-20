@@ -333,6 +333,7 @@ export default function ProfilePage({ setPage }: ProfilePageProps) {
                   <label className="text-xs text-muted-foreground mb-1 block">Текущий пароль</label>
                   <div className="relative">
                     <input type={showOld ? "text" : "password"} value={oldPass} onChange={e => setOldPass(e.target.value)}
+                      autoComplete="new-password"
                       className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 pr-10 text-sm text-foreground outline-none focus:border-primary/50 transition-colors" />
                     <button type="button" onClick={() => setShowOld(!showOld)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"><Icon name={showOld ? "EyeOff" : "Eye"} size={14} /></button>
                   </div>
@@ -342,6 +343,7 @@ export default function ProfilePage({ setPage }: ProfilePageProps) {
                   <div className="relative">
                     <input type={showNew ? "text" : "password"} value={newPass} onChange={e => setNewPass(e.target.value)}
                       placeholder="Минимум 6 символов"
+                      autoComplete="new-password"
                       className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 pr-10 text-sm text-foreground outline-none focus:border-primary/50 transition-colors" />
                     <button type="button" onClick={() => setShowNew(!showNew)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"><Icon name={showNew ? "EyeOff" : "Eye"} size={14} /></button>
                   </div>
