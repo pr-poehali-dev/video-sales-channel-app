@@ -8,6 +8,7 @@ const CDEK_API = "https://functions.poehali.dev/a73e197d-7da4-4945-bd28-4d0de6b0
 const INN_API = "https://functions.poehali.dev/9326a2b2-0003-49fb-ae73-c8c36b2c03a8";
 
 interface CdekCity { code: string; city: string; region: string; guid?: string; }
+interface CdekPvz { code: string; name: string; address: string; work_time: string; type: string; }
 
 // Налоговый статус продавца
 type LegalType = "self_employed" | "ip" | "ooo";

@@ -24,6 +24,8 @@ export interface User {
   shopCityCode?: string;
   shopCityName?: string;
   shopCityGuid?: string;
+  shopPvzCode?: string;
+  shopPvzAddress?: string;
   joinedAt: string;
   isBlocked?: boolean;
 }
