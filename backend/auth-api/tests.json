@@ -17,6 +17,24 @@
       "expectedStatus": 400,
       "expectedBody": {"error": "Неверный email/телефон или пароль"},
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "Request reset unknown email",
+      "method": "POST",
+      "path": "/?action=request_reset",
+      "body": {"email": "unknown@example.com"},
+      "expectedStatus": 200,
+      "expectedBody": {"sent": true},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Confirm reset bad code",
+      "method": "POST",
+      "path": "/?action=confirm_reset",
+      "body": {"email": "unknown@example.com", "code": "000000", "new_password": "newpass123"},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "Неверный или устаревший код"},
+      "bodyMatcher": "partial"
     }
   ]
 }

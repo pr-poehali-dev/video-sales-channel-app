@@ -38,6 +38,8 @@ interface AuthContextType {
   blockUser: (id: string) => Promise<void>;
   unblockUser: (id: string) => Promise<void>;
   deleteUser: (id: string) => Promise<void>;
+  requestReset: (email: string) => Promise<string | null>;
+  confirmReset: (email: string, code: string, newPassword: string) => Promise<string | null>;
 }
 
 export interface RegisterData {
@@ -152,8 +154,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await authFetch("delete_user", { user_id: id });
   };
 
+  const requestReset = async (email: string): Promise<string | null> => {
+    const data = await authFetch("request_reset", { email });
+    if (data.error) return data.error;
+    return null;
+  };
+
+  const confirmReset = async (email: string, code: string, newPassword: string): Promise<string | null> => {
+    const data = await authFetch("confirm_reset", { email, code, new_password: newPassword });
+    if (data.error) return data.error;
+    saveSession(data.user);
+    return null;
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, updateUser, getAllUsers, blockUser, unblockUser, deleteUser }}>
+    <AuthContext.Provider value={{ user, login, register, logout, updateUser, getAllUsers, blockUser, unblockUser, deleteUser, requestReset, confirmReset }}>
       {children}
     </AuthContext.Provider>
   );

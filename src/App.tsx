@@ -60,6 +60,7 @@ function AppInner() {
   };
 
   const [page, setPage] = useState<Page>(initialPage);
+  const [authInitialEmail, setAuthInitialEmail] = useState("");
 
   useEffect(() => {
     if ("serviceWorker" in navigator) {
@@ -120,9 +121,9 @@ function AppInner() {
         {page === "streams" && <StreamsPage setPage={navSetPage} addToCart={addToCart} onProductClick={openProduct} />}
         {page === "catalog" && <CatalogPage addToCart={addToCart} updateQty={updateQty} cart={cart} onProductClick={openProduct} />}
         {page === "profile" && <ProfilePage setPage={navSetPage} />}
-        {page === "cart" && <CartPage cart={cart} removeFromCart={removeFromCart} updateQty={updateQty} />}
+        {page === "cart" && <CartPage cart={cart} removeFromCart={removeFromCart} updateQty={updateQty} onGoToAuth={(email) => { setAuthInitialEmail(email || ""); navSetPage("auth"); }} />}
         {page === "dashboard" && <DashboardPage setPage={navSetPage} />}
-        {page === "auth" && <AuthPage onSuccess={() => navSetPage("home")} />}
+        {page === "auth" && <AuthPage onSuccess={() => navSetPage("home")} initialEmail={authInitialEmail} />}
         {broadcastMounted && (
           <div className={page !== "broadcast" ? "hidden" : ""}>
             <Suspense fallback={null}>

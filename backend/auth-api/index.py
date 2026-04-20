@@ -6,9 +6,30 @@ import json
 import os
 import hashlib
 import secrets
+import smtplib
 import psycopg2
+from email.mime.text import MIMEText
 from psycopg2.extras import RealDictCursor
-from datetime import datetime
+from datetime import datetime, timedelta
+
+NOTIFY_EMAIL = "denittt@yandex.ru"
+
+def send_reset_email(to_email: str, code: str):
+    password = os.environ.get("NOTIFY_EMAIL_PASSWORD", "")
+    if not password:
+        return
+    msg = MIMEText(
+        f"Код для сброса пароля на стримБАЗАР.РФ:\n\n"
+        f"  {code}\n\n"
+        f"Код действителен 15 минут. Если вы не запрашивали сброс — проигнорируйте это письмо.",
+        "plain", "utf-8"
+    )
+    msg["Subject"] = "Сброс пароля — стримБАЗАР.РФ"
+    msg["From"] = NOTIFY_EMAIL
+    msg["To"] = to_email
+    with smtplib.SMTP_SSL("smtp.yandex.ru", 465, timeout=10) as smtp:
+        smtp.login(NOTIFY_EMAIL, password)
+        smtp.sendmail(NOTIFY_EMAIL, to_email, msg.as_string())
 
 CORS = {
     "Access-Control-Allow-Origin": "*",
@@ -271,6 +292,60 @@ def handler(event: dict, context) -> dict:
             cur.execute("DELETE FROM users WHERE id='%s'" % user_id.replace("'", "''"))
             conn.commit()
             return ok({"success": True})
+
+        # ─── REQUEST PASSWORD RESET ───
+        if action == "request_reset":
+            email = (body.get("email") or "").strip().lower()
+            if not email or "@" not in email:
+                return err("Введите корректный email")
+
+            cur.execute("SELECT id FROM users WHERE email='%s'" % email.replace("'", "''"))
+            if not cur.fetchone():
+                return ok({"sent": True})
+
+            code = str(secrets.randbelow(900000) + 100000)
+            cur.execute(
+                "INSERT INTO password_reset_codes (email, code) VALUES ('%s', '%s')" % (
+                    email.replace("'", "''"), code
+                )
+            )
+            conn.commit()
+
+            try:
+                send_reset_email(email, code)
+            except Exception as e:
+                print(f"[reset] email failed: {e}")
+                return err("Не удалось отправить письмо. Попробуйте позже.")
+
+            return ok({"sent": True})
+
+        # ─── CONFIRM PASSWORD RESET ───
+        if action == "confirm_reset":
+            email = (body.get("email") or "").strip().lower()
+            code = (body.get("code") or "").strip()
+            new_password = body.get("new_password") or ""
+
+            if not email or not code or len(new_password) < 6:
+                return err("Заполните все поля. Пароль минимум 6 символов.")
+
+            expires = datetime.now() - timedelta(minutes=15)
+            cur.execute(
+                "SELECT id FROM password_reset_codes WHERE email='%s' AND code='%s' AND used=FALSE AND created_at > '%s' ORDER BY created_at DESC LIMIT 1" % (
+                    email.replace("'", "''"), code.replace("'", "''"), expires.strftime("%Y-%m-%d %H:%M:%S")
+                )
+            )
+            row = cur.fetchone()
+            if not row:
+                return err("Неверный или устаревший код")
+
+            pwd_hash = hash_password(new_password)
+            cur.execute("UPDATE users SET password_hash='%s' WHERE email='%s'" % (pwd_hash, email.replace("'", "''")))
+            cur.execute("UPDATE password_reset_codes SET used=TRUE WHERE id=%d" % row["id"])
+            conn.commit()
+
+            cur.execute("SELECT * FROM users WHERE email='%s'" % email.replace("'", "''"))
+            user = cur.fetchone()
+            return ok({"user": fmt_user(user)})
 
         return err("Неизвестное действие", 404)
 

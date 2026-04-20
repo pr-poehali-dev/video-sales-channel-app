@@ -16,6 +16,7 @@ interface CartPageProps {
   cart: CartItem[];
   removeFromCart: (id: string) => void;
   updateQty: (id: string, qty: number) => void;
+  onGoToAuth?: (email?: string) => void;
 }
 
 interface SelectedDelivery {
@@ -32,7 +33,7 @@ function getItemPrice(item: CartItem, mode: "retail" | "wholesale"): number {
   return Math.round(item.wholesalePrice! * (1 + (item.retailMarkupPct ?? 0) / 100));
 }
 
-export default function CartPage({ cart, removeFromCart, updateQty }: CartPageProps) {
+export default function CartPage({ cart, removeFromCart, updateQty, onGoToAuth }: CartPageProps) {
   const { user, updateUser } = useAuth();
   const { mode } = usePriceMode();
 
@@ -312,7 +313,7 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
   };
 
   // ── Guard screens ─────────────────────────────────────────────────────────
-  if (orderDone) return <CartOrderDone orderId={orderId} cdekTrack={cdekTrack} />;
+  if (orderDone) return <CartOrderDone orderId={orderId} cdekTrack={cdekTrack} buyerEmail={buyerEmail} isLoggedIn={!!user} onGoToAuth={onGoToAuth} />;
 
   if (cart.length === 0) {
     return (
