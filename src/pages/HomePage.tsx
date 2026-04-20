@@ -128,6 +128,12 @@ export default function HomePage({ setPage, addToCart, updateQty, cart = [], onP
           {/* Затемнение */}
           <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-black/20" />
 
+          {/* Баннер: сайт в разработке */}
+          <div className="absolute top-4 right-4 z-20 flex items-center gap-2 bg-yellow-500/90 backdrop-blur-sm text-yellow-950 text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
+            <Icon name="Construction" size={13} />
+            Сайт в разработке
+          </div>
+
           {/* Контент */}
           <div className="relative z-10 px-8 py-12 md:px-14 max-w-2xl">
             <div className="inline-flex items-center gap-2 bg-primary/90 text-white text-xs font-semibold px-3 py-1.5 rounded-full mb-5">
@@ -262,6 +268,22 @@ export default function HomePage({ setPage, addToCart, updateQty, cart = [], onP
             <Icon name="Zap" size={16} />
             {user ? "В кабинет" : "Начать продавать"}
           </button>
+        </div>
+      </section>
+
+      {/* Скоро открытие */}
+      <section>
+        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-8 text-center space-y-3">
+          <div className="inline-flex items-center gap-2 bg-yellow-500/20 text-yellow-600 text-xs font-semibold px-3 py-1.5 rounded-full">
+            <Icon name="Clock" size={13} />
+            Скоро открытие
+          </div>
+          <h3 className="font-oswald text-2xl font-semibold text-foreground tracking-wide">
+            Сайт находится в стадии разработки
+          </h3>
+          <p className="text-muted-foreground text-sm max-w-md mx-auto leading-relaxed">
+            Мы активно работаем над запуском. Уже скоро здесь заработает полноценный маркетплейс прямых трансляций. Следите за обновлениями!
+          </p>
         </div>
       </section>
 
