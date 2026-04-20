@@ -67,18 +67,45 @@ def handler(event: dict, context) -> dict:
     status = result.get("Status", "")
     paid = status == "CONFIRMED"
 
-    # При успешной оплате — обновляем статус заказа
+    # При успешной оплате — обновляем статус заказа и транзакцию
     if paid and order_id:
         try:
             conn = get_conn()
             cur = conn.cursor()
+
+            # Обновляем заказ
             cur.execute(
-                "UPDATE orders SET status = 'paid' WHERE id = %s AND status = 'new'",
+                "UPDATE \"t_p63706319_video_sales_channel_\".orders SET status = 'paid' WHERE id = %s AND status = 'new'",
                 (order_id,),
             )
+
+            # Переводим транзакцию в статус paid
+            cur.execute("""
+                UPDATE "t_p63706319_video_sales_channel_".transactions
+                SET status = 'paid', paid_at = now(), updated_at = now()
+                WHERE order_id = %s AND status = 'hold'
+            """, (order_id,))
+
+            if cur.rowcount == 0:
+                # Транзакции не было — создаём (резервный путь)
+                tbank_amount = result.get("Amount", 0)
+                full_amount = float(tbank_amount) / 100 if tbank_amount else 0
+                marketplace_fee = round(full_amount * 0.10, 2)
+                seller_amount = round(full_amount - marketplace_fee, 2)
+                cur.execute("""
+                    INSERT INTO "t_p63706319_video_sales_channel_".transactions
+                        (order_id, full_amount, seller_amount, marketplace_fee,
+                         hold_date, status, payment_id, paid_at, updated_at)
+                    VALUES (%s, %s, %s, %s, now(), 'paid', %s, now(), now())
+                    ON CONFLICT (order_id) DO UPDATE SET
+                        status = 'paid', paid_at = now(), updated_at = now()
+                """, (order_id, full_amount, seller_amount, marketplace_fee, payment_id))
+                print(f"[PAYMENT-STATUS] Transaction created on confirm: order={order_id} fee={marketplace_fee}")
+
             conn.commit()
             cur.close()
             conn.close()
+            print(f"[PAYMENT-STATUS] Transaction paid: order={order_id}")
         except Exception as e:
             print(f"[PAYMENT-STATUS] DB update error: {e}")
 

@@ -142,15 +142,47 @@ def handler(event: dict, context) -> dict:
     payment_id = result.get("PaymentId")
     payment_url = result.get("PaymentURL")
 
-    # Сохраняем payment_id в заказ
+    # Сохраняем payment_id в заказ + создаём транзакцию в таблице финансов
     if order_id and payment_id:
         try:
             conn = get_conn()
             cur = conn.cursor()
+
+            # Обновляем заказ
             cur.execute(
-                "UPDATE orders SET tbank_payment_id = %s, payment_method = 'tbank' WHERE id = %s",
+                "UPDATE \"t_p63706319_video_sales_channel_\".orders SET tbank_payment_id = %s, payment_method = 'tbank' WHERE id = %s",
                 (str(payment_id), order_id),
             )
+
+            # Получаем данные заказа для транзакции
+            cur.execute(
+                "SELECT seller_id, order_total FROM \"t_p63706319_video_sales_channel_\".orders WHERE id = %s",
+                (order_id,),
+            )
+            order_row = cur.fetchone()
+            if order_row:
+                seller_id_val = order_row[0] or ""
+                full_amount = float(order_row[1] or amount)
+                marketplace_fee = round(full_amount * 0.10, 2)
+                seller_amount = round(full_amount - marketplace_fee, 2)
+
+                # Upsert транзакции — фиксируем холд
+                cur.execute("""
+                    INSERT INTO "t_p63706319_video_sales_channel_".transactions
+                        (order_id, seller_id, full_amount, seller_amount, marketplace_fee,
+                         hold_date, status, payment_id, updated_at)
+                    VALUES (%s, %s, %s, %s, %s, now(), 'hold', %s, now())
+                    ON CONFLICT (order_id) DO UPDATE SET
+                        payment_id      = EXCLUDED.payment_id,
+                        full_amount     = EXCLUDED.full_amount,
+                        seller_amount   = EXCLUDED.seller_amount,
+                        marketplace_fee = EXCLUDED.marketplace_fee,
+                        hold_date       = now(),
+                        status          = 'hold',
+                        updated_at      = now()
+                """, (order_id, seller_id_val, full_amount, seller_amount, marketplace_fee, str(payment_id)))
+                print(f"[PAYMENT] Transaction logged: order={order_id} fee={marketplace_fee} seller={seller_amount}")
+
             conn.commit()
             cur.close()
             conn.close()
