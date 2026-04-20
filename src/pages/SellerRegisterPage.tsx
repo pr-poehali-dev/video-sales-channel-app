@@ -488,20 +488,14 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
                 <Icon name="Info" size={13} />
                 Статус проверяется автоматически через API «Мой налог»
               </div>
-              <Field label="Имя *">
-                <input value={pName} onChange={e => setPName(e.target.value)} className={inputCls} />
-              </Field>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Телефон *">
                   <input value={pPhone} onChange={e => setPPhone(e.target.value)} placeholder="+7 900 000-00-00" className={inputCls} />
                 </Field>
-                <Field label="Город">
-                  <input value={pCity} onChange={e => setPCity(e.target.value)} placeholder="Москва" className={inputCls} />
-                </Field>
-              </div>
-              <div>
-                <label className={labelCls}>Email</label>
-                <div className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 text-sm text-muted-foreground truncate">{user.email}</div>
+                <div>
+                  <label className={labelCls}>Email</label>
+                  <div className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 text-sm text-muted-foreground truncate">{user.email}</div>
+                </div>
               </div>
               <Field label="ФИО полностью *">
                 <input value={form.legalName} onChange={e => set("legalName", e.target.value)}
@@ -578,20 +572,14 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
                 <Icon name="Info" size={13} />
                 {lt === "ip" ? "Для ИП — ОГРНИП 15 цифр, ИНН 12 цифр" : "Для ООО — ОГРН 13 цифр, ИНН 10 цифр"}
               </div>
-              <Field label="Имя *">
-                <input value={pName} onChange={e => setPName(e.target.value)} className={inputCls} />
-              </Field>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Телефон *">
                   <input value={pPhone} onChange={e => setPPhone(e.target.value)} placeholder="+7 900 000-00-00" className={inputCls} />
                 </Field>
-                <Field label="Город">
-                  <input value={pCity} onChange={e => setPCity(e.target.value)} placeholder="Москва" className={inputCls} />
-                </Field>
-              </div>
-              <div>
-                <label className={labelCls}>Email</label>
-                <div className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 text-sm text-muted-foreground truncate">{user.email}</div>
+                <div>
+                  <label className={labelCls}>Email</label>
+                  <div className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 text-sm text-muted-foreground truncate">{user.email}</div>
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <InnField
