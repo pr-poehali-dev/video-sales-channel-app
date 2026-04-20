@@ -16,8 +16,6 @@ import DashboardProductsTab from "./dashboard/DashboardProductsTab";
 import DashboardStreamsTab from "./dashboard/DashboardStreamsTab";
 import DashboardWarehousesTab, { type Warehouse } from "./dashboard/DashboardWarehousesTab";
 import DashboardOrdersTab from "./dashboard/DashboardOrdersTab";
-import MyPurchasesTab from "./dashboard/MyPurchasesTab";
-import SellerRegisterPage from "./SellerRegisterPage";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 
 interface DashboardPageProps {
@@ -35,7 +33,7 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
   const myStreams = user ? getSellerStreams(user.id) : [];
   const activeStream = myStreams.find(s => s.isLive) ?? null;
 
-  const [tab, setTab] = useState<string | null>("Профиль");
+  const [tab, setTab] = useState<string | null>("Товары");
   const [stoppingStream, setStoppingStream] = useState<string | null>(null);
 
   // Профиль
@@ -101,30 +99,29 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
     <div className="max-w-5xl mx-auto px-4 py-6 animate-fade-in">
 
 
-      {/* ── Грид карточек ────────────────────────────────────────── */}
-      <div className="grid grid-cols-3 gap-2 mb-3">
-        {/* Данные и реквизиты */}
-        <button onClick={() => setTab(tab === "Профиль" ? null : "Профиль")}
-          className={`bg-card border rounded-xl p-2.5 text-left hover:border-primary/40 transition-colors ${tab === "Профиль" ? "border-primary/50 ring-1 ring-primary/20" : "border-border"}`}>
-          <div className="w-6 h-6 rounded-full bg-primary/20 text-primary text-[9px] font-bold flex items-center justify-center font-oswald mb-1.5">{user.avatar}</div>
-          <div className="font-oswald text-sm font-semibold text-foreground truncate leading-tight">{user.name}</div>
-          <div className="text-[10px] text-muted-foreground mt-0.5 leading-tight">Данные и реквизиты</div>
+      {/* Шапка продавца */}
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-12 h-12 rounded-full bg-primary/20 text-primary text-lg font-bold flex items-center justify-center font-oswald flex-shrink-0">
+          {user.avatar}
+        </div>
+        <div className="flex-1 min-w-0">
+          <h1 className="font-oswald text-lg font-semibold text-foreground tracking-wide truncate">{user.shopName || user.name}</h1>
+          <p className="text-xs text-muted-foreground">Кабинет продавца</p>
+        </div>
+        <button onClick={() => setPage("profile")} title="Кабинет покупателя"
+          className="p-2 rounded-xl border border-border hover:bg-secondary transition-colors">
+          <Icon name="User" size={15} className="text-muted-foreground" />
         </button>
+      </div>
 
+      {/* ── Грид карточек ────────────────────────────────────────── */}
+      <div className="grid grid-cols-4 gap-2 mb-3">
         {/* Товары */}
         <button onClick={() => setTab(tab === "Товары" ? null : "Товары")}
           className={`bg-card border rounded-xl p-2.5 text-left hover:border-primary/40 transition-colors ${tab === "Товары" ? "border-primary/50 ring-1 ring-primary/20" : "border-border"}`}>
           <Icon name="Package" size={13} className="text-muted-foreground mb-1.5" />
           <div className="font-oswald text-sm font-semibold text-foreground">{products.length}</div>
-          <div className="text-[10px] text-muted-foreground mt-0.5">Товаров</div>
-        </button>
-
-        {/* Эфиры */}
-        <button onClick={() => setTab(tab === "Мои эфиры" ? null : "Мои эфиры")}
-          className={`bg-card border rounded-xl p-2.5 text-left hover:border-primary/40 transition-colors ${tab === "Мои эфиры" ? "border-primary/50 ring-1 ring-primary/20" : "border-border"}`}>
-          <Icon name="Radio" size={13} className="text-muted-foreground mb-1.5" />
-          <div className="font-oswald text-sm font-semibold text-foreground">{myStreams.length}</div>
-          <div className="text-[10px] text-muted-foreground mt-0.5">Эфиров</div>
+          <div className="text-[10px] text-muted-foreground mt-0.5">Товары</div>
         </button>
 
         {/* Заказы от покупателей */}
@@ -132,15 +129,15 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
           className={`bg-card border rounded-xl p-2.5 text-left hover:border-primary/40 transition-colors ${tab === "Заказы от покупателей" ? "border-primary/50 ring-1 ring-primary/20" : "border-border"}`}>
           <Icon name="ShoppingBag" size={13} className="text-muted-foreground mb-1.5" />
           <div className="font-oswald text-sm font-semibold text-foreground">0</div>
-          <div className="text-[10px] text-muted-foreground mt-0.5 leading-tight">Заказы от покуп.</div>
+          <div className="text-[10px] text-muted-foreground mt-0.5 leading-tight">Заказы</div>
         </button>
 
-        {/* Мои покупки */}
-        <button onClick={() => setTab(tab === "Мои покупки" ? null : "Мои покупки")}
-          className={`bg-card border rounded-xl p-2.5 text-left hover:border-primary/40 transition-colors ${tab === "Мои покупки" ? "border-primary/50 ring-1 ring-primary/20" : "border-border"}`}>
-          <Icon name="Wallet" size={13} className="text-muted-foreground mb-1.5" />
-          <div className="font-oswald text-sm font-semibold text-foreground">Мои</div>
-          <div className="text-[10px] text-muted-foreground mt-0.5">Покупки</div>
+        {/* Эфиры */}
+        <button onClick={() => setTab(tab === "Мои эфиры" ? null : "Мои эфиры")}
+          className={`bg-card border rounded-xl p-2.5 text-left hover:border-primary/40 transition-colors ${tab === "Мои эфиры" ? "border-primary/50 ring-1 ring-primary/20" : "border-border"}`}>
+          <Icon name="Radio" size={13} className="text-muted-foreground mb-1.5" />
+          <div className="font-oswald text-sm font-semibold text-foreground">{myStreams.length}</div>
+          <div className="text-[10px] text-muted-foreground mt-0.5">Эфиры</div>
         </button>
 
         {/* Статистика */}
@@ -224,14 +221,8 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
       </div>
 
       {/* ── Контент раздела ──────────────────────────────────────── */}
-      {tab === "Профиль" && (
-        <div className="animate-fade-in">
-          <SellerRegisterPage embedded setPage={(p) => { if (p === "dashboard") setTab(null); else setPage(p); }} />
-        </div>
-      )}
       {tab === "Заказы от покупателей" && <DashboardOrdersTab />}
-      {tab === "Мои покупки" && <MyPurchasesTab />}
-      {tab === "Товары" && <DashboardProductsTab warehouses={warehouses} onGoToProfile={() => setTab("Профиль")} />}
+      {tab === "Товары" && <DashboardProductsTab warehouses={warehouses} onGoToProfile={() => setPage("seller-register")} />}
       {tab === "Мои эфиры" && <DashboardStreamsTab setPage={setPage} />}
       {tab === "Статистика" && (
         <div className="animate-fade-in text-center py-16">

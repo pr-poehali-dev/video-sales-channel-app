@@ -18,7 +18,7 @@ export default function NavBar({ page, setPage, cartCount }: NavBarProps) {
     { id: "streams", label: "Эфиры", icon: "Radio" },
     { id: "catalog", label: "Каталог", icon: "ShoppingBag" },
     { id: "cart", label: "Корзина", icon: "ShoppingCart" },
-    ...(user && user.role !== "admin" ? [{ id: "dashboard" as Page, label: "Кабинет", icon: "LayoutDashboard" }] : []),
+    ...(user?.shopName ? [{ id: "dashboard" as Page, label: "Продавец", icon: "Store" }] : []),
     ...(user && user.role !== "admin" ? [{ id: "support" as Page, label: "Поддержка", icon: "Headphones" }] : []),
     ...(user?.role === "admin" ? [{ id: "admin" as Page, label: "Админ", icon: "ShieldCheck" }] : []),
     ...(user?.role === "admin" ? [{ id: "support-admin" as Page, label: "Чаты", icon: "MessageSquare" }] : []),
@@ -29,8 +29,8 @@ export default function NavBar({ page, setPage, cartCount }: NavBarProps) {
     { id: "favorites" as Page, label: "Избранное", icon: "Heart" },
     { id: "catalog" as Page, label: "Каталог", icon: "ShoppingBag" },
     { id: "cart" as Page, label: "Корзина", icon: "ShoppingCart" },
-    ...(user && user.role !== "admin" ? [{ id: "support" as Page, label: "Поддержка", icon: "Headphones" }] : []),
-    { id: (user ? "dashboard" : "auth") as Page, label: user ? "Профиль" : "Войти", icon: "User" },
+    ...(user?.shopName ? [{ id: "dashboard" as Page, label: "Продавец", icon: "Store" }] : []),
+    { id: (user ? "profile" : "auth") as Page, label: user ? "Профиль" : "Войти", icon: "User" },
   ];
 
   return (
@@ -122,9 +122,9 @@ export default function NavBar({ page, setPage, cartCount }: NavBarProps) {
         {mobileItems.map(item => {
           const isCart = item.id === "cart";
           const isFav = item.id === "favorites";
-          const isProfile = item.id === "dashboard" || item.id === "auth";
-          const isActive = isProfile
-            ? page === "dashboard" || page === "profile" || page === "auth"
+          const isProfileBtn = item.id === "profile" || item.id === "auth";
+          const isActive = isProfileBtn
+            ? page === "profile" || page === "auth"
             : page === item.id;
 
           return (
@@ -135,7 +135,7 @@ export default function NavBar({ page, setPage, cartCount }: NavBarProps) {
                 isActive ? (isFav ? "text-red-500" : "text-primary") : "text-muted-foreground"
               }`}
             >
-              {isProfile && user && item.id === "dashboard" ? (
+              {isProfileBtn && user && item.id === "profile" ? (
                 <div className={`w-5 h-5 rounded-full bg-primary/20 text-[9px] font-bold flex items-center justify-center ${isActive ? "text-primary" : "text-muted-foreground"}`}>
                   {user.avatar}
                 </div>

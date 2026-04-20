@@ -293,6 +293,28 @@ def handler(event: dict, context) -> dict:
             conn.commit()
             return ok({"success": True})
 
+        # ─── CHANGE PASSWORD (авторизованный пользователь) ───
+        if action == "change_password":
+            email = (body.get("email") or "").strip().lower()
+            old_password = body.get("old_password") or ""
+            new_password = body.get("new_password") or ""
+
+            if not email or not old_password or len(new_password) < 6:
+                return err("Заполните все поля. Новый пароль минимум 6 символов.")
+
+            cur.execute("SELECT * FROM users WHERE email='%s'" % email.replace("'", "''"))
+            user = cur.fetchone()
+            if not user:
+                return err("Пользователь не найден", 404)
+            if user["password_hash"] != hash_password(old_password):
+                return err("Неверный текущий пароль")
+
+            cur.execute("UPDATE users SET password_hash='%s' WHERE email='%s'" % (
+                hash_password(new_password), email.replace("'", "''")
+            ))
+            conn.commit()
+            return ok({"success": True})
+
         # ─── REQUEST PASSWORD RESET ───
         if action == "request_reset":
             email = (body.get("email") or "").strip().lower()
