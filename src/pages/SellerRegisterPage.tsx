@@ -508,6 +508,23 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
         </button>
       )}
 
+      {/* Статус: если уже сохранено — показываем сводку */}
+      {savedLegalType && (
+        <div className="bg-green-500/10 border border-green-500/30 rounded-2xl p-4 mb-4 flex items-start gap-3">
+          <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+            <Icon name="Check" size={15} className="text-white" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-green-700">Данные сохранены</p>
+            <p className="text-xs text-green-600 mt-0.5">
+              Тип: <strong>{LEGAL_LABELS[savedLegalType]?.short}</strong> ·{" "}
+              {savedLegalType === "individual" ? "Продажа б/у товаров" : "Продажа новых товаров оптом и в розницу"}
+            </p>
+          </div>
+          <Icon name="CheckCircle" size={16} className="text-green-500 flex-shrink-0 mt-0.5" />
+        </div>
+      )}
+
       <div className="mb-5">
         <h1 className="font-oswald text-xl font-semibold text-foreground tracking-wide">Данные и реквизиты</h1>
         <p className="text-sm text-muted-foreground mt-0.5">Заполните один раз — сохраните всё кнопкой внизу</p>
@@ -518,8 +535,8 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
         {/* ── Налоговый статус ── */}
         <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
           <div>
-            <h2 className="text-sm font-semibold text-foreground">Налоговый статус</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">Определяет порядок выплат через Т‑Банк (Безопасная сделка)</p>
+            <h2 className="text-sm font-semibold text-foreground">Кто вы?</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">Выберите ваш статус — от этого зависят поля и возможности</p>
           </div>
 
           <div className="grid grid-cols-2 gap-2">
@@ -527,23 +544,33 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
               const info = LEGAL_LABELS[type];
               const isActive = form.legalType === type;
               const isSavedType = savedLegalType === type;
+              const descriptions: Record<LegalType, string> = {
+                individual: "Продажа б/у вещей",
+                self_employed: "Свои товары, НПД",
+                ip: "Бизнес, опт/розница",
+                ooo: "Юр. лицо, опт/розница",
+              };
               return (
                 <button key={type} onClick={() => set("legalType", type)}
-                  className={`flex items-center gap-2 p-3 rounded-xl border text-left transition-all relative ${
-                    isActive
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border bg-secondary text-muted-foreground hover:border-primary/30"
+                  className={`flex flex-col p-3 rounded-xl border text-left transition-all relative ${
+                    isSavedType
+                      ? "border-green-500/60 bg-green-500/8"
+                      : isActive
+                      ? "border-primary bg-primary/10"
+                      : "border-border bg-secondary hover:border-primary/30"
                   }`}>
-                  <Icon name={info.icon} size={14} className="flex-shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <div className="text-xs font-semibold leading-tight break-words">{info.short}</div>
-                    <div className="text-[10px] opacity-70 leading-tight break-words">{info.long}</div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Icon name={info.icon} size={13} className={isSavedType ? "text-green-600" : isActive ? "text-primary" : "text-muted-foreground"} />
+                    <span className={`text-xs font-semibold leading-tight ${isSavedType ? "text-green-700" : isActive ? "text-primary" : "text-foreground"}`}>
+                      {info.short}
+                    </span>
+                    {isSavedType && (
+                      <div className="ml-auto w-4 h-4 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+                        <Icon name="Check" size={9} className="text-white" />
+                      </div>
+                    )}
                   </div>
-                  {isSavedType && (
-                    <div className="absolute top-1.5 right-1.5 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
-                      <Icon name="Check" size={10} className="text-white" />
-                    </div>
-                  )}
+                  <span className="text-[10px] text-muted-foreground leading-tight">{descriptions[type]}</span>
                 </button>
               );
             })}
