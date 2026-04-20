@@ -672,6 +672,7 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
         </div>
 
         {/* ── Магазин ── */}
+        {!isIndividual && (
         <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
           <h2 className="text-sm font-semibold text-foreground">Магазин</h2>
           <Field label="Название магазина" hint="Отображается покупателям в корзине">
@@ -724,8 +725,10 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
             )}
           </div>
         </div>
+        )}
 
         {/* ── Документы ── */}
+        {!isIndividual && (
         <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
           <div>
             <h2 className="text-sm font-semibold text-foreground">Документы</h2>
@@ -742,6 +745,7 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
             <span className="text-[10px] bg-secondary border border-border px-2 py-1 rounded-md text-muted-foreground whitespace-nowrap">Скоро</span>
           </div>
         </div>
+        )}
 
         {/* ── Согласия ── */}
         <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
