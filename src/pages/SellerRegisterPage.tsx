@@ -155,38 +155,36 @@ interface BikBlockProps {
 function BikBlock({ bik, corrAccount, bankName, bikLoading, bikResolved, onBikChange, onCorrChange, onBankNameChange }: BikBlockProps) {
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-3">
-        {/* БИК */}
-        <div>
-          <label className={labelCls}>БИК банка * (9 цифр)</label>
-          <div className="relative">
-            <input
-              value={bik}
-              onChange={e => onBikChange(e.target.value.replace(/\D/g, ""))}
-              placeholder="044525225"
-              maxLength={9}
-              className={inputCls + " pr-8"}
-            />
-            <div className="absolute right-3 top-1/2 -translate-y-1/2">
-              {bikLoading && <Icon name="Loader" size={14} className="text-muted-foreground animate-spin" />}
-              {!bikLoading && bikResolved && <Icon name="CheckCircle" size={14} className="text-green-500" />}
-            </div>
+      {/* БИК */}
+      <div>
+        <label className={labelCls}>БИК банка * (9 цифр)</label>
+        <div className="relative">
+          <input
+            value={bik}
+            onChange={e => onBikChange(e.target.value.replace(/\D/g, ""))}
+            placeholder="044525225"
+            maxLength={9}
+            className={inputCls + " pr-8"}
+          />
+          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+            {bikLoading && <Icon name="Loader" size={14} className="text-muted-foreground animate-spin" />}
+            {!bikLoading && bikResolved && <Icon name="CheckCircle" size={14} className="text-green-500" />}
           </div>
         </div>
-        {/* Корр. счёт */}
-        <div>
-          <label className={labelCls}>
-            Корр. счёт
-            {bikResolved && <span className="ml-1 text-green-500 font-medium">· заполнен авто</span>}
-          </label>
-          <input
-            value={corrAccount}
-            onChange={e => onCorrChange(e.target.value.replace(/\D/g, ""))}
-            placeholder="30101810..."
-            maxLength={20}
-            className={inputCls + (bikResolved && corrAccount ? " border-green-500/40 bg-green-500/5" : "")}
-          />
-        </div>
+      </div>
+      {/* Корр. счёт */}
+      <div>
+        <label className={labelCls}>
+          Корр. счёт
+          {bikResolved && <span className="ml-1 text-green-500 font-medium">· заполнен авто</span>}
+        </label>
+        <input
+          value={corrAccount}
+          onChange={e => onCorrChange(e.target.value.replace(/\D/g, ""))}
+          placeholder="30101810..."
+          maxLength={20}
+          className={inputCls + (bikResolved && corrAccount ? " border-green-500/40 bg-green-500/5" : "")}
+        />
       </div>
       {/* Название банка */}
       <div>
@@ -572,20 +570,18 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
                 <label className={labelCls}>Email</label>
                 <div className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 text-sm text-muted-foreground truncate">{user.email}</div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <InnField
-                  value={form.inn}
-                  maxLength={lt === "ip" ? 12 : 10}
-                  placeholder={lt === "ip" ? "123456789012" : "1234567890"}
-                  label={lt === "ip" ? "ИНН (12 цифр) *" : "ИНН (10 цифр) *"}
-                  onChange={v => set("inn", v)}
-                />
-                <Field label={lt === "ip" ? "ОГРНИП *" : "ОГРН *"}>
-                  <input value={form.ogrn} onChange={e => set("ogrn", e.target.value.replace(/\D/g, ""))}
-                    placeholder={lt === "ip" ? "15 цифр" : "13 цифр"}
-                    maxLength={lt === "ip" ? 15 : 13} className={inputCls} />
-                </Field>
-              </div>
+              <InnField
+                value={form.inn}
+                maxLength={lt === "ip" ? 12 : 10}
+                placeholder={lt === "ip" ? "123456789012" : "1234567890"}
+                label={lt === "ip" ? "ИНН (12 цифр) *" : "ИНН (10 цифр) *"}
+                onChange={v => set("inn", v)}
+              />
+              <Field label={lt === "ip" ? "ОГРНИП *" : "ОГРН *"}>
+                <input value={form.ogrn} onChange={e => set("ogrn", e.target.value.replace(/\D/g, ""))}
+                  placeholder={lt === "ip" ? "15 цифр" : "13 цифр"}
+                  maxLength={lt === "ip" ? 15 : 13} className={inputCls} />
+              </Field>
               <Field label={lt === "ip" ? "Полное наименование (ИП Иванов И.И.) *" : "Полное наименование (ООО «Ромашка») *"}>
                 <input value={form.legalName} onChange={e => set("legalName", e.target.value)}
                   placeholder={lt === "ip" ? "ИП Иванов Иван Иванович" : 'ООО "Ромашка"'} className={inputCls} />
