@@ -115,21 +115,23 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
       </div>
 
       {/* ── Грид карточек ────────────────────────────────────────── */}
-      <div className="grid grid-cols-4 gap-2 mb-3">
+      <div className="grid grid-cols-4 gap-2 mb-2">
+        {/* Данные и реквизиты */}
+        <button onClick={() => setPage("seller-register")}
+          className="bg-card border border-primary/30 rounded-xl p-2.5 text-left hover:border-primary/60 transition-colors col-span-1">
+          <div className="w-6 h-6 rounded-full bg-primary/20 text-primary text-[9px] font-bold flex items-center justify-center mb-1.5 font-oswald">
+            {user.avatar}
+          </div>
+          <div className="font-oswald text-[10px] font-semibold text-foreground leading-tight truncate">{(user.shopName || user.name).slice(0,8)}...</div>
+          <div className="text-[9px] text-muted-foreground mt-0.5 leading-tight">Данные и реквизиты</div>
+        </button>
+
         {/* Товары */}
         <button onClick={() => setTab(tab === "Товары" ? null : "Товары")}
           className={`bg-card border rounded-xl p-2.5 text-left hover:border-primary/40 transition-colors ${tab === "Товары" ? "border-primary/50 ring-1 ring-primary/20" : "border-border"}`}>
           <Icon name="Package" size={13} className="text-muted-foreground mb-1.5" />
           <div className="font-oswald text-sm font-semibold text-foreground">{products.length}</div>
           <div className="text-[10px] text-muted-foreground mt-0.5">Товары</div>
-        </button>
-
-        {/* Заказы от покупателей */}
-        <button onClick={() => setTab(tab === "Заказы от покупателей" ? null : "Заказы от покупателей")}
-          className={`bg-card border rounded-xl p-2.5 text-left hover:border-primary/40 transition-colors ${tab === "Заказы от покупателей" ? "border-primary/50 ring-1 ring-primary/20" : "border-border"}`}>
-          <Icon name="ShoppingBag" size={13} className="text-muted-foreground mb-1.5" />
-          <div className="font-oswald text-sm font-semibold text-foreground">0</div>
-          <div className="text-[10px] text-muted-foreground mt-0.5 leading-tight">Заказы</div>
         </button>
 
         {/* Эфиры */}
@@ -146,6 +148,18 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
           <Icon name="BarChart2" size={13} className="text-muted-foreground mb-1.5" />
           <div className="font-oswald text-sm font-semibold text-foreground">0 ₽</div>
           <div className="text-[10px] text-muted-foreground mt-0.5">Статистика</div>
+        </button>
+      </div>
+
+      {/* Заказы — отдельная строка */}
+      <div className="grid grid-cols-1 gap-2 mb-3">
+        <button onClick={() => setTab(tab === "Заказы от покупателей" ? null : "Заказы от покупателей")}
+          className={`bg-card border rounded-xl p-2.5 text-left hover:border-primary/40 transition-colors flex items-center gap-3 ${tab === "Заказы от покупателей" ? "border-primary/50 ring-1 ring-primary/20" : "border-border"}`}>
+          <Icon name="ShoppingBag" size={16} className="text-muted-foreground" />
+          <div>
+            <div className="font-oswald text-sm font-semibold text-foreground">Заказы от покупателей</div>
+            <div className="text-[10px] text-muted-foreground">Управление и отправка</div>
+          </div>
         </button>
       </div>
 
