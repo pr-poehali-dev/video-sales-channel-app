@@ -119,13 +119,22 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
           <div className="text-[10px] text-muted-foreground mt-0.5">Товаров</div>
         </button>
 
-        {/* Эфиры */}
-        <button onClick={() => setTab(tab === "Мои эфиры" ? null : "Мои эфиры")}
-          className={`bg-card border rounded-xl p-2.5 text-left hover:border-primary/40 transition-colors ${tab === "Мои эфиры" ? "border-primary/50 ring-1 ring-primary/20" : "border-border"}`}>
-          <Icon name="Radio" size={13} className="text-muted-foreground mb-1.5" />
-          <div className="font-oswald text-sm font-semibold text-foreground">{myStreams.length}</div>
-          <div className="text-[10px] text-muted-foreground mt-0.5">Эфиров</div>
-        </button>
+        {/* Эфиры / Управление товарами для admin */}
+        {user.role === "admin" ? (
+          <button onClick={() => setPage("admin-products")}
+            className="bg-card border border-border rounded-xl p-2.5 text-left hover:border-primary/40 transition-colors">
+            <Icon name="ShieldCheck" size={13} className="text-primary mb-1.5" />
+            <div className="font-oswald text-sm font-semibold text-foreground">Товары</div>
+            <div className="text-[10px] text-muted-foreground mt-0.5 leading-tight">Управление</div>
+          </button>
+        ) : (
+          <button onClick={() => setTab(tab === "Мои эфиры" ? null : "Мои эфиры")}
+            className={`bg-card border rounded-xl p-2.5 text-left hover:border-primary/40 transition-colors ${tab === "Мои эфиры" ? "border-primary/50 ring-1 ring-primary/20" : "border-border"}`}>
+            <Icon name="Radio" size={13} className="text-muted-foreground mb-1.5" />
+            <div className="font-oswald text-sm font-semibold text-foreground">{myStreams.length}</div>
+            <div className="text-[10px] text-muted-foreground mt-0.5">Эфиров</div>
+          </button>
+        )}
 
         {/* Заказы от покупателей */}
         <button onClick={() => setTab(tab === "Заказы от покупателей" ? null : "Заказы от покупателей")}
