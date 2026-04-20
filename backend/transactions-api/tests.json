@@ -1,0 +1,52 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS preflight",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "GET list transactions",
+      "method": "GET",
+      "path": "/?action=list",
+      "expectedStatus": 200,
+      "expectedBody": {"transactions": [], "total": 0},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST create transaction",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "create", "order_id": "test-order-001", "seller_id": "seller-1", "full_amount": 1000, "payment_id": "pay-123", "status": "hold"},
+      "expectedStatus": 200,
+      "expectedBody": {"ok": true, "marketplace_fee": 100.0, "seller_amount": 900.0},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET transaction by order_id",
+      "method": "GET",
+      "path": "/?action=get&order_id=test-order-001",
+      "expectedStatus": 200,
+      "expectedBody": {"transaction": {"order_id": "test-order-001", "status": "hold"}},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST update status to paid",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "update_status", "order_id": "test-order-001", "status": "paid"},
+      "expectedStatus": 200,
+      "expectedBody": {"ok": true},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET report (no date filter)",
+      "method": "GET",
+      "path": "/?action=report",
+      "expectedStatus": 200,
+      "expectedBody": {"summary": {"total_orders": 1}},
+      "bodyMatcher": "partial"
+    }
+  ]
+}

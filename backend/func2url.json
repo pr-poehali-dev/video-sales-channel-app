@@ -1,4 +1,6 @@
 {
+  "transactions-api": "https://functions.poehali.dev/428178e1-40e9-4d49-b142-85b62be936a7",
+  "hold-checker": "https://functions.poehali.dev/daf65a62-f5c3-4d05-a9c4-15f1aad1bf31",
   "apiship-delivery": "https://functions.poehali.dev/a73e197d-7da4-4945-bd28-4d0de6b02bb7",
   "upload-video": "https://functions.poehali.dev/c69feec2-8522-4f96-aca5-363656289751",
   "auth-api": "https://functions.poehali.dev/f78c2cf9-b718-4a63-9473-a8f6bcff11f4",

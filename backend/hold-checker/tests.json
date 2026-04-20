@@ -1,0 +1,12 @@
+{
+  "tests": [
+    {
+      "name": "Run hold checker (no expired holds)",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200,
+      "expectedBody": {"checked": 0, "cancelled": [], "skipped": []},
+      "bodyMatcher": "partial"
+    }
+  ]
+}
