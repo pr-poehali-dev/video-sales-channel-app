@@ -57,6 +57,82 @@ interface Props {
 const inputCls = "w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors";
 const labelCls = "text-xs text-muted-foreground mb-1 block";
 
+// ── Компонент поля ИНН с индикатором валидности ─────────────────────────────
+interface InnFieldProps {
+  value: string;
+  maxLength: number;
+  placeholder: string;
+  label: string;
+  onChange: (v: string) => void;
+}
+
+function InnField({ value, maxLength, placeholder, label, onChange }: InnFieldProps) {
+  const check = validateInn(value);
+  const showOk = check.valid;
+  const showErr = value.length > 0 && !check.valid && check.error;
+  return (
+    <div>
+      <label className={labelCls}>{label}</label>
+      <div className="relative">
+        <input
+          value={value}
+          onChange={e => onChange(e.target.value.replace(/\D/g, ""))}
+          placeholder={placeholder}
+          maxLength={maxLength}
+          className={
+            inputCls + " pr-8 " +
+            (showOk ? "border-green-500/60" : showErr ? "border-destructive/60" : "")
+          }
+        />
+        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+          {showOk && <Icon name="CheckCircle" size={14} className="text-green-500" />}
+          {showErr && <Icon name="XCircle" size={14} className="text-destructive" />}
+        </div>
+      </div>
+      {showOk && (
+        <p className="text-[11px] text-green-600 mt-1 flex items-center gap-1">
+          <Icon name="CheckCircle" size={10} />ИНН действителен
+        </p>
+      )}
+      {showErr && (
+        <p className="text-[11px] text-destructive mt-1 flex items-center gap-1">
+          <Icon name="AlertCircle" size={10} />{check.error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ── Валидация ИНН по алгоритму ФНС ──────────────────────────────────────────
+function validateInn(inn: string): { valid: boolean; error: string | null } {
+  if (!inn) return { valid: false, error: null };
+  if (!/^\d+$/.test(inn)) return { valid: false, error: "ИНН должен содержать только цифры" };
+
+  const d = inn.split("").map(Number);
+
+  if (inn.length === 10) {
+    // ЮЛ: одна контрольная цифра
+    const w = [2, 4, 10, 3, 5, 9, 4, 6, 8];
+    const ctrl = w.reduce((s, wi, i) => s + wi * d[i], 0) % 11 % 10;
+    return ctrl === d[9]
+      ? { valid: true, error: null }
+      : { valid: false, error: "Неверный ИНН — ошибка контрольной суммы" };
+  }
+
+  if (inn.length === 12) {
+    // ФЛ/ИП: две контрольные цифры
+    const w1 = [7, 2, 4, 10, 3, 5, 9, 4, 6, 8];
+    const w2 = [3, 7, 2, 4, 10, 3, 5, 9, 4, 6, 8];
+    const c1 = w1.reduce((s, wi, i) => s + wi * d[i], 0) % 11 % 10;
+    const c2 = w2.reduce((s, wi, i) => s + wi * d[i], 0) % 11 % 10;
+    return c1 === d[10] && c2 === d[11]
+      ? { valid: true, error: null }
+      : { valid: false, error: "Неверный ИНН — ошибка контрольной суммы" };
+  }
+
+  return { valid: false, error: `ИНН должен быть 10 или 12 цифр (сейчас ${inn.length})` };
+}
+
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <div>
@@ -190,6 +266,9 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
     agreedPd: false,
   });
 
+  // Валидация ИНН (реактивно пересчитывается при каждом вводе)
+  const innCheck = validateInn(form.inn);
+
   useEffect(() => {
     if (cityQuery.length < 2 || cityQuery === cityName) { setSuggestions([]); return; }
     const t = setTimeout(async () => {
@@ -276,6 +355,7 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
     if (!pPhone.trim()) { setError("Введите телефон"); return; }
     if (!form.legalName.trim()) { setError("Введите ФИО или название организации"); return; }
     if (!form.inn.trim()) { setError("Введите ИНН"); return; }
+    if (!innCheck.valid) { setError(innCheck.error || "Неверный ИНН"); return; }
 
     const isIpOoo = form.legalType === "ip" || form.legalType === "ooo";
     const isSelfEmployed = form.legalType === "self_employed";
@@ -515,10 +595,13 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
                   placeholder="Иванов Иван Иванович" className={inputCls} />
               </Field>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="ИНН *" hint="12 цифр">
-                  <input value={form.inn} onChange={e => set("inn", e.target.value.replace(/\D/g, ""))}
-                    placeholder="123456789012" maxLength={12} className={inputCls} />
-                </Field>
+                <InnField
+                  value={form.inn}
+                  maxLength={12}
+                  placeholder="123456789012"
+                  label="ИНН * (12 цифр)"
+                  onChange={v => set("inn", v)}
+                />
                 <Field label="Телефон в «Мой налог» *">
                   <input value={form.phoneForTax} onChange={e => set("phoneForTax", e.target.value)}
                     placeholder="+7 900 000-00-00" className={inputCls} />
@@ -583,11 +666,13 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
                 {lt === "ip" ? "Для ИП — ОГРНИП 15 цифр, ИНН 12 цифр" : "Для ООО — ОГРН 13 цифр, ИНН 10 цифр"}
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <Field label={lt === "ip" ? "ИНН (12 цифр) *" : "ИНН (10 цифр) *"}>
-                  <input value={form.inn} onChange={e => set("inn", e.target.value.replace(/\D/g, ""))}
-                    placeholder={lt === "ip" ? "123456789012" : "1234567890"}
-                    maxLength={lt === "ip" ? 12 : 10} className={inputCls} />
-                </Field>
+                <InnField
+                  value={form.inn}
+                  maxLength={lt === "ip" ? 12 : 10}
+                  placeholder={lt === "ip" ? "123456789012" : "1234567890"}
+                  label={lt === "ip" ? "ИНН (12 цифр) *" : "ИНН (10 цифр) *"}
+                  onChange={v => set("inn", v)}
+                />
                 <Field label={lt === "ip" ? "ОГРНИП *" : "ОГРН *"}>
                   <input value={form.ogrn} onChange={e => set("ogrn", e.target.value.replace(/\D/g, ""))}
                     placeholder={lt === "ip" ? "15 цифр" : "13 цифр"}
