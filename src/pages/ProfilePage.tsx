@@ -318,55 +318,6 @@ export default function ProfilePage({ setPage }: ProfilePageProps) {
             )}
           </div>
 
-          {/* Смена пароля */}
-          <div className="bg-card border border-border rounded-2xl p-5">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold text-foreground">Пароль</h3>
-              <button onClick={() => { setChangingPass(!changingPass); setPassError(null); setOldPass(""); setNewPass(""); setNewPass2(""); }}
-                className="p-1.5 rounded-lg border border-border hover:bg-secondary transition-colors">
-                <Icon name={changingPass ? "X" : "KeyRound"} size={14} className="text-muted-foreground" />
-              </button>
-            </div>
-            {changingPass ? (
-              <div className="space-y-3">
-                <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Текущий пароль</label>
-                  <div className="relative">
-                    <input type={showOld ? "text" : "password"} value={oldPass} onChange={e => setOldPass(e.target.value)}
-                      autoComplete="new-password"
-                      className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 pr-10 text-sm text-foreground outline-none focus:border-primary/50 transition-colors" />
-                    <button type="button" onClick={() => setShowOld(!showOld)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"><Icon name={showOld ? "EyeOff" : "Eye"} size={14} /></button>
-                  </div>
-                </div>
-                <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Новый пароль</label>
-                  <div className="relative">
-                    <input type={showNew ? "text" : "password"} value={newPass} onChange={e => setNewPass(e.target.value)}
-                      placeholder="Минимум 6 символов"
-                      autoComplete="new-password"
-                      className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 pr-10 text-sm text-foreground outline-none focus:border-primary/50 transition-colors" />
-                    <button type="button" onClick={() => setShowNew(!showNew)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"><Icon name={showNew ? "EyeOff" : "Eye"} size={14} /></button>
-                  </div>
-                </div>
-                <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Повторите новый пароль</label>
-                  <input type={showNew ? "text" : "password"} value={newPass2} onChange={e => setNewPass2(e.target.value)}
-                    className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground outline-none focus:border-primary/50 transition-colors" />
-                </div>
-                {passError && <p className="text-xs text-destructive">{passError}</p>}
-                <div className="flex gap-3 pt-1">
-                  <button onClick={handleChangePassword}
-                    className="bg-primary text-primary-foreground font-semibold px-5 py-2.5 rounded-xl hover:opacity-90 transition-opacity text-sm">
-                    Сохранить
-                  </button>
-                  <button onClick={() => setChangingPass(false)} className="text-sm text-muted-foreground hover:text-foreground transition-colors px-3">Отмена</button>
-                </div>
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">••••••••</p>
-            )}
-          </div>
-
           {/* Стать продавцом */}
           {!isSeller && (
             <button onClick={() => setPage("seller-register")}
