@@ -316,8 +316,6 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
             phoneForTax: data.phoneForTax || "",
             payoutMethod: data.payoutMethod || "card",
             cardNumber: data.cardNumber || "",
-            passportSeries: data.passportSeries || "",
-            passportNumber: data.passportNumber || "",
             productCategory: data.productCategory || "",
             agreedOffer: data.agreedOffer || false,
             agreedPd: data.agreedPd || false,
