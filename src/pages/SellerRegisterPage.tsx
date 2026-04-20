@@ -9,10 +9,9 @@ const CDEK_API = "https://functions.poehali.dev/a73e197d-7da4-4945-bd28-4d0de6b0
 interface CdekCity { code: string; city: string; region: string; guid?: string; }
 
 // Налоговый статус продавца
-type LegalType = "individual" | "self_employed" | "ip" | "ooo";
+type LegalType = "self_employed" | "ip" | "ooo";
 
 const LEGAL_LABELS: Record<LegalType, { short: string; long: string; icon: string }> = {
-  individual:     { short: "Физлицо",      long: "Физическое лицо",   icon: "User" },
   self_employed:  { short: "Самозанятый",  long: "Самозанятый (НПД)", icon: "Briefcase" },
   ip:             { short: "ИП",           long: "Индивидуальный предприниматель", icon: "Building" },
   ooo:            { short: "ООО / ЗАО",   long: "Юридическое лицо",  icon: "Building2" },
@@ -36,10 +35,7 @@ interface SellerProfile {
   // Самозанятый
   phoneForTax: string;   // Телефон в "Мой налог"
   payoutMethod: PayoutMethod; // Способ выплат
-  cardNumber: string;    // Номер карты (самозанятый/физлицо)
-  // Физлицо
-  passportSeries: string;
-  passportNumber: string;
+  cardNumber: string;    // Номер карты (самозанятый)
   // Категория товаров
   productCategory: string;
   // Согласия
@@ -254,8 +250,6 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
     phoneForTax: "",
     payoutMethod: "card",
     cardNumber: "",
-    passportSeries: "",
-    passportNumber: "",
     productCategory: "",
     agreedOffer: false,
     agreedPd: false,
@@ -420,7 +414,6 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
   const lt = form.legalType;
   const isIpOoo = lt === "ip" || lt === "ooo";
   const isSelf = lt === "self_employed";
-  const isIndividual = lt === "individual";
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 animate-fade-in">
@@ -465,19 +458,6 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
               );
             })}
           </div>
-
-          {/* ── Блок: Физлицо ── */}
-          {isIndividual && (
-            <div className="space-y-3 pt-1">
-              <div className="flex items-center gap-2 text-xs text-blue-600 bg-blue-500/10 px-3 py-2 rounded-lg">
-                <Icon name="Info" size={13} />
-                Остальные данные (имя, адрес) заполняются при оформлении заказа и сохраняются автоматически
-              </div>
-              <Field label="Телефон, привязанный к карте *">
-                <input value={pPhone} onChange={e => setPPhone(e.target.value)} placeholder="+7 900 000-00-00" className={inputCls} />
-              </Field>
-            </div>
-          )}
 
           {/* ── Блок: Самозанятый ── */}
           {isSelf && (
