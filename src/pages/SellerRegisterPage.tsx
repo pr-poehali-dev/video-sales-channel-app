@@ -396,8 +396,10 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
     if (!pName.trim()) { setError("Введите имя"); return; }
     if (!pPhone.trim()) { setError("Введите телефон"); return; }
     if (!form.legalName.trim()) { setError("Введите ФИО или название организации"); return; }
-    if (!form.inn.trim()) { setError("Введите ИНН"); return; }
-    if (!innCheck.valid) { setError(innCheck.error || "Неверный ИНН"); return; }
+    if (form.legalType !== "individual") {
+      if (!form.inn.trim()) { setError("Введите ИНН"); return; }
+      if (!innCheck.valid) { setError(innCheck.error || "Неверный ИНН"); return; }
+    }
 
     const isIpOoo = form.legalType === "ip" || form.legalType === "ooo";
     const isSelfEmployed = form.legalType === "self_employed";
