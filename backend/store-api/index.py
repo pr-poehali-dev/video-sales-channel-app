@@ -236,11 +236,15 @@ def handler(event: dict, context) -> dict:
             # Маппинг camelCase → snake_case для новых полей
             body_mapped = dict(body)
             for camel, snake in [
+                ("legalType","legal_type"), ("legalName","legal_name"),
+                ("bankAccount","bank_account"), ("bankName","bank_name"),
+                ("agreedOffer","agreed_offer"), ("agreedPd","agreed_pd"),
                 ("ogrn","ogrn"), ("legalAddress","legal_address"),
                 ("corrAccount","corr_account"), ("phoneForTax","phone_for_tax"),
                 ("payoutMethod","payout_method"), ("cardNumber","card_number"),
                 ("passportSeries","passport_series"), ("passportNumber","passport_number"),
-                ("productCategory","product_category"),
+                ("productCategory","product_category"), ("contactPhone","contact_phone"),
+                ("contactEmail","contact_email"),
             ]:
                 if camel in body_mapped:
                     body_mapped[snake] = body_mapped.pop(camel)
