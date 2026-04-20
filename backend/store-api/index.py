@@ -230,23 +230,43 @@ def handler(event: dict, context) -> dict:
             cur.execute("SELECT user_id FROM sellers WHERE user_id=%s", (user_id,))
             exists = cur.fetchone()
             fields = ["legal_type","legal_name","inn","bank_account","bank_name","bik",
-                      "contact_phone","contact_email","cdek_id","agreed_offer","agreed_pd"]
+                      "contact_phone","contact_email","cdek_id","agreed_offer","agreed_pd",
+                      "ogrn","legal_address","corr_account","phone_for_tax","payout_method",
+                      "card_number","passport_series","passport_number","product_category"]
+            # Маппинг camelCase → snake_case для новых полей
+            body_mapped = dict(body)
+            for camel, snake in [
+                ("ogrn","ogrn"), ("legalAddress","legal_address"),
+                ("corrAccount","corr_account"), ("phoneForTax","phone_for_tax"),
+                ("payoutMethod","payout_method"), ("cardNumber","card_number"),
+                ("passportSeries","passport_series"), ("passportNumber","passport_number"),
+                ("productCategory","product_category"),
+            ]:
+                if camel in body_mapped:
+                    body_mapped[snake] = body_mapped.pop(camel)
             if exists:
-                set_parts = [f"{f}=%s" for f in fields if f in body]
-                vals = [body[f] for f in fields if f in body]
+                set_parts = [f"{f}=%s" for f in fields if f in body_mapped]
+                vals = [body_mapped[f] for f in fields if f in body_mapped]
                 if set_parts:
                     vals.append(user_id)
                     cur.execute(f"UPDATE sellers SET {', '.join(set_parts)} WHERE user_id=%s", vals)
             else:
                 cur.execute("""
                     INSERT INTO sellers (user_id,legal_type,legal_name,inn,bank_account,bank_name,bik,
-                                        contact_phone,contact_email,cdek_id,agreed_offer,agreed_pd)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                                        contact_phone,contact_email,cdek_id,agreed_offer,agreed_pd,
+                                        ogrn,legal_address,corr_account,phone_for_tax,payout_method,
+                                        card_number,passport_series,passport_number,product_category)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                 """, (user_id,
-                      body.get("legal_type","individual"), body.get("legal_name",""),
-                      body.get("inn",""), body.get("bank_account",""), body.get("bank_name",""),
-                      body.get("bik",""), body.get("contact_phone",""), body.get("contact_email",""),
-                      body.get("cdek_id",""), body.get("agreed_offer",False), body.get("agreed_pd",False)))
+                      body_mapped.get("legal_type","self_employed"), body_mapped.get("legal_name",""),
+                      body_mapped.get("inn",""), body_mapped.get("bank_account",""), body_mapped.get("bank_name",""),
+                      body_mapped.get("bik",""), body_mapped.get("contact_phone",""), body_mapped.get("contact_email",""),
+                      body_mapped.get("cdek_id",""), body_mapped.get("agreed_offer",False), body_mapped.get("agreed_pd",False),
+                      body_mapped.get("ogrn",""), body_mapped.get("legal_address",""),
+                      body_mapped.get("corr_account",""), body_mapped.get("phone_for_tax",""),
+                      body_mapped.get("payout_method","card"), body_mapped.get("card_number",""),
+                      body_mapped.get("passport_series",""), body_mapped.get("passport_number",""),
+                      body_mapped.get("product_category","")))
             conn.commit()
             cur.execute("SELECT * FROM sellers WHERE user_id=%s", (user_id,))
             return ok(_fmt_seller(cur.fetchone()))
@@ -905,16 +925,25 @@ def _fmt_seller(r):
         "legalType":    r["legal_type"],
         "legalName":    r["legal_name"],
         "inn":          r["inn"],
-        "bankAccount":  r["bank_account"],
-        "bankName":     r["bank_name"],
-        "bik":          r["bik"],
-        "contactPhone": r["contact_phone"],
-        "contactEmail": r["contact_email"],
-        "cdekId":       r["cdek_id"],
-        "agreedOffer":  r["agreed_offer"],
-        "agreedPd":     r["agreed_pd"],
-        "verified":     r["verified"],
-        "createdAt":    r["created_at"].strftime("%d.%m.%Y") if r["created_at"] else "",
+        "bankAccount":     r["bank_account"],
+        "bankName":        r["bank_name"],
+        "bik":             r["bik"],
+        "contactPhone":    r["contact_phone"],
+        "contactEmail":    r["contact_email"],
+        "cdekId":          r["cdek_id"],
+        "agreedOffer":     r["agreed_offer"],
+        "agreedPd":        r["agreed_pd"],
+        "verified":        r["verified"],
+        "createdAt":       r["created_at"].strftime("%d.%m.%Y") if r["created_at"] else "",
+        "ogrn":            r.get("ogrn", ""),
+        "legalAddress":    r.get("legal_address", ""),
+        "corrAccount":     r.get("corr_account", ""),
+        "phoneForTax":     r.get("phone_for_tax", ""),
+        "payoutMethod":    r.get("payout_method", "card"),
+        "cardNumber":      r.get("card_number", ""),
+        "passportSeries":  r.get("passport_series", ""),
+        "passportNumber":  r.get("passport_number", ""),
+        "productCategory": r.get("product_category", ""),
     }
 
 def _fmt_order(r):

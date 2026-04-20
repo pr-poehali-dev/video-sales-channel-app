@@ -8,30 +8,70 @@ const CDEK_API = "https://functions.poehali.dev/a73e197d-7da4-4945-bd28-4d0de6b0
 
 interface CdekCity { code: string; city: string; region: string; guid?: string; }
 
-type LegalType = "individual" | "ip" | "ooo";
+// Налоговый статус продавца
+type LegalType = "individual" | "self_employed" | "ip" | "ooo";
+
+const LEGAL_LABELS: Record<LegalType, { short: string; long: string; icon: string }> = {
+  individual:     { short: "Физлицо",      long: "Физическое лицо",   icon: "User" },
+  self_employed:  { short: "Самозанятый",  long: "Самозанятый (НПД)", icon: "Briefcase" },
+  ip:             { short: "ИП",           long: "Индивидуальный предприниматель", icon: "Building" },
+  ooo:            { short: "ООО / ЗАО",   long: "Юридическое лицо",  icon: "Building2" },
+};
+
+// Способ выплат для самозанятых/физлиц
+type PayoutMethod = "card" | "account";
 
 interface SellerProfile {
   legalType: LegalType;
-  legalName: string;
+  // Общее
+  legalName: string;     // ФИО / название орг.
   inn: string;
-  bankAccount: string;
-  bankName: string;
+  // ИП/ООО
+  ogrn: string;          // ОГРН/ОГРНИП
+  legalAddress: string;  // Юр. адрес
+  bankAccount: string;   // Расч. счёт / номер карты
   bik: string;
+  corrAccount: string;   // Корр. счёт
+  bankName: string;
+  // Самозанятый
+  phoneForTax: string;   // Телефон в "Мой налог"
+  payoutMethod: PayoutMethod; // Способ выплат
+  cardNumber: string;    // Номер карты (самозанятый/физлицо)
+  // Физлицо
+  passportSeries: string;
+  passportNumber: string;
+  // Категория товаров
+  productCategory: string;
+  // СДЭК
   cdekId: string;
+  // Согласия
   agreedOffer: boolean;
   agreedPd: boolean;
 }
-
-const LEGAL_LABELS: Record<LegalType, string> = {
-  individual: "Физическое лицо",
-  ip: "ИП",
-  ooo: "ООО / ЗАО",
-};
 
 interface Props {
   setPage: (p: Page) => void;
   embedded?: boolean;
 }
+
+const inputCls = "w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors";
+const labelCls = "text-xs text-muted-foreground mb-1 block";
+
+function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className={labelCls}>{label}</label>
+      {children}
+      {hint && <p className="text-[11px] text-muted-foreground mt-1">{hint}</p>}
+    </div>
+  );
+}
+
+const PRODUCT_CATEGORIES = [
+  "Одежда и аксессуары", "Электроника", "Красота и здоровье", "Дом и интерьер",
+  "Детские товары", "Спорт и отдых", "Еда и напитки", "Украшения и бижутерия",
+  "Рукоделие и хобби", "Другое",
+];
 
 export default function SellerRegisterPage({ setPage, embedded }: Props) {
   const { user, updateUser } = useAuth();
@@ -56,12 +96,21 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
 
   // Реквизиты
   const [form, setForm] = useState<SellerProfile>({
-    legalType: "individual",
+    legalType: "self_employed",
     legalName: "",
     inn: "",
+    ogrn: "",
+    legalAddress: "",
     bankAccount: "",
-    bankName: "",
     bik: "",
+    corrAccount: "",
+    bankName: "",
+    phoneForTax: "",
+    payoutMethod: "card",
+    cardNumber: "",
+    passportSeries: "",
+    passportNumber: "",
+    productCategory: "",
     cdekId: "",
     agreedOffer: false,
     agreedPd: false,
@@ -86,17 +135,27 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
       .then(r => r.json())
       .then(data => {
         if (data) {
-          setForm({
-            legalType: data.legalType || "individual",
+          setForm(prev => ({
+            ...prev,
+            legalType: data.legalType || "self_employed",
             legalName: data.legalName || "",
             inn: data.inn || "",
+            ogrn: data.ogrn || "",
+            legalAddress: data.legalAddress || "",
             bankAccount: data.bankAccount || "",
-            bankName: data.bankName || "",
             bik: data.bik || "",
+            corrAccount: data.corrAccount || "",
+            bankName: data.bankName || "",
+            phoneForTax: data.phoneForTax || "",
+            payoutMethod: data.payoutMethod || "card",
+            cardNumber: data.cardNumber || "",
+            passportSeries: data.passportSeries || "",
+            passportNumber: data.passportNumber || "",
+            productCategory: data.productCategory || "",
             cdekId: data.cdekId || "",
             agreedOffer: data.agreedOffer || false,
             agreedPd: data.agreedPd || false,
-          });
+          }));
         }
       })
       .catch(() => {})
@@ -108,16 +167,26 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
     setCityQuery(c.city); setSuggestions([]);
   };
 
-  const set = (key: keyof SellerProfile, val: string | boolean | LegalType) =>
+  const set = <K extends keyof SellerProfile>(key: K, val: SellerProfile[K]) =>
     setForm(prev => ({ ...prev, [key]: val }));
 
   const handleSaveAll = async () => {
     setError(null);
+
     if (!pName.trim()) { setError("Введите имя"); return; }
     if (!pPhone.trim()) { setError("Введите телефон"); return; }
     if (!form.legalName.trim()) { setError("Введите ФИО или название организации"); return; }
     if (!form.inn.trim()) { setError("Введите ИНН"); return; }
-    if (!form.bankAccount.trim()) { setError("Введите номер карты или расчётный счёт"); return; }
+
+    const isIpOoo = form.legalType === "ip" || form.legalType === "ooo";
+    const isSelfEmployed = form.legalType === "self_employed";
+
+    if (isIpOoo && !form.bankAccount.trim()) { setError("Введите расчётный счёт"); return; }
+    if (isIpOoo && !form.bik.trim()) { setError("Введите БИК банка"); return; }
+    if (isSelfEmployed && form.payoutMethod === "card" && !form.cardNumber.trim()) { setError("Введите номер карты"); return; }
+    if (isSelfEmployed && form.payoutMethod === "account" && !form.bankAccount.trim()) { setError("Введите расчётный счёт"); return; }
+    if (form.legalType === "individual" && !form.cardNumber.trim()) { setError("Введите номер карты"); return; }
+
     if (!form.agreedOffer) { setError("Необходимо принять условия договора оферты"); return; }
     if (!form.agreedPd) { setError("Необходимо дать согласие на обработку персональных данных"); return; }
 
@@ -175,6 +244,11 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
     );
   }
 
+  const lt = form.legalType;
+  const isIpOoo = lt === "ip" || lt === "ooo";
+  const isSelf = lt === "self_employed";
+  const isIndividual = lt === "individual";
+
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 animate-fade-in">
       {!embedded && (
@@ -185,7 +259,7 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
         </button>
       )}
 
-      <div className="mb-4">
+      <div className="mb-5">
         <h1 className="font-oswald text-xl font-semibold text-foreground tracking-wide">Данные и реквизиты</h1>
         <p className="text-sm text-muted-foreground mt-0.5">Заполните один раз — сохраните всё кнопкой внизу</p>
       </div>
@@ -197,22 +271,22 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
           <h2 className="text-sm font-semibold text-foreground">Личные данные</h2>
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
-              <label className="text-xs text-muted-foreground mb-1 block">Имя *</label>
-              <input value={pName} onChange={e => setPName(e.target.value)}
-                className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground outline-none focus:border-primary/50 transition-colors" />
+              <Field label="Имя *">
+                <input value={pName} onChange={e => setPName(e.target.value)} className={inputCls} />
+              </Field>
             </div>
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Телефон *</label>
-              <input value={pPhone} onChange={e => setPPhone(e.target.value)} placeholder="+7 900 000-00-00"
-                className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground outline-none focus:border-primary/50 transition-colors" />
+              <Field label="Телефон *">
+                <input value={pPhone} onChange={e => setPPhone(e.target.value)} placeholder="+7 900 000-00-00" className={inputCls} />
+              </Field>
             </div>
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Город</label>
-              <input value={pCity} onChange={e => setPCity(e.target.value)} placeholder="Москва"
-                className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground outline-none focus:border-primary/50 transition-colors" />
+              <Field label="Город">
+                <input value={pCity} onChange={e => setPCity(e.target.value)} placeholder="Москва" className={inputCls} />
+              </Field>
             </div>
             <div className="col-span-2">
-              <label className="text-xs text-muted-foreground mb-1 block">Email</label>
+              <label className={labelCls}>Email</label>
               <div className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 text-sm text-muted-foreground">{user.email}</div>
             </div>
           </div>
@@ -221,15 +295,25 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
         {/* ── Магазин ── */}
         <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
           <h2 className="text-sm font-semibold text-foreground">Магазин</h2>
-          <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Название магазина</label>
+          <Field label="Название магазина" hint="Отображается покупателям в корзине">
             <input value={shopName} onChange={e => setShopName(e.target.value)}
-              placeholder="Например: Украшения Марины"
-              className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors" />
-            <p className="text-[11px] text-muted-foreground mt-1">Отображается покупателям в корзине</p>
-          </div>
+              placeholder="Например: Украшения Марины" className={inputCls} />
+          </Field>
+
+          {/* Категория товаров */}
+          <Field label="Категория товаров" hint="Используется для настройки ставок и комиссий">
+            <select
+              value={form.productCategory}
+              onChange={e => set("productCategory", e.target.value)}
+              className={inputCls + " cursor-pointer"}>
+              <option value="">— Выберите категорию —</option>
+              {PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </Field>
+
+          {/* Город СДЭК */}
           <div className="relative">
-            <label className="text-xs text-muted-foreground mb-1 block">Город отправки (для СДЭК)</label>
+            <label className={labelCls}>Город отправки (для СДЭК)</label>
             {cityCode && cityQuery === cityName ? (
               <div className="flex items-center gap-3 bg-secondary border border-border rounded-xl px-4 py-2.5">
                 <Icon name="MapPin" size={14} className="text-primary flex-shrink-0" />
@@ -244,7 +328,7 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
                 <input value={cityQuery}
                   onChange={e => { setCityQuery(e.target.value); setCityCode(""); setCityName(""); }}
                   placeholder="Начните вводить город..."
-                  className="w-full bg-secondary border border-border rounded-xl pl-9 pr-9 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors" />
+                  className={inputCls + " pl-9 pr-9"} />
                 {cityLoading && <Icon name="Loader" size={14} className="absolute right-3 top-3 text-muted-foreground animate-spin" />}
               </div>
             )}
@@ -262,91 +346,240 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
           </div>
         </div>
 
-        {/* ── Тип продавца + реквизиты ── */}
-        <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
-          <h2 className="text-sm font-semibold text-foreground">Тип продавца</h2>
-          <div className="grid grid-cols-3 gap-2">
-            {(Object.keys(LEGAL_LABELS) as LegalType[]).map(type => (
-              <button key={type} onClick={() => set("legalType", type)}
-                className={`py-2 px-3 rounded-xl border text-sm font-medium transition-all ${
-                  form.legalType === type
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border bg-secondary text-muted-foreground hover:border-border/60"
-                }`}>
-                {LEGAL_LABELS[type]}
-              </button>
-            ))}
-          </div>
-
+        {/* ── Налоговый статус ── */}
+        <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">
-              {form.legalType === "individual" ? "ФИО *" : "Название организации *"}
-            </label>
-            <input value={form.legalName} onChange={e => set("legalName", e.target.value)}
-              placeholder={form.legalType === "individual" ? "Иванов Иван Иванович" : 'ООО "Ромашка"'}
-              className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors" />
+            <h2 className="text-sm font-semibold text-foreground">Налоговый статус</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">Определяет порядок выплат через Т‑Банк (Безопасная сделка)</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">ИНН *</label>
-              <input value={form.inn} onChange={e => set("inn", e.target.value.replace(/\D/g, ""))}
-                placeholder={form.legalType === "individual" ? "12 цифр" : "10 цифр"}
-                maxLength={12}
-                className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors" />
-            </div>
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">СДЭК ID <span className="opacity-50">(необяз.)</span></label>
-              <input value={form.cdekId} onChange={e => set("cdekId", e.target.value)}
-                placeholder="ID из кабинета СДЭК"
-                className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors" />
-            </div>
+          <div className="grid grid-cols-2 gap-2">
+            {(Object.keys(LEGAL_LABELS) as LegalType[]).map(type => {
+              const info = LEGAL_LABELS[type];
+              return (
+                <button key={type} onClick={() => set("legalType", type)}
+                  className={`flex items-center gap-2.5 p-3 rounded-xl border text-left transition-all ${
+                    form.legalType === type
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border bg-secondary text-muted-foreground hover:border-primary/30"
+                  }`}>
+                  <Icon name={info.icon} size={15} className="flex-shrink-0" />
+                  <div>
+                    <div className="text-sm font-semibold leading-tight">{info.short}</div>
+                    <div className="text-[10px] opacity-70 leading-tight">{info.long}</div>
+                  </div>
+                </button>
+              );
+            })}
           </div>
-        </div>
 
-        {/* ── Реквизиты для выплат ── */}
-        <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
-          <h2 className="text-sm font-semibold text-foreground">Реквизиты для выплат</h2>
-          <div>
-            <label className="text-xs text-muted-foreground mb-1 block">
-              {form.legalType === "individual" ? "Номер карты *" : "Расчётный счёт *"}
-            </label>
-            <input value={form.bankAccount} onChange={e => set("bankAccount", e.target.value.replace(/\D/g, ""))}
-              placeholder={form.legalType === "individual" ? "1234 5678 9012 3456" : "20 цифр"}
-              maxLength={20}
-              className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors" />
-          </div>
-          {form.legalType !== "individual" && (
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Банк</label>
-                <input value={form.bankName} onChange={e => set("bankName", e.target.value)}
-                  placeholder="Название банка"
-                  className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors" />
+          {/* ── Блок: Физлицо ── */}
+          {isIndividual && (
+            <div className="space-y-3 pt-1">
+              <div className="flex items-center gap-2 text-xs text-amber-600 bg-amber-500/10 px-3 py-2 rounded-lg">
+                <Icon name="Info" size={13} />
+                Для C2C сделок. Нужен паспорт для идентификации по 115-ФЗ
               </div>
+              <Field label="ФИО полностью *">
+                <input value={form.legalName} onChange={e => set("legalName", e.target.value)}
+                  placeholder="Иванов Иван Иванович" className={inputCls} />
+              </Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Серия паспорта">
+                  <input value={form.passportSeries} onChange={e => set("passportSeries", e.target.value.replace(/\D/g, ""))}
+                    placeholder="0000" maxLength={4} className={inputCls} />
+                </Field>
+                <Field label="Номер паспорта">
+                  <input value={form.passportNumber} onChange={e => set("passportNumber", e.target.value.replace(/\D/g, ""))}
+                    placeholder="000000" maxLength={6} className={inputCls} />
+                </Field>
+              </div>
+              <Field label="Телефон, привязанный к карте *">
+                <input value={pPhone} onChange={e => setPPhone(e.target.value)} placeholder="+7 900 000-00-00" className={inputCls} />
+              </Field>
+              <Field label="Номер карты для выплат *">
+                <input value={form.cardNumber} onChange={e => set("cardNumber", e.target.value.replace(/\D/g, ""))}
+                  placeholder="1234 5678 9012 3456" maxLength={16} className={inputCls} />
+              </Field>
+            </div>
+          )}
+
+          {/* ── Блок: Самозанятый ── */}
+          {isSelf && (
+            <div className="space-y-3 pt-1">
+              <div className="flex items-center gap-2 text-xs text-blue-600 bg-blue-500/10 px-3 py-2 rounded-lg">
+                <Icon name="Info" size={13} />
+                Статус проверяется автоматически через API «Мой налог»
+              </div>
+              <Field label="ФИО полностью *">
+                <input value={form.legalName} onChange={e => set("legalName", e.target.value)}
+                  placeholder="Иванов Иван Иванович" className={inputCls} />
+              </Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="ИНН *" hint="12 цифр">
+                  <input value={form.inn} onChange={e => set("inn", e.target.value.replace(/\D/g, ""))}
+                    placeholder="123456789012" maxLength={12} className={inputCls} />
+                </Field>
+                <Field label="Телефон в «Мой налог» *">
+                  <input value={form.phoneForTax} onChange={e => set("phoneForTax", e.target.value)}
+                    placeholder="+7 900 000-00-00" className={inputCls} />
+                </Field>
+              </div>
+
+              {/* Способ выплат */}
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">БИК</label>
-                <input value={form.bik} onChange={e => set("bik", e.target.value.replace(/\D/g, ""))}
-                  placeholder="9 цифр" maxLength={9}
-                  className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors" />
+                <label className={labelCls}>Способ получения выплат</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {([
+                    ["card", "По карте", "CreditCard", "Мгновенно"],
+                    ["account", "По реквизитам", "Landmark", "Стандартный перевод"],
+                  ] as const).map(([val, label, icon, hint]) => (
+                    <button key={val} onClick={() => set("payoutMethod", val)}
+                      className={`flex items-center gap-2 p-3 rounded-xl border text-left transition-all ${
+                        form.payoutMethod === val
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border bg-secondary text-muted-foreground hover:border-primary/30"
+                      }`}>
+                      <Icon name={icon} size={14} className="flex-shrink-0" />
+                      <div>
+                        <div className="text-xs font-semibold">{label}</div>
+                        <div className="text-[10px] opacity-70">{hint}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {form.payoutMethod === "card" ? (
+                <Field label="Номер карты *">
+                  <input value={form.cardNumber} onChange={e => set("cardNumber", e.target.value.replace(/\D/g, ""))}
+                    placeholder="1234 5678 9012 3456" maxLength={16} className={inputCls} />
+                </Field>
+              ) : (
+                <div className="space-y-3">
+                  <Field label="Расчётный счёт *" hint="20 цифр">
+                    <input value={form.bankAccount} onChange={e => set("bankAccount", e.target.value.replace(/\D/g, ""))}
+                      placeholder="40802810000000000000" maxLength={20} className={inputCls} />
+                  </Field>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label="БИК банка *" hint="9 цифр">
+                      <input value={form.bik} onChange={e => set("bik", e.target.value.replace(/\D/g, ""))}
+                        placeholder="044525225" maxLength={9} className={inputCls} />
+                    </Field>
+                    <Field label="Корр. счёт">
+                      <input value={form.corrAccount} onChange={e => set("corrAccount", e.target.value.replace(/\D/g, ""))}
+                        placeholder="30101810..." maxLength={20} className={inputCls} />
+                    </Field>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── Блок: ИП / ООО ── */}
+          {isIpOoo && (
+            <div className="space-y-3 pt-1">
+              <div className="flex items-center gap-2 text-xs text-green-700 bg-green-500/10 px-3 py-2 rounded-lg">
+                <Icon name="Info" size={13} />
+                {lt === "ip" ? "Для ИП — ОГРНИП 15 цифр, ИНН 12 цифр" : "Для ООО — ОГРН 13 цифр, ИНН 10 цифр"}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label={lt === "ip" ? "ИНН (12 цифр) *" : "ИНН (10 цифр) *"}>
+                  <input value={form.inn} onChange={e => set("inn", e.target.value.replace(/\D/g, ""))}
+                    placeholder={lt === "ip" ? "123456789012" : "1234567890"}
+                    maxLength={lt === "ip" ? 12 : 10} className={inputCls} />
+                </Field>
+                <Field label={lt === "ip" ? "ОГРНИП *" : "ОГРН *"}>
+                  <input value={form.ogrn} onChange={e => set("ogrn", e.target.value.replace(/\D/g, ""))}
+                    placeholder={lt === "ip" ? "15 цифр" : "13 цифр"}
+                    maxLength={lt === "ip" ? 15 : 13} className={inputCls} />
+                </Field>
+              </div>
+              <Field label={lt === "ip" ? "Полное наименование (ИП Иванов И.И.) *" : "Полное наименование (ООО «Ромашка») *"}>
+                <input value={form.legalName} onChange={e => set("legalName", e.target.value)}
+                  placeholder={lt === "ip" ? "ИП Иванов Иван Иванович" : 'ООО "Ромашка"'} className={inputCls} />
+              </Field>
+              <Field label="Юридический адрес *">
+                <input value={form.legalAddress} onChange={e => set("legalAddress", e.target.value)}
+                  placeholder="129110, г. Москва, ул. Примерная, д. 1" className={inputCls} />
+              </Field>
+
+              {/* Банковские реквизиты */}
+              <div className="bg-secondary/60 rounded-xl p-3 space-y-3">
+                <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                  <Icon name="Landmark" size={13} />
+                  Банковские реквизиты
+                </p>
+                <Field label="Расчётный счёт * (20 цифр)">
+                  <input value={form.bankAccount} onChange={e => set("bankAccount", e.target.value.replace(/\D/g, ""))}
+                    placeholder="40702810000000000000" maxLength={20} className={inputCls} />
+                </Field>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="БИК банка * (9 цифр)">
+                    <input value={form.bik} onChange={e => set("bik", e.target.value.replace(/\D/g, ""))}
+                      placeholder="044525225" maxLength={9} className={inputCls} />
+                  </Field>
+                  <Field label="Корр. счёт" hint="Подтягивается по БИК">
+                    <input value={form.corrAccount} onChange={e => set("corrAccount", e.target.value.replace(/\D/g, ""))}
+                      placeholder="30101810..." maxLength={20} className={inputCls} />
+                  </Field>
+                </div>
+                <Field label="Название банка">
+                  <input value={form.bankName} onChange={e => set("bankName", e.target.value)}
+                    placeholder="ПАО «Сбербанк»" className={inputCls} />
+                </Field>
               </div>
             </div>
           )}
         </div>
 
+        {/* ── СДЭК ── */}
+        <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+          <h2 className="text-sm font-semibold text-foreground">Интеграция с СДЭК</h2>
+          <Field label="СДЭК ID" hint="ID личного кабинета СДЭК (необязательно)">
+            <input value={form.cdekId} onChange={e => set("cdekId", e.target.value)}
+              placeholder="ID из кабинета СДЭК" className={inputCls} />
+          </Field>
+        </div>
+
+        {/* ── Документы ── */}
+        <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+          <div>
+            <h2 className="text-sm font-semibold text-foreground">Документы</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">Могут потребоваться для модерации или по запросу банка</p>
+          </div>
+          <div className="flex items-center gap-3 bg-secondary/60 rounded-xl p-3">
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <Icon name="FileText" size={18} className="text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-foreground">Загрузка документов</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Скан паспорта (главный разворот + прописка) и СНИЛС</p>
+            </div>
+            <span className="text-[10px] bg-secondary border border-border px-2 py-1 rounded-md text-muted-foreground whitespace-nowrap">Скоро</span>
+          </div>
+        </div>
+
         {/* ── Согласия ── */}
         <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+          <h2 className="text-sm font-semibold text-foreground">Согласия</h2>
           {[
-            { key: "agreedOffer" as const, label: "Я принимаю условия договора оферты платформы" },
-            { key: "agreedPd" as const, label: "Я даю согласие на обработку персональных данных" },
+            {
+              key: "agreedOffer" as const,
+              label: "Я принимаю условия договора оферты платформы, в т.ч. условия «Безопасной сделки» Т‑Банка и размер комиссии",
+            },
+            {
+              key: "agreedPd" as const,
+              label: "Я даю согласие на обработку персональных данных и их передачу в Т‑Банк для проведения выплат",
+            },
           ].map(({ key, label }) => (
             <label key={key} className="flex items-start gap-3 cursor-pointer group">
-              <div onClick={() => set(key, !form[key])}
+              <button onClick={() => set(key, !form[key])}
                 className={`w-5 h-5 rounded flex-shrink-0 mt-0.5 border-2 flex items-center justify-center transition-all ${
                   form[key] ? "bg-primary border-primary" : "border-border group-hover:border-primary/50"
                 }`}>
                 {form[key] && <Icon name="Check" size={12} className="text-primary-foreground" />}
-              </div>
+              </button>
               <span className="text-sm text-muted-foreground leading-snug">{label}</span>
             </label>
           ))}
@@ -360,15 +593,15 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
 
         {saved && (
           <div className="flex items-center gap-2 bg-green-500/10 text-green-600 text-sm px-4 py-3 rounded-xl">
-            <Icon name="CheckCircle" size={16} />Всё сохранено
+            <Icon name="CheckCircle" size={16} />Данные успешно сохранены!
           </div>
         )}
 
         <button onClick={handleSaveAll} disabled={saving}
-          className="w-full bg-primary text-primary-foreground font-semibold py-3.5 rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-50">
+          className="w-full bg-primary text-primary-foreground font-semibold py-4 rounded-2xl hover:bg-primary/90 transition-all disabled:opacity-50 flex items-center justify-center gap-2 text-sm">
           {saving
-            ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            : <><Icon name="Save" size={18} />Сохранить всё</>}
+            ? <><Icon name="Loader" size={16} className="animate-spin" />Сохраняем...</>
+            : <><Icon name="Save" size={16} />Сохранить все данные</>}
         </button>
 
       </div>
