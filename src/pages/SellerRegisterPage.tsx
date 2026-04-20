@@ -222,6 +222,7 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [savedLegalType, setSavedLegalType] = useState<LegalType | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Личные данные
@@ -376,6 +377,7 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
             agreedPd: data.agreedPd || false,
           }));
           if (data.inn) setInnFieldsVisible(true);
+          if (data.legalType) setSavedLegalType(data.legalType);
         }
       })
       .catch(() => {})
@@ -415,17 +417,24 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
 
     setSaving(true);
     try {
+      const isIndividualType = form.legalType === "individual";
       await updateUser({
         name: pName.trim(),
         phone: pPhone.trim(),
         city: pCity.trim(),
-        ...(shopName.trim() && cityCode ? {
-          shopName: shopName.trim(),
+        ...((shopName.trim() || isIndividualType) && cityCode ? {
+          shopName: isIndividualType ? (form.legalName.trim() || pName.trim()) : shopName.trim(),
           shopCityCode: cityCode,
           shopCityName: cityName,
           shopCityGuid: cityGuid,
           shopCarriers: carriers,
-        } : {}),
+        } : (shopName.trim() && !cityCode ? {
+          shopName: shopName.trim(),
+          shopCarriers: carriers,
+        } : isIndividualType ? {
+          shopName: form.legalName.trim() || pName.trim(),
+          shopCarriers: carriers,
+        } : {})),
       });
 
       const res = await fetch(`${STORE_API}?action=save_seller_profile`, {
@@ -440,6 +449,7 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
       });
       if (!res.ok) throw new Error("Ошибка сохранения");
       setSaved(true);
+      setSavedLegalType(form.legalType);
       setTimeout(() => setSaved(false), 3000);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Ошибка сохранения");
@@ -500,18 +510,25 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
           <div className="grid grid-cols-2 gap-2">
             {(Object.keys(LEGAL_LABELS) as LegalType[]).map(type => {
               const info = LEGAL_LABELS[type];
+              const isActive = form.legalType === type;
+              const isSavedType = savedLegalType === type;
               return (
                 <button key={type} onClick={() => set("legalType", type)}
-                  className={`flex items-center gap-2 p-3 rounded-xl border text-left transition-all ${
-                    form.legalType === type
+                  className={`flex items-center gap-2 p-3 rounded-xl border text-left transition-all relative ${
+                    isActive
                       ? "border-primary bg-primary/10 text-primary"
                       : "border-border bg-secondary text-muted-foreground hover:border-primary/30"
                   }`}>
                   <Icon name={info.icon} size={14} className="flex-shrink-0" />
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <div className="text-xs font-semibold leading-tight break-words">{info.short}</div>
                     <div className="text-[10px] opacity-70 leading-tight break-words">{info.long}</div>
                   </div>
+                  {isSavedType && (
+                    <div className="absolute top-1.5 right-1.5 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+                      <Icon name="Check" size={10} className="text-white" />
+                    </div>
+                  )}
                 </button>
               );
             })}
