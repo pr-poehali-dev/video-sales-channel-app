@@ -236,6 +236,7 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
   const [cityName, setCityName] = useState(user?.shopCityName || "");
   const [suggestions, setSuggestions] = useState<CdekCity[]>([]);
   const [cityLoading, setCityLoading] = useState(false);
+  const [carriers, setCarriers] = useState<string[]>(user?.shopCarriers || []);
 
   // Автозаполнение по ИНН через dadata
   const [innLoading, setInnLoading] = useState(false);
@@ -420,6 +421,7 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
           shopCityCode: cityCode,
           shopCityName: cityName,
           shopCityGuid: cityGuid,
+          shopCarriers: carriers,
         } : {}),
       });
 
@@ -695,9 +697,9 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
             </select>
           </Field>
 
-          {/* Город СДЭК */}
+          {/* Город отправки */}
           <div className="relative">
-            <label className={labelCls}>Город отправки (для СДЭК)</label>
+            <label className={labelCls}>Город отправки</label>
             {cityCode && cityQuery === cityName ? (
               <div className="flex items-center gap-3 bg-secondary border border-border rounded-xl px-4 py-2.5">
                 <Icon name="MapPin" size={14} className="text-primary flex-shrink-0" />
@@ -727,6 +729,33 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
                 ))}
               </div>
             )}
+          </div>
+
+          {/* Транспортные компании */}
+          <div>
+            <label className={labelCls}>Транспортные компании</label>
+            <p className="text-[11px] text-muted-foreground mb-2">Выберите ТК, через которые отправляете заказы</p>
+            <div className="grid grid-cols-2 gap-2">
+              {([
+                ["СДЭК", "Truck"],
+                ["ПЭК", "Package"],
+                ["Почта России", "Mail"],
+                ["Деловые линии", "Container"],
+              ] as const).map(([name, icon]) => {
+                const active = carriers.includes(name);
+                return (
+                  <button key={name} type="button"
+                    onClick={() => setCarriers(prev => active ? prev.filter(c => c !== name) : [...prev, name])}
+                    className={`flex items-center gap-2 p-3 rounded-xl border text-left transition-all ${
+                      active ? "border-primary bg-primary/10 text-primary" : "border-border bg-secondary text-muted-foreground hover:border-primary/30"
+                    }`}>
+                    <Icon name={icon} size={14} className="flex-shrink-0" />
+                    <span className="text-xs font-medium leading-tight">{name}</span>
+                    {active && <Icon name="Check" size={12} className="ml-auto flex-shrink-0" />}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
         )}
