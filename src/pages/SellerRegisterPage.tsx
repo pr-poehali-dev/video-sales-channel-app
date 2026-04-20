@@ -412,6 +412,7 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
   const lt = form.legalType;
   const isIpOoo = lt === "ip" || lt === "ooo";
   const isSelf = lt === "self_employed";
+  const isIndividual = false;
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 animate-fade-in">
