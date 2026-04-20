@@ -230,7 +230,7 @@ def handler(event: dict, context) -> dict:
             cur.execute("SELECT user_id FROM sellers WHERE user_id=%s", (user_id,))
             exists = cur.fetchone()
             fields = ["legal_type","legal_name","inn","bank_account","bank_name","bik",
-                      "contact_phone","contact_email","cdek_id","agreed_offer","agreed_pd",
+                      "contact_phone","contact_email","agreed_offer","agreed_pd",
                       "ogrn","legal_address","corr_account","phone_for_tax","payout_method",
                       "card_number","passport_series","passport_number","product_category"]
             # Маппинг camelCase → snake_case для новых полей
@@ -253,15 +253,15 @@ def handler(event: dict, context) -> dict:
             else:
                 cur.execute("""
                     INSERT INTO sellers (user_id,legal_type,legal_name,inn,bank_account,bank_name,bik,
-                                        contact_phone,contact_email,cdek_id,agreed_offer,agreed_pd,
+                                        contact_phone,contact_email,agreed_offer,agreed_pd,
                                         ogrn,legal_address,corr_account,phone_for_tax,payout_method,
                                         card_number,passport_series,passport_number,product_category)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                 """, (user_id,
                       body_mapped.get("legal_type","self_employed"), body_mapped.get("legal_name",""),
                       body_mapped.get("inn",""), body_mapped.get("bank_account",""), body_mapped.get("bank_name",""),
                       body_mapped.get("bik",""), body_mapped.get("contact_phone",""), body_mapped.get("contact_email",""),
-                      body_mapped.get("cdek_id",""), body_mapped.get("agreed_offer",False), body_mapped.get("agreed_pd",False),
+                      body_mapped.get("agreed_offer",False), body_mapped.get("agreed_pd",False),
                       body_mapped.get("ogrn",""), body_mapped.get("legal_address",""),
                       body_mapped.get("corr_account",""), body_mapped.get("phone_for_tax",""),
                       body_mapped.get("payout_method","card"), body_mapped.get("card_number",""),
@@ -930,7 +930,6 @@ def _fmt_seller(r):
         "bik":             r["bik"],
         "contactPhone":    r["contact_phone"],
         "contactEmail":    r["contact_email"],
-        "cdekId":          r["cdek_id"],
         "agreedOffer":     r["agreed_offer"],
         "agreedPd":        r["agreed_pd"],
         "verified":        r["verified"],

@@ -42,8 +42,6 @@ interface SellerProfile {
   passportNumber: string;
   // Категория товаров
   productCategory: string;
-  // СДЭК
-  cdekId: string;
   // Согласия
   agreedOffer: boolean;
   agreedPd: boolean;
@@ -261,7 +259,6 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
     passportSeries: "",
     passportNumber: "",
     productCategory: "",
-    cdekId: "",
     agreedOffer: false,
     agreedPd: false,
   });
@@ -330,7 +327,6 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
             passportSeries: data.passportSeries || "",
             passportNumber: data.passportNumber || "",
             productCategory: data.productCategory || "",
-            cdekId: data.cdekId || "",
             agreedOffer: data.agreedOffer || false,
             agreedPd: data.agreedPd || false,
           }));
