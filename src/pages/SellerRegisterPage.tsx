@@ -537,15 +537,15 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
               const info = LEGAL_LABELS[type];
               return (
                 <button key={type} onClick={() => set("legalType", type)}
-                  className={`flex items-center gap-2.5 p-3 rounded-xl border text-left transition-all ${
+                  className={`flex items-center gap-2 p-3 rounded-xl border text-left transition-all ${
                     form.legalType === type
                       ? "border-primary bg-primary/10 text-primary"
                       : "border-border bg-secondary text-muted-foreground hover:border-primary/30"
                   }`}>
-                  <Icon name={info.icon} size={15} className="flex-shrink-0" />
-                  <div>
-                    <div className="text-sm font-semibold leading-tight">{info.short}</div>
-                    <div className="text-[10px] opacity-70 leading-tight">{info.long}</div>
+                  <Icon name={info.icon} size={14} className="flex-shrink-0" />
+                  <div className="min-w-0">
+                    <div className="text-xs font-semibold leading-tight break-words">{info.short}</div>
+                    <div className="text-[10px] opacity-70 leading-tight break-words">{info.long}</div>
                   </div>
                 </button>
               );
@@ -623,9 +623,9 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
                           : "border-border bg-secondary text-muted-foreground hover:border-primary/30"
                       }`}>
                       <Icon name={icon} size={14} className="flex-shrink-0" />
-                      <div>
-                        <div className="text-xs font-semibold">{label}</div>
-                        <div className="text-[10px] opacity-70">{hint}</div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-semibold break-words">{label}</div>
+                        <div className="text-[10px] opacity-70 break-words">{hint}</div>
                       </div>
                     </button>
                   ))}
@@ -711,15 +711,6 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
               </div>
             </div>
           )}
-        </div>
-
-        {/* ── СДЭК ── */}
-        <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
-          <h2 className="text-sm font-semibold text-foreground">Интеграция с СДЭК</h2>
-          <Field label="СДЭК ID" hint="ID личного кабинета СДЭК (необязательно)">
-            <input value={form.cdekId} onChange={e => set("cdekId", e.target.value)}
-              placeholder="ID из кабинета СДЭК" className={inputCls} />
-          </Field>
         </div>
 
         {/* ── Документы ── */}
