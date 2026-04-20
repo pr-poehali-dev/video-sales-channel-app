@@ -30,7 +30,7 @@ export default function NavBar({ page, setPage, cartCount }: NavBarProps) {
     { id: "catalog" as Page, label: "Каталог", icon: "ShoppingBag" },
     { id: "cart" as Page, label: "Корзина", icon: "ShoppingCart" },
     ...(user?.shopName ? [{ id: "dashboard" as Page, label: "Продавец", icon: "Store" }] : []),
-    { id: (user ? "profile" : "auth") as Page, label: user ? "Профиль" : "Войти", icon: "User" },
+    { id: (user?.role === "admin" ? "dashboard" : user ? "profile" : "auth") as Page, label: user ? "Профиль" : "Войти", icon: "User" },
   ];
 
   return (
@@ -122,9 +122,9 @@ export default function NavBar({ page, setPage, cartCount }: NavBarProps) {
         {mobileItems.map(item => {
           const isCart = item.id === "cart";
           const isFav = item.id === "favorites";
-          const isProfileBtn = item.id === "profile" || item.id === "auth";
+          const isProfileBtn = item.id === "profile" || item.id === "auth" || (item.id === "dashboard" && item.label === "Профиль");
           const isActive = isProfileBtn
-            ? page === "profile" || page === "auth"
+            ? page === "profile" || page === "auth" || page === "dashboard"
             : page === item.id;
 
           return (
@@ -135,7 +135,7 @@ export default function NavBar({ page, setPage, cartCount }: NavBarProps) {
                 isActive ? (isFav ? "text-red-500" : "text-primary") : "text-muted-foreground"
               }`}
             >
-              {isProfileBtn && user && item.id === "profile" ? (
+              {isProfileBtn && user && (item.id === "profile" || item.id === "dashboard") ? (
                 <div className={`w-5 h-5 rounded-full bg-primary/20 text-[9px] font-bold flex items-center justify-center ${isActive ? "text-primary" : "text-muted-foreground"}`}>
                   {user.avatar}
                 </div>
