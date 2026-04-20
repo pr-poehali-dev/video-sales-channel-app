@@ -32,7 +32,7 @@ export function useSellerProfileCheck(userId: string | undefined) {
       const lt = data.legalType as string;
 
       if (!data.legalName?.trim()) issues.push({ field: "legalName", label: "ФИО или название организации" });
-      if (!data.inn?.trim()) issues.push({ field: "inn", label: "ИНН" });
+      if (lt !== "individual" && !data.inn?.trim()) issues.push({ field: "inn", label: "ИНН" });
 
       if (lt === "self_employed") {
         if (!data.phoneForTax?.trim()) issues.push({ field: "phoneForTax", label: "Телефон в «Мой налог»" });
