@@ -544,6 +544,67 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
                 <input value={form.cardNumber} onChange={e => set("cardNumber", e.target.value.replace(/\D/g, ""))}
                   placeholder="1234 5678 9012 3456" maxLength={16} className={inputCls} />
               </Field>
+
+              {/* Город отправки */}
+              <div className="relative">
+                <label className={labelCls}>Город отправки</label>
+                {cityCode && cityQuery === cityName ? (
+                  <div className="flex items-center gap-3 bg-secondary border border-border rounded-xl px-4 py-2.5">
+                    <Icon name="MapPin" size={14} className="text-primary flex-shrink-0" />
+                    <span className="text-sm text-foreground flex-1">{cityName}</span>
+                    <button onClick={() => { setCityCode(""); setCityQuery(""); setCityName(""); setCityGuid(""); }}>
+                      <Icon name="X" size={14} className="text-muted-foreground" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <Icon name="MapPin" size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <input value={cityQuery}
+                      onChange={e => { setCityQuery(e.target.value); setCityCode(""); setCityName(""); }}
+                      placeholder="Начните вводить город..."
+                      className={inputCls + " pl-9 pr-9"} />
+                    {cityLoading && <Icon name="Loader" size={14} className="absolute right-3 top-3 text-muted-foreground animate-spin" />}
+                  </div>
+                )}
+                {suggestions.length > 0 && (
+                  <div className="absolute z-20 top-full left-0 right-0 bg-card border border-border rounded-xl shadow-xl mt-1 overflow-hidden">
+                    {suggestions.map(c => (
+                      <button key={c.code} type="button" onMouseDown={() => selectCity(c)}
+                        className="w-full text-left px-4 py-2.5 text-sm hover:bg-secondary transition-colors border-b border-border/50 last:border-0">
+                        <span className="font-medium text-foreground">{c.city}</span>
+                        {c.region && <span className="text-muted-foreground text-xs ml-1.5">{c.region}</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Транспортные компании */}
+              <div>
+                <label className={labelCls}>Транспортные компании</label>
+                <p className="text-[11px] text-muted-foreground mb-2">Выберите ТК, через которые отправляете заказы</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {([
+                    ["СДЭК", "Truck"],
+                    ["ПЭК", "Package"],
+                    ["Почта России", "Mail"],
+                    ["Деловые линии", "Container"],
+                  ] as const).map(([name, icon]) => {
+                    const active = carriers.includes(name);
+                    return (
+                      <button key={name} type="button"
+                        onClick={() => setCarriers(prev => active ? prev.filter(c => c !== name) : [...prev, name])}
+                        className={`flex items-center gap-2 p-3 rounded-xl border text-left transition-all ${
+                          active ? "border-primary bg-primary/10 text-primary" : "border-border bg-secondary text-muted-foreground hover:border-primary/30"
+                        }`}>
+                        <Icon name={icon} size={14} className="flex-shrink-0" />
+                        <span className="text-xs font-medium leading-tight">{name}</span>
+                        {active && <Icon name="Check" size={12} className="ml-auto flex-shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           )}
 
