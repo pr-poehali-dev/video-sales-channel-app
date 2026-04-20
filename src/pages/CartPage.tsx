@@ -215,11 +215,22 @@ export default function CartPage({ cart, removeFromCart, updateQty }: CartPagePr
         else if (cdekData.cdek_uuid) setCdekTrack(cdekData.cdek_uuid);
       } catch (e) { console.error("[CDEK create_order error]", e); }
 
-      // Автосохраняем имя и телефон в профиль после заказа
+      // Автосохраняем контактные данные и адрес доставки после заказа
       if (user) {
-        const updates: Record<string, string> = {};
+        const updates: Partial<import("@/context/AuthContext").User> = {};
         if (buyerPhone.trim()) updates.phone = buyerPhone.trim();
-        if (buyerName.trim() && !user.name) updates.name = buyerName.trim();
+        if (buyerName.trim()) updates.name = buyerName.trim();
+        // Сохраняем ПВЗ если выбран и ещё не сохранён
+        if (cdekPvzCode && delivery.city) {
+          updates.savedPvz = {
+            code: cdekPvzCode,
+            apiship_id: cdekPvzApishipId,
+            address: deliveryAddress,
+            name: deliveryAddress,
+            cityCode: delivery.city.code,
+            cityName: delivery.city.city,
+          };
+        }
         if (Object.keys(updates).length > 0) {
           updateUser(updates).catch(() => {});
         }
