@@ -148,7 +148,7 @@ export default function ProfilePage({ setPage }: ProfilePageProps) {
 
       {/* Вкладки */}
       <div className="flex bg-secondary rounded-xl p-1 mb-5">
-        {([["orders", "Мои покупки", "ShoppingBag"], ["account", "Мой аккаунт", "User"]] as const).map(([id, label, icon]) => (
+        {([["orders", "Мои покупки", "ShoppingBag"], ["account", "Стать продавцом", "Store"]] as const).map(([id, label, icon]) => (
           <button key={id} onClick={() => setTab(id)}
             className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-sm font-medium rounded-lg transition-all ${
               tab === id ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
