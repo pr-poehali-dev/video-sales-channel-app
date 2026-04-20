@@ -29,7 +29,7 @@ export default function NavBar({ page, setPage, cartCount }: NavBarProps) {
     { id: "favorites" as Page, label: "Избранное", icon: "Heart" },
     { id: "catalog" as Page, label: "Каталог", icon: "ShoppingBag" },
     { id: "cart" as Page, label: "Корзина", icon: "ShoppingCart" },
-    ...(user?.shopName ? [{ id: "dashboard" as Page, label: "Продавец", icon: "Store" }] : []),
+    ...(user && user.role !== "admin" ? [{ id: "support" as Page, label: "Поддержка", icon: "Headphones" }] : []),
     { id: (user?.role === "admin" ? "dashboard" : user ? "profile" : "auth") as Page, label: user ? "Профиль" : "Войти", icon: "User" },
   ];
 
