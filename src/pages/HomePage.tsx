@@ -265,6 +265,28 @@ export default function HomePage({ setPage, addToCart, updateQty, cart = [], onP
         </div>
       </section>
 
+      {/* Footer */}
+      <footer className="pt-6 pb-2 border-t border-border mt-4">
+        <div className="flex flex-col items-center gap-2 text-center">
+          <p className="text-xs text-muted-foreground">© 2024 ИП Буцкий Денис Алексеевич · ИНН 260803860085</p>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setPage("oferta-seller")}
+              className="text-xs text-muted-foreground hover:text-primary transition-colors underline underline-offset-2"
+            >
+              Оферта для продавцов
+            </button>
+            <span className="text-muted-foreground/40 text-xs">·</span>
+            <button
+              onClick={() => setPage("oferta-buyer")}
+              className="text-xs text-muted-foreground hover:text-primary transition-colors underline underline-offset-2"
+            >
+              Пользовательское соглашение
+            </button>
+          </div>
+        </div>
+      </footer>
+
     </div>
   );
 }

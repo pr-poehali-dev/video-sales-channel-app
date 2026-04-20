@@ -743,26 +743,35 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
         {/* ── Согласия ── */}
         <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
           <h2 className="text-sm font-semibold text-foreground">Согласия</h2>
-          {[
-            {
-              key: "agreedOffer" as const,
-              label: "Я принимаю условия договора оферты платформы, в т.ч. условия «Безопасной сделки» Т‑Банка и размер комиссии",
-            },
-            {
-              key: "agreedPd" as const,
-              label: "Я даю согласие на обработку персональных данных и их передачу в Т‑Банк для проведения выплат",
-            },
-          ].map(({ key, label }) => (
-            <label key={key} className="flex items-start gap-3 cursor-pointer group">
-              <button onClick={() => set(key, !form[key])}
-                className={`w-5 h-5 rounded flex-shrink-0 mt-0.5 border-2 flex items-center justify-center transition-all ${
-                  form[key] ? "bg-primary border-primary" : "border-border group-hover:border-primary/50"
-                }`}>
-                {form[key] && <Icon name="Check" size={12} className="text-primary-foreground" />}
+
+          {/* Единый чекбокс оферты + ПД */}
+          <label className="flex items-start gap-3 cursor-pointer group">
+            <button
+              onClick={() => { set("agreedOffer", !form.agreedOffer); set("agreedPd", !form.agreedOffer); }}
+              className={`w-5 h-5 rounded flex-shrink-0 mt-0.5 border-2 flex items-center justify-center transition-all ${
+                form.agreedOffer ? "bg-primary border-primary" : "border-border group-hover:border-primary/50"
+              }`}
+            >
+              {form.agreedOffer && <Icon name="Check" size={12} className="text-primary-foreground" />}
+            </button>
+            <span className="text-sm text-muted-foreground leading-snug">
+              Я принимаю условия{" "}
+              <button
+                onClick={e => { e.preventDefault(); e.stopPropagation(); setPage("oferta-seller"); }}
+                className="text-primary underline hover:no-underline"
+              >
+                Оферты для продавцов
               </button>
-              <span className="text-sm text-muted-foreground leading-snug">{label}</span>
-            </label>
-          ))}
+              {" "}и{" "}
+              <button
+                onClick={e => { e.preventDefault(); e.stopPropagation(); setPage("oferta-buyer"); }}
+                className="text-primary underline hover:no-underline"
+              >
+                Пользовательского соглашения
+              </button>
+              , а также даю согласие на обработку персональных данных и их передачу в Т‑Банк для проведения выплат
+            </span>
+          </label>
         </div>
 
         {error && (

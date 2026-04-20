@@ -22,6 +22,8 @@ import SupportPage from "@/pages/SupportPage";
 import SupportAdminPage from "@/pages/SupportAdminPage";
 import OrderSuccessPage from "@/pages/OrderSuccessPage";
 import FavoritesPage from "@/pages/FavoritesPage";
+import OfertaSellerPage from "@/pages/OfertaSellerPage";
+import OfertaBuyerPage from "@/pages/OfertaBuyerPage";
 import NavBar from "@/components/NavBar";
 import LiveBroadcastBar from "@/components/LiveBroadcastBar";
 import PWAInstallBanner from "@/components/PWAInstallBanner";
@@ -31,7 +33,8 @@ const BroadcastPage = lazy(() => import("@/pages/BroadcastPage"));
 export type Page =
   | "home" | "streams" | "catalog" | "profile" | "cart" | "favorites"
   | "dashboard" | "product" | "seller" | "auth" | "broadcast" | "admin" | "seller-register"
-  | "support" | "support-admin" | "order-success" | "admin-products" | "admin-streams";
+  | "support" | "support-admin" | "order-success" | "admin-products" | "admin-streams"
+  | "oferta-seller" | "oferta-buyer";
 
 export interface CartItem {
   id: string;
@@ -134,6 +137,8 @@ function AppInner() {
         {page === "support-admin" && <SupportAdminPage setPage={navSetPage} />}
         {page === "order-success" && <OrderSuccessPage setPage={navSetPage} clearCart={clearCart} />}
         {page === "favorites" && <FavoritesPage addToCart={addToCart} updateQty={updateQty} cart={cart} onProductClick={openProduct} />}
+        {page === "oferta-seller" && <OfertaSellerPage setPage={navSetPage} />}
+        {page === "oferta-buyer" && <OfertaBuyerPage setPage={navSetPage} />}
         {page === "product" && selectedProductId !== null && (
           <ProductPage
             productId={selectedProductId}
