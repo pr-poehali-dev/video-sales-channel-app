@@ -498,7 +498,6 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
       setSaved(true);
       setSavedLegalType(form.legalType);
       window.scrollTo({ top: 0, behavior: "smooth" });
-      setTimeout(() => setSaved(false), 4000);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Ошибка сохранения");
     } finally {
@@ -522,6 +521,66 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-24 text-center">
         <div className="w-8 h-8 border-2 border-primary/40 border-t-primary rounded-full animate-spin mx-auto" />
+      </div>
+    );
+  }
+
+  // ── Экран успеха после сохранения ────────────────────────────────────────
+  if (saved) {
+    return (
+      <div className="min-h-[80vh] flex items-center justify-center px-4 animate-fade-in">
+        <div className="w-full max-w-sm">
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 bg-green-500/15 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Icon name="CheckCircle" size={36} className="text-green-500" />
+            </div>
+            <h1 className="text-2xl font-semibold text-foreground">Магазин готов!</h1>
+            <p className="text-sm text-muted-foreground mt-2">
+              Реквизиты сохранены. Теперь добавьте товар или выйдите в эфир.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <button
+              onClick={() => setPage("dashboard")}
+              className="w-full bg-primary text-primary-foreground rounded-2xl p-5 text-left hover:opacity-90 transition-all group"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <Icon name="PackagePlus" size={22} className="text-primary-foreground" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-primary-foreground text-base">Добавить товар</p>
+                  <p className="text-xs text-primary-foreground/70 mt-0.5">Загрузи фото, описание и цену</p>
+                </div>
+                <Icon name="ChevronRight" size={18} className="text-primary-foreground/70" />
+              </div>
+            </button>
+
+            <button
+              onClick={() => setPage("broadcast")}
+              className="w-full bg-card border border-border rounded-2xl p-5 text-left hover:border-primary/40 hover:bg-primary/5 transition-all group"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-red-500/10 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:bg-red-500/20 transition-colors">
+                  <Icon name="Video" size={22} className="text-red-500" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-foreground text-base">Выйти в эфир</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Продавай товары в прямом эфире</p>
+                </div>
+                <Icon name="ChevronRight" size={18} className="text-muted-foreground group-hover:text-primary transition-colors" />
+              </div>
+            </button>
+          </div>
+
+          <button
+            onClick={() => setPage("dashboard")}
+            className="w-full mt-4 text-sm text-muted-foreground hover:text-foreground transition-colors py-2"
+          >
+            Перейти в кабинет продавца
+          </button>
+        </div>
       </div>
     );
   }
