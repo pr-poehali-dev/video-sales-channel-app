@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import Icon from "@/components/ui/icon";
 import { DimensionPicker } from "@/components/ui/scroll-picker";
 
-const REGRU_UPLOAD_URL_API = "https://functions.poehali.dev/6aea68a2-cfc2-4613-934a-b3c3d1656fc3";
+const UPLOAD_IMAGE_API = "https://functions.poehali.dev/746ac9d7-8e84-4d88-ae53-5ed67f533bf6";
 
 const CATEGORIES = [
   "Украшения", "Одежда", "Красота", "Аксессуары",
@@ -99,17 +99,6 @@ export default function ProductFormModal({
       img.src = url;
     });
 
-  const uploadFileToRegru = async (blob: Blob, contentType: string, folder = "products"): Promise<string> => {
-    const urlResp = await fetch(REGRU_UPLOAD_URL_API, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content_type: contentType, folder }),
-    });
-    const { upload_url, cdn_url } = await urlResp.json();
-    await fetch(upload_url, { method: "PUT", headers: { "Content-Type": contentType, "x-amz-acl": "public-read" }, body: blob });
-    return cdn_url;
-  };
-
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
     if (!files.length) return;
@@ -118,8 +107,19 @@ export default function ProductFormModal({
       const newUrls: string[] = [];
       for (const file of files) {
         const blob = await compressToBlob(file);
-        const cdnUrl = await uploadFileToRegru(blob, "image/jpeg");
-        newUrls.push(cdnUrl);
+        const dataUrl = await new Promise<string>((res, rej) => {
+          const reader = new FileReader();
+          reader.onload = ev => res(ev.target?.result as string);
+          reader.onerror = rej;
+          reader.readAsDataURL(blob);
+        });
+        const resp = await fetch(UPLOAD_IMAGE_API, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ data_url: dataUrl }),
+        });
+        const data = await resp.json();
+        if (data.url) newUrls.push(data.url);
       }
       setFImages([...fImages, ...newUrls]);
     } catch (err) {

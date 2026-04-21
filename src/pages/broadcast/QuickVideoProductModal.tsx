@@ -4,7 +4,7 @@ import { useStore } from "@/context/StoreContext";
 import { DimensionPicker } from "@/components/ui/scroll-picker";
 
 const API = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c";
-const REGRU_UPLOAD_URL_API = "https://functions.poehali.dev/6aea68a2-cfc2-4613-934a-b3c3d1656fc3";
+const UPLOAD_IMAGE_API = "https://functions.poehali.dev/746ac9d7-8e84-4d88-ae53-5ed67f533bf6";
 const UPLOAD_VIDEO_API = "https://functions.poehali.dev/c69feec2-8522-4f96-aca5-363656289751";
 
 
@@ -67,15 +67,14 @@ export default function QuickVideoProductModal({ videoBlobUrl, sellerId, sellerN
   const [imgUploading, setImgUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const uploadToRegru = async (blob: Blob, contentType: string, folder = "products"): Promise<string> => {
-    const urlResp = await fetch(REGRU_UPLOAD_URL_API, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content_type: contentType, folder }),
-    });
-    const { upload_url, cdn_url } = await urlResp.json();
-    await fetch(upload_url, { method: "PUT", headers: { "Content-Type": contentType, "x-amz-acl": "public-read" }, body: blob });
-    return cdn_url;
+  const blobToDataUrl = (blob: Blob): Promise<string> =>
+    new Promise((res, rej) => { const r = new FileReader(); r.onload = e => res(e.target?.result as string); r.onerror = rej; r.readAsDataURL(blob); });
+
+  const uploadImage = async (blob: Blob): Promise<string> => {
+    const dataUrl = await blobToDataUrl(blob);
+    const resp = await fetch(UPLOAD_IMAGE_API, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ data_url: dataUrl }) });
+    const data = await resp.json();
+    return data.url || "";
   };
 
   const compressToBlob = (file: File, maxPx = 1200, quality = 0.82): Promise<Blob> =>
@@ -106,8 +105,8 @@ export default function QuickVideoProductModal({ videoBlobUrl, sellerId, sellerN
       const newUrls: string[] = [];
       for (const file of files) {
         const blob = await compressToBlob(file);
-        const cdnUrl = await uploadToRegru(blob, "image/jpeg");
-        newUrls.push(cdnUrl);
+        const url = await uploadImage(blob);
+        if (url) newUrls.push(url);
       }
       setExtraImgs(prev => [...prev, ...newUrls]);
     } finally {
@@ -117,25 +116,23 @@ export default function QuickVideoProductModal({ videoBlobUrl, sellerId, sellerN
   };
 
   useEffect(() => {
-    // Загружаем превью и видео параллельно независимо друг от друга
     grabThumbFromBlob(videoBlobUrl).then(async thumbDataUrl => {
       if (!thumbDataUrl) return;
       try {
         const res = await fetch(thumbDataUrl);
         const blob = await res.blob();
-        const cdnUrl = await uploadToRegru(blob, "image/jpeg");
-        setThumbUrl(cdnUrl);
+        const url = await uploadImage(blob);
+        setThumbUrl(url);
       } catch { /* ignore */ }
     });
 
     (async () => {
       try {
         const blob = await fetch(videoBlobUrl).then(r => r.blob());
-        const contentType = blob.type || "video/mp4";
-        console.log("[quickvideo] blob size KB:", Math.round(blob.size / 1024), "type:", contentType);
-        const cdnUrl = await uploadToRegru(blob, contentType, "products");
-        console.log("[quickvideo] uploaded to Reg.ru:", cdnUrl);
-        setVideoUrl(cdnUrl);
+        const dataUrl = await blobToDataUrl(blob);
+        const resp = await fetch(UPLOAD_VIDEO_API, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ data_url: dataUrl, folder: "products" }) });
+        const data = await resp.json();
+        if (data.url) setVideoUrl(data.url);
       } catch (e) { console.error("[quickvideo] catch:", e); }
     })();
   }, [videoBlobUrl]);

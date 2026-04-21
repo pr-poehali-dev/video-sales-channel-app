@@ -4,7 +4,7 @@ import { useStore } from "@/context/StoreContext";
 import { DimensionPicker } from "@/components/ui/scroll-picker";
 
 const API = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c";
-const REGRU_UPLOAD_URL_API = "https://functions.poehali.dev/6aea68a2-cfc2-4613-934a-b3c3d1656fc3";
+const UPLOAD_IMAGE_API = "https://functions.poehali.dev/746ac9d7-8e84-4d88-ae53-5ed67f533bf6";
 
 interface QuickProductModalProps {
   imageDataUrl: string;
@@ -52,15 +52,14 @@ export default function QuickProductModal({ imageDataUrl, sellerId, sellerName, 
       img.src = url;
     });
 
-  const uploadFileToRegru = async (blob: Blob, contentType: string, folder = "products"): Promise<string> => {
-    const urlResp = await fetch(REGRU_UPLOAD_URL_API, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content_type: contentType, folder }),
-    });
-    const { upload_url, cdn_url } = await urlResp.json();
-    await fetch(upload_url, { method: "PUT", headers: { "Content-Type": contentType, "x-amz-acl": "public-read" }, body: blob });
-    return cdn_url;
+  const blobToDataUrl = (blob: Blob): Promise<string> =>
+    new Promise((res, rej) => { const r = new FileReader(); r.onload = e => res(e.target?.result as string); r.onerror = rej; r.readAsDataURL(blob); });
+
+  const uploadImage = async (blob: Blob): Promise<string> => {
+    const dataUrl = await blobToDataUrl(blob);
+    const resp = await fetch(UPLOAD_IMAGE_API, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ data_url: dataUrl }) });
+    const data = await resp.json();
+    return data.url || "";
   };
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -71,8 +70,8 @@ export default function QuickProductModal({ imageDataUrl, sellerId, sellerName, 
       const newUrls: string[] = [];
       for (const file of files) {
         const blob = await compressToBlob(file);
-        const cdnUrl = await uploadFileToRegru(blob, "image/jpeg");
-        newUrls.push(cdnUrl);
+        const url = await uploadImage(blob);
+        if (url) newUrls.push(url);
       }
       setExtraImgs(prev => [...prev, ...newUrls]);
     } catch (err) {
@@ -87,11 +86,10 @@ export default function QuickProductModal({ imageDataUrl, sellerId, sellerName, 
   useEffect(() => {
     (async () => {
       try {
-        // Конвертируем dataUrl → Blob и загружаем напрямую в Reg.ru
         const res = await fetch(imageDataUrl);
         const blob = await res.blob();
-        const cdnUrl = await uploadFileToRegru(blob, blob.type || "image/jpeg");
-        setImgUrl(cdnUrl);
+        const url = await uploadImage(blob);
+        setImgUrl(url);
       } catch { /* ignore */ }
     })();
   }, [imageDataUrl]);
