@@ -216,7 +216,7 @@ export default function CartPage({ cart, removeFromCart, updateQty, onGoToAuth, 
         const cdekRes  = await fetch(`${CDEK_API}?action=create_order`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ order_id: oid, ...orderPayload, weight_g: totalWeight, length_cm: 20, width_cm: 15, height_cm: 10 }),
+          body: JSON.stringify({ order_id: oid, ...orderPayload, from_city_code: fromCityCode, weight_g: totalWeight, length_cm: 20, width_cm: 15, height_cm: 10 }),
         });
         const cdekData = await cdekRes.json();
         console.log("[CDEK create_order]", cdekData);

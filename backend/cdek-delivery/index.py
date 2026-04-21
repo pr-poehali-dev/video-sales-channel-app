@@ -148,12 +148,12 @@ def create_cdek_order(order: dict, token: str) -> dict:
             }
         }
 
+    sender_city_code = int(order.get("from_city_code") or FROM_CITY_CODE)
     payload = {
         "number": order.get("order_id", str(uuid.uuid4().hex[:12])),
         "tariff_code": tariff_code,
         "from_location": {
-            "code": FROM_CITY_CODE,
-            "address": FROM_ADDRESS,
+            "code": sender_city_code,
         },
         **delivery_point,
         "recipient": {
