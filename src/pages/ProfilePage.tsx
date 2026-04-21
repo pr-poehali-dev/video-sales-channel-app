@@ -3,7 +3,12 @@ import Icon from "@/components/ui/icon";
 import type { Page } from "@/App";
 import { useAuth } from "@/context/AuthContext";
 import { useStore } from "@/context/StoreContext";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 import SellerRegisterPage from "./SellerRegisterPage";
+import DashboardProductsTab from "./dashboard/DashboardProductsTab";
+import DashboardStreamsTab from "./dashboard/DashboardStreamsTab";
+import DashboardWarehousesTab, { type Warehouse } from "./dashboard/DashboardWarehousesTab";
+import DashboardOrdersTab from "./dashboard/DashboardOrdersTab";
 
 const STORE_API = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c";
 const AUTH_API  = "https://functions.poehali.dev/f78c2cf9-b718-4a63-9473-a8f6bcff11f4";
@@ -34,12 +39,36 @@ interface ProfilePageProps { setPage: (p: Page) => void; onAddProduct?: () => vo
 // ============================================================================
 export default function ProfilePage({ setPage, onAddProduct }: ProfilePageProps) {
   const { user, logout, updateUser } = useAuth();
-  const { getSellerProducts, getSellerStreams } = useStore();
+  const { getSellerProducts, getSellerStreams, updateStream, reload } = useStore();
   const products = user ? getSellerProducts(user.id) : [];
   const myStreams = user ? getSellerStreams(user.id) : [];
   const activeStream = myStreams.find(s => s.isLive) ?? null;
   type ProfileMode = "personal" | "legal";
   const [mode, setMode] = useState<ProfileMode>("personal");
+
+  // ── Кабинет продавца (табы) ──
+  const [tab, setTab] = useState<string | null>(null);
+  const [stoppingStream, setStoppingStream] = useState<string | null>(null);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const { subscribed, isSupported, subscribe, unsubscribe, status: pushStatus } = usePushNotifications(user?.id ?? null);
+  const [pushLoading, setPushLoading] = useState(false);
+
+  const loadWarehouses = async (uid: string) => {
+    try {
+      const r = await fetch(`${STORE_API}?action=get_warehouses&seller_id=${uid}`);
+      setWarehouses(await r.json());
+    } catch { /* ignore */ }
+  };
+
+  useEffect(() => {
+    if (user && mode === "legal") loadWarehouses(user.id);
+  }, [user?.id, mode]);
+
+  const handleStopStream = async (id: string) => {
+    setStoppingStream(id);
+    try { await updateStream(id, { isLive: false }); await reload(); }
+    catch { /* ignore */ } finally { setStoppingStream(null); }
+  };
 
   // ── Данные аккаунта ──
   const [editing, setEditing] = useState(false);
@@ -420,12 +449,23 @@ export default function ProfilePage({ setPage, onAddProduct }: ProfilePageProps)
               <h2 className="font-oswald text-lg font-semibold text-foreground tracking-wide truncate">{user.shopName || user.name}</h2>
               <p className="text-xs text-muted-foreground">Кабинет продавца</p>
             </div>
+            {isSupported && pushStatus !== "denied" && (
+              <button
+                onClick={async () => { setPushLoading(true); if (subscribed) await unsubscribe(); else await subscribe(); setPushLoading(false); }}
+                disabled={pushLoading}
+                title={subscribed ? "Уведомления включены" : "Включить уведомления о заказах"}
+                className={`relative p-2 rounded-xl border transition-colors disabled:opacity-50 ${subscribed ? "bg-primary/10 border-primary/30 text-primary" : "border-border text-muted-foreground hover:bg-secondary"}`}
+              >
+                {pushLoading ? <Icon name="Loader" size={14} className="animate-spin" /> : <Icon name={subscribed ? "BellRing" : "BellOff"} size={14} />}
+                {subscribed && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-primary rounded-full" />}
+              </button>
+            )}
           </div>
 
           {/* Плитки статистики */}
           <div className="grid grid-cols-4 gap-2">
-            <button onClick={() => {}}
-              className="bg-card border border-primary/30 rounded-xl p-2.5 text-left hover:border-primary/60 transition-colors">
+            <button onClick={() => setTab(tab === "Реквизиты" ? null : "Реквизиты")}
+              className={`bg-card border rounded-xl p-2.5 text-left transition-colors ${tab === "Реквизиты" ? "border-primary/50 ring-1 ring-primary/20" : "border-primary/30 hover:border-primary/60"}`}>
               <div className="w-6 h-6 rounded-full bg-primary/20 text-primary text-[9px] font-bold flex items-center justify-center mb-1.5 font-oswald">
                 {user.avatar}
               </div>
@@ -433,22 +473,22 @@ export default function ProfilePage({ setPage, onAddProduct }: ProfilePageProps)
               <div className="text-[9px] text-muted-foreground mt-0.5 leading-tight">Данные и реквизиты</div>
             </button>
 
-            <button onClick={() => setPage("dashboard")}
-              className="bg-card border border-border rounded-xl p-2.5 text-left hover:border-primary/40 transition-colors">
+            <button onClick={() => setTab(tab === "Товары" ? null : "Товары")}
+              className={`bg-card border rounded-xl p-2.5 text-left transition-colors ${tab === "Товары" ? "border-primary/50 ring-1 ring-primary/20" : "border-border hover:border-primary/40"}`}>
               <Icon name="Package" size={13} className="text-muted-foreground mb-1.5" />
               <div className="font-oswald text-sm font-semibold text-foreground">{products.length}</div>
               <div className="text-[10px] text-muted-foreground mt-0.5">Товары</div>
             </button>
 
-            <button onClick={() => setPage("dashboard")}
-              className="bg-card border border-border rounded-xl p-2.5 text-left hover:border-primary/40 transition-colors">
+            <button onClick={() => setTab(tab === "Мои эфиры" ? null : "Мои эфиры")}
+              className={`bg-card border rounded-xl p-2.5 text-left transition-colors ${tab === "Мои эфиры" ? "border-primary/50 ring-1 ring-primary/20" : "border-border hover:border-primary/40"}`}>
               <Icon name="Radio" size={13} className="text-muted-foreground mb-1.5" />
               <div className="font-oswald text-sm font-semibold text-foreground">{myStreams.length}</div>
               <div className="text-[10px] text-muted-foreground mt-0.5">Эфиры</div>
             </button>
 
-            <button onClick={() => setPage("dashboard")}
-              className="bg-card border border-border rounded-xl p-2.5 text-left hover:border-primary/40 transition-colors">
+            <button onClick={() => setTab(tab === "Статистика" ? null : "Статистика")}
+              className={`bg-card border rounded-xl p-2.5 text-left transition-colors ${tab === "Статистика" ? "border-primary/50 ring-1 ring-primary/20" : "border-border hover:border-primary/40"}`}>
               <Icon name="BarChart2" size={13} className="text-muted-foreground mb-1.5" />
               <div className="font-oswald text-sm font-semibold text-foreground">0 ₽</div>
               <div className="text-[10px] text-muted-foreground mt-0.5">Продажи</div>
@@ -456,22 +496,27 @@ export default function ProfilePage({ setPage, onAddProduct }: ProfilePageProps)
           </div>
 
           {/* Заказы */}
-          <button onClick={() => setPage("dashboard")}
-            className="w-full bg-card border border-border rounded-xl p-3 text-left hover:border-primary/40 transition-colors flex items-center gap-3">
+          <button onClick={() => setTab(tab === "Заказы от покупателей" ? null : "Заказы от покупателей")}
+            className={`w-full bg-card border rounded-xl p-3 text-left transition-colors flex items-center gap-3 ${tab === "Заказы от покупателей" ? "border-primary/50 ring-1 ring-primary/20" : "border-border hover:border-primary/40"}`}>
             <Icon name="ShoppingBag" size={16} className="text-muted-foreground flex-shrink-0" />
             <div className="flex-1">
               <div className="text-sm font-semibold text-foreground">Заказы от покупателей</div>
               <div className="text-[11px] text-muted-foreground">Управление и отправка</div>
             </div>
-            <Icon name="ChevronRight" size={15} className="text-muted-foreground flex-shrink-0" />
+            <Icon name={tab === "Заказы от покупателей" ? "ChevronDown" : "ChevronRight"} size={15} className="text-muted-foreground flex-shrink-0" />
           </button>
 
-          {/* Начать эфир + Добавить товар */}
+          {/* Начать эфир + выйти */}
           <div className="flex items-center gap-2">
             {activeStream ? (
               <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 px-4 py-2.5 rounded-xl flex-1">
                 <span className="w-2 h-2 rounded-full bg-red-500 animate-live-pulse flex-shrink-0" />
                 <span className="text-sm font-semibold text-red-500 truncate flex-1">{activeStream.title}</span>
+                <button onClick={() => handleStopStream(activeStream.id)} disabled={stoppingStream === activeStream.id}
+                  className="text-xs font-semibold text-red-500 border border-red-500/40 px-2 py-1 rounded-lg hover:bg-red-500/10 transition-colors disabled:opacity-50 flex items-center gap-1">
+                  {stoppingStream === activeStream.id ? <Icon name="Loader" size={12} className="animate-spin" /> : <Icon name="Square" size={12} />}
+                  Стоп
+                </button>
               </div>
             ) : (
               <button onClick={() => setPage("broadcast")}
@@ -480,19 +525,37 @@ export default function ProfilePage({ setPage, onAddProduct }: ProfilePageProps)
                 Начать эфир
               </button>
             )}
-            <button onClick={() => onAddProduct ? onAddProduct() : setPage("dashboard")}
+            <button onClick={() => onAddProduct ? onAddProduct() : setTab("Товары")}
               className="flex items-center gap-1.5 border border-primary/40 text-primary font-semibold px-3 py-2.5 rounded-xl hover:bg-primary/5 transition-colors text-sm whitespace-nowrap">
               <Icon name="Plus" size={15} />
               Продать товар
             </button>
           </div>
 
-          {/* Разделитель перед формой */}
-          <div className="border-t border-border pt-1">
-            <p className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wide">Данные и реквизиты</p>
-          </div>
+          {/* ── Контент таба ── */}
+          {tab === "Заказы от покупателей" && <DashboardOrdersTab />}
+          {tab === "Товары" && <DashboardProductsTab warehouses={warehouses} onGoToProfile={() => setTab("Реквизиты")} autoOpenForm={false} onAutoOpenDone={() => {}} />}
+          {tab === "Мои эфиры" && <DashboardStreamsTab setPage={setPage} />}
+          {tab === "Статистика" && (
+            <div className="animate-fade-in text-center py-12">
+              <div className="w-14 h-14 rounded-2xl bg-secondary flex items-center justify-center mx-auto mb-4">
+                <Icon name="BarChart2" size={24} className="text-muted-foreground opacity-40" />
+              </div>
+              <h3 className="font-semibold text-foreground mb-1">Статистика появится после первых продаж</h3>
+              <p className="text-sm text-muted-foreground">Добавь товары и запусти эфир</p>
+            </div>
+          )}
+          {tab === "Склады" && <DashboardWarehousesTab userId={user.id} warehouses={warehouses} onWarehousesChange={setWarehouses} />}
 
-          <SellerRegisterPage setPage={setPage} embedded />
+          {/* Реквизиты */}
+          {(tab === "Реквизиты" || tab === null) && (
+            <>
+              <div className="border-t border-border pt-1">
+                <p className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wide">Данные и реквизиты</p>
+              </div>
+              <SellerRegisterPage setPage={setPage} embedded />
+            </>
+          )}
         </div>
       )}
 
