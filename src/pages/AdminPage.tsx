@@ -8,6 +8,7 @@ import AdminCdekTab from "@/components/admin/AdminCdekTab";
 import AdminUsersTab from "@/components/admin/AdminUsersTab";
 import AdminProductsTab from "@/components/admin/AdminProductsTab";
 import AdminOrdersTab from "@/components/admin/AdminOrdersTab";
+import AdminAllOrdersTab from "@/components/admin/AdminAllOrdersTab";
 import AdminTransactionsTab from "@/components/admin/AdminTransactionsTab";
 
 interface AdminPageProps {
@@ -16,7 +17,7 @@ interface AdminPageProps {
 
 export default function AdminPage({ setPage }: AdminPageProps) {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<"users" | "cdek" | "chats" | "streams" | "products" | "orders" | "finance">("chats");
+  const [activeTab, setActiveTab] = useState<"users" | "cdek" | "chats" | "streams" | "products" | "orders" | "all_orders" | "finance">("chats");
 
   if (!user || user.role !== "admin") {
     return (
@@ -47,7 +48,7 @@ export default function AdminPage({ setPage }: AdminPageProps) {
       {/* Вкладки */}
       <div className="mb-6 -mx-4 px-4 overflow-x-auto scrollbar-none">
         <div className="flex gap-1 bg-secondary rounded-xl p-1 w-fit">
-          {([["chats", "Чаты"], ["streams", "Эфиры"], ["products", "Товары"], ["orders", "Заказы"], ["finance", "Финансы"], ["users", "Пользователи"], ["cdek", "СДЭК"]] as const).map(([key, label]) => (
+          {([["chats", "Чаты"], ["streams", "Эфиры"], ["products", "Товары"], ["all_orders", "Заказы"], ["orders", "Управление"], ["finance", "Финансы"], ["users", "Пользователи"], ["cdek", "СДЭК"]] as const).map(([key, label]) => (
             <button key={key} onClick={() => setActiveTab(key)}
               className={`px-4 py-2 text-sm rounded-lg font-medium transition-all whitespace-nowrap ${
                 activeTab === key ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
@@ -63,6 +64,7 @@ export default function AdminPage({ setPage }: AdminPageProps) {
       {activeTab === "products" && <AdminProductsTab />}
       {activeTab === "cdek" && <AdminCdekTab />}
       {activeTab === "users" && <AdminUsersTab />}
+      {activeTab === "all_orders" && <AdminAllOrdersTab />}
       {activeTab === "orders" && <AdminOrdersTab />}
       {activeTab === "finance" && <AdminTransactionsTab />}
     </div>

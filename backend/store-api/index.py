@@ -1025,6 +1025,8 @@ def _fmt_order(r):
         "cdekTrackNumber":    r.get("cdek_track_number", ""),
         "cdekOrderUuid":      r.get("cdek_order_uuid", ""),
         "createdAt":          r["created_at"].strftime("%d.%m.%Y %H:%M") if r["created_at"] else "",
+        "sellerLegalType":    r.get("seller_legal_type", ""),
+        "sellerRequisites":   r.get("seller_requisites") or {},
     }
 
 def _fmt_product(r):
