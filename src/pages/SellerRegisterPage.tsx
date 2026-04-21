@@ -403,6 +403,29 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
   const set = <K extends keyof SellerProfile>(key: K, val: SellerProfile[K]) =>
     setForm(prev => ({ ...prev, [key]: val }));
 
+  // ── Сохраняем данные текущего legalType в localStorage при переключении ────
+  const LSKEY = (lt: LegalType) => `seller_form_${lt}`;
+
+  const switchLegalType = (newType: LegalType) => {
+    // Сохраняем текущий блок
+    const snapshot = { ...form };
+    try { localStorage.setItem(LSKEY(form.legalType), JSON.stringify(snapshot)); } catch { /* ignore */ }
+    // Восстанавливаем сохранённый блок нового типа
+    try {
+      const saved = localStorage.getItem(LSKEY(newType));
+      if (saved) {
+        const parsed = JSON.parse(saved) as Partial<SellerProfile>;
+        setForm({ ...form, ...parsed, legalType: newType });
+        if (parsed.inn) setInnFieldsVisible(true);
+        return;
+      }
+    } catch { /* ignore */ }
+    setForm(prev => ({ ...prev, legalType: newType }));
+    setInnFieldsVisible(false);
+    setInnResolved(false);
+    setBikResolved(false);
+  };
+
   // ── Сохранение черновика (fire-and-forget) ────────────────────────────────
   const saveDraft = useCallback(async (formData: SellerProfile, userId: string) => {
     setDraftStatus("saving");
@@ -560,7 +583,7 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
 
           <div className="space-y-3">
             <button
-              onClick={() => { if (onGoAddProduct) { onGoAddProduct(); } else { setPage("dashboard"); } }}
+              onClick={() => { if (onGoAddProduct) { onGoAddProduct(); } else { setPage("profile"); } }}
               className="w-full bg-primary text-primary-foreground rounded-2xl p-5 text-left hover:opacity-90 transition-all group"
             >
               <div className="flex items-center gap-4">
@@ -593,7 +616,7 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
           </div>
 
           <button
-            onClick={() => setPage("dashboard")}
+            onClick={() => setPage("profile")}
             className="w-full mt-4 text-sm text-muted-foreground hover:text-foreground transition-colors py-2"
           >
             Перейти в кабинет продавца
@@ -610,7 +633,7 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
   return (
     <div className="max-w-2xl mx-auto px-3 py-3 animate-fade-in">
       {!embedded && (
-        <button onClick={() => setPage("dashboard")}
+        <button onClick={() => setPage("profile")}
           className="flex items-center gap-2 text-muted-foreground hover:text-foreground text-sm mb-3 transition-colors">
           <Icon name="ArrowLeft" size={16} />
           Назад в кабинет
@@ -653,8 +676,7 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
               const isSavedType = savedLegalType === type;
               return (
                 <button key={type} onClick={() => {
-                  set("legalType", type);
-                  setShopName("");
+                  switchLegalType(type);
                 }}
                   className={`flex-1 flex flex-col items-center gap-0.5 px-1 py-1.5 rounded-lg border text-center transition-all ${
                     isSavedType
@@ -683,7 +705,7 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
                 <label className={labelCls}>Email</label>
                 <div className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 text-sm text-muted-foreground truncate">{user.email}</div>
               </div>
-              <Field label="ФИО полностью *">
+              <Field label="ФИО полностью *" hint="Фамилия Имя Отчество — как в паспорте">
                 <input value={form.legalName} onChange={e => set("legalName", e.target.value)}
                   placeholder="Иванов Иван Иванович" className={inputCls} />
               </Field>
@@ -694,7 +716,7 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
                 label="ИНН * (12 цифр)"
                 onChange={v => set("inn", v)}
               />
-              <Field label="Телефон в «Мой налог» *">
+              <Field label="Телефон в «Мой налог» *" hint="Тот номер, на который зарегистрировано приложение «Мой налог»">
                 <input value={form.phoneForTax} onChange={e => set("phoneForTax", e.target.value)}
                   placeholder="+7 900 000-00-00" className={inputCls} />
               </Field>
