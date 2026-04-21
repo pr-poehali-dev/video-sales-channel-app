@@ -8,6 +8,7 @@ import os
 import hashlib
 import urllib.request
 import psycopg2
+import psycopg2.extras
 
 
 TBANK_API = "https://securepay.tinkoff.ru/v2"
@@ -146,7 +147,7 @@ def handler(event: dict, context) -> dict:
     if order_id and payment_id:
         try:
             conn = get_conn()
-            cur = conn.cursor()
+            cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
             # Обновляем заказ
             cur.execute(
@@ -154,17 +155,31 @@ def handler(event: dict, context) -> dict:
                 (str(payment_id), order_id),
             )
 
-            # Получаем данные заказа для транзакции
+            # Получаем данные заказа вместе с типом и реквизитами продавца
             cur.execute(
-                "SELECT seller_id, order_total FROM \"t_p63706319_video_sales_channel_\".orders WHERE id = %s",
+                "SELECT seller_id, seller_legal_type, seller_requisites, order_total FROM \"t_p63706319_video_sales_channel_\".orders WHERE id = %s",
                 (order_id,),
             )
             order_row = cur.fetchone()
             if order_row:
-                seller_id_val = order_row[0] or ""
-                full_amount = float(order_row[1] or amount)
+                seller_id_val   = order_row["seller_id"] or ""
+                legal_type      = order_row["seller_legal_type"] or ""
+                requisites      = order_row["seller_requisites"] or {}
+                full_amount     = float(order_row["order_total"] or amount)
                 marketplace_fee = 0.0
-                seller_amount = round(full_amount, 2)
+                seller_amount   = round(full_amount, 2)
+
+                # Логируем тип продавца — важно для банка при переводе
+                payout_method = requisites.get("payoutMethod", "")
+                card_number   = requisites.get("cardNumber", "")
+                bank_account  = requisites.get("bankAccount", "")
+                bik           = requisites.get("bik", "")
+                print(
+                    f"[PAYMENT] Seller type={legal_type} payout={payout_method} "
+                    f"card={'*'+card_number[-4:] if card_number else '-'} "
+                    f"account={bank_account[:6]+'...' if bank_account else '-'} bik={bik} "
+                    f"order={order_id} amount={full_amount}"
+                )
 
                 # Upsert транзакции — фиксируем холд
                 cur.execute("""
@@ -181,7 +196,7 @@ def handler(event: dict, context) -> dict:
                         status          = 'hold',
                         updated_at      = now()
                 """, (order_id, seller_id_val, full_amount, seller_amount, marketplace_fee, str(payment_id)))
-                print(f"[PAYMENT] Transaction logged: order={order_id} fee={marketplace_fee} seller={seller_amount}")
+                print(f"[PAYMENT] Transaction logged: order={order_id} legal_type={legal_type} seller_amount={seller_amount}")
 
             conn.commit()
             cur.close()

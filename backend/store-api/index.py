@@ -295,12 +295,37 @@ def handler(event: dict, context) -> dict:
             goods_total = sum(i.get("price",0) * i.get("qty",1) for i in items)
             delivery_cost = float(body.get("delivery_cost", 0))
             order_total = goods_total + delivery_cost
+
+            # Подтягиваем тип и реквизиты продавца из таблицы sellers
+            seller_id_from_items = next((i.get("sellerId","") for i in items if i.get("sellerId")), "")
+            seller_legal_type = ""
+            seller_requisites = {}
+            if seller_id_from_items:
+                cur.execute(
+                    "SELECT legal_type, payout_method, card_number, bank_account, bik, corr_account, bank_name, legal_name, inn FROM sellers WHERE user_id=%s",
+                    (seller_id_from_items,)
+                )
+                s = cur.fetchone()
+                if s:
+                    seller_legal_type = s["legal_type"] or ""
+                    seller_requisites = {
+                        "payoutMethod":  s["payout_method"] or "",
+                        "cardNumber":    s["card_number"] or "",
+                        "bankAccount":   s["bank_account"] or "",
+                        "bik":           s["bik"] or "",
+                        "corrAccount":   s["corr_account"] or "",
+                        "bankName":      s["bank_name"] or "",
+                        "legalName":     s["legal_name"] or "",
+                        "inn":           s["inn"] or "",
+                    }
+
             cur.execute("""
                 INSERT INTO orders (id,buyer_id,buyer_name,buyer_phone,buyer_email,
                     delivery_type,delivery_city_code,delivery_city_name,delivery_address,
                     delivery_tariff_code,delivery_tariff_name,delivery_cost,
-                    items,goods_total,order_total,status,payment_method)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    items,goods_total,order_total,status,payment_method,
+                    seller_id,seller_legal_type,seller_requisites)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                 RETURNING id
             """, (oid, body.get("buyer_id",""), body.get("buyer_name",""),
                   body.get("buyer_phone",""), body.get("buyer_email",""),
@@ -310,7 +335,9 @@ def handler(event: dict, context) -> dict:
                   body.get("delivery_address",""), body.get("delivery_tariff_code"),
                   body.get("delivery_tariff_name",""), delivery_cost,
                   json.dumps(items, ensure_ascii=False), goods_total, order_total,
-                  "new", body.get("payment_method","")))
+                  "new", body.get("payment_method",""),
+                  seller_id_from_items, seller_legal_type,
+                  json.dumps(seller_requisites, ensure_ascii=False)))
             conn.commit()
             # Push-уведомление продавцу о новом заказе
             seller_ids = list({i.get("sellerId","") for i in items if i.get("sellerId")})
