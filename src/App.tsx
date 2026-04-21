@@ -123,7 +123,7 @@ function AppInner() {
         {page === "home" && <HomePage setPage={navSetPage} addToCart={addToCart} updateQty={updateQty} cart={cart} onProductClick={openProduct} />}
         {page === "streams" && <StreamsPage setPage={navSetPage} addToCart={addToCart} onProductClick={openProduct} />}
         {page === "catalog" && <CatalogPage addToCart={addToCart} updateQty={updateQty} cart={cart} onProductClick={openProduct} />}
-        {page === "profile" && <ProfilePage setPage={navSetPage} onAddProduct={() => { setOpenAddProduct(true); navSetPage("dashboard"); }} />}
+        {page === "profile" && <ProfilePage setPage={navSetPage} />}
         {page === "cart" && <CartPage cart={cart} removeFromCart={removeFromCart} updateQty={updateQty} onGoToAuth={(email) => { setAuthInitialEmail(email || ""); navSetPage("auth"); }} setPage={navSetPage} />}
         {page === "dashboard" && <DashboardPage setPage={navSetPage} openAddProduct={openAddProduct} onAutoOpenDone={() => setOpenAddProduct(false)} />}
         {page === "auth" && <AuthPage onSuccess={(isNew) => navSetPage(isNew ? "welcome" : "home")} initialEmail={authInitialEmail} />}
