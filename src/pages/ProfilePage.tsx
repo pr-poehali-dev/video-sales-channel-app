@@ -534,11 +534,7 @@ export default function ProfilePage({ setPage, onAddProduct }: ProfilePageProps)
                 Начать эфир
               </button>
             )}
-            <button onClick={() => onAddProduct ? onAddProduct() : setTab("Товары")}
-              className="flex items-center gap-1.5 border border-primary/40 text-primary font-semibold px-3 py-2.5 rounded-xl hover:bg-primary/5 transition-colors text-sm whitespace-nowrap">
-              <Icon name="Plus" size={15} />
-              Продать товар
-            </button>
+
           </div>
 
           {/* ── Контент таба ── */}
