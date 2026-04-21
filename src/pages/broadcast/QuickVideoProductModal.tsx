@@ -1,12 +1,10 @@
-import { useState, useEffect, useRef } from "react";
-import Icon from "@/components/ui/icon";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useStore } from "@/context/StoreContext";
-import { DimensionPicker } from "@/components/ui/scroll-picker";
+import ProductFormModal from "@/pages/dashboard/products/ProductFormModal";
+import ProductCameraModal from "@/pages/dashboard/products/ProductCameraModal";
 
-const API = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c";
 const UPLOAD_IMAGE_API = "https://functions.poehali.dev/746ac9d7-8e84-4d88-ae53-5ed67f533bf6";
 const UPLOAD_VIDEO_API = "https://functions.poehali.dev/c69feec2-8522-4f96-aca5-363656289751";
-
 
 async function grabThumbFromBlob(blobUrl: string): Promise<string | null> {
   return new Promise(resolve => {
@@ -50,298 +48,189 @@ interface QuickVideoProductModalProps {
   onSaved: () => void;
 }
 
-export default function QuickVideoProductModal({ videoBlobUrl, sellerId, sellerName, sellerAvatar, defaultWarehouse, onClose, onSaved }: QuickVideoProductModalProps) {
+export default function QuickVideoProductModal({
+  videoBlobUrl, sellerId, sellerName, sellerAvatar, defaultWarehouse, onClose, onSaved,
+}: QuickVideoProductModalProps) {
   const { addProduct } = useStore();
-  const [name, setName]                     = useState("");
-  const [wholesalePrice, setWholesalePrice] = useState("");
-  const [retailMarkup, setRetailMarkup]     = useState("0");
-  const [stock, setStock]                   = useState("10");
-  const [weightG, setWeightG]   = useState("500");
-  const [lengthCm, setLengthCm] = useState("20");
-  const [widthCm, setWidthCm]   = useState("15");
-  const [heightCm, setHeightCm] = useState("10");
-  const [saving, setSaving]         = useState(false);
-  const [videoUrl, setVideoUrl]     = useState<string | null>(null);
-  const [thumbUrl, setThumbUrl]     = useState<string | null>(null);
-  const [extraImgs, setExtraImgs]   = useState<string[]>([]);
-  const [imgUploading, setImgUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const blobToDataUrl = (blob: Blob): Promise<string> =>
-    new Promise((res, rej) => { const r = new FileReader(); r.onload = e => res(e.target?.result as string); r.onerror = rej; r.readAsDataURL(blob); });
+  const [fName, setFName] = useState("");
+  const [fCategory, setFCategory] = useState("Другое");
+  const [fDesc, setFDesc] = useState("");
+  const [fImages, setFImages] = useState<string[]>([]);
+  const [fWholesalePrice, setFWholesalePrice] = useState("");
+  const [fRetailMarkup, setFRetailMarkup] = useState("0");
+  const [fInStock, setFInStock] = useState("1");
+  const [fWeightG, setFWeightG] = useState("500");
+  const [fLengthCm, setFLengthCm] = useState("20");
+  const [fWidthCm, setFWidthCm] = useState("15");
+  const [fHeightCm, setFHeightCm] = useState("10");
+  const [fIsUsed, setFIsUsed] = useState(false);
+  const [fError, setFError] = useState<string | null>(null);
+  const [fSaving, setFSaving] = useState(false);
+  const [camOpen, setCamOpen] = useState(false);
 
-  const uploadImage = async (blob: Blob): Promise<string> => {
-    const dataUrl = await blobToDataUrl(blob);
-    const resp = await fetch(UPLOAD_IMAGE_API, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ data_url: dataUrl }) });
-    const data = await resp.json();
-    return data.url || "";
-  };
+  // Видео из эфира
+  const [fVideoUrl, setFVideoUrl] = useState<string | null>(null);
+  const [fVideoBlobUrl, setFVideoBlobUrl] = useState<string | null>(null);
+  const [camUploading, setCamUploading] = useState(true);
+  const camUploadingRef = useRef(true);
 
-  const compressToBlob = (file: File, maxPx = 1200, quality = 0.82): Promise<Blob> =>
-    new Promise((resolve, reject) => {
-      const img = new Image();
-      const url = URL.createObjectURL(file);
-      img.onload = () => {
-        URL.revokeObjectURL(url);
-        let { width, height } = img;
-        if (width > maxPx || height > maxPx) {
-          if (width > height) { height = Math.round(height * maxPx / width); width = maxPx; }
-          else { width = Math.round(width * maxPx / height); height = maxPx; }
-        }
-        const canvas = document.createElement("canvas");
-        canvas.width = width; canvas.height = height;
-        canvas.getContext("2d")!.drawImage(img, 0, 0, width, height);
-        canvas.toBlob(b => b ? resolve(b) : reject(new Error("canvas")), "image/jpeg", quality);
-      };
-      img.onerror = reject;
-      img.src = url;
-    });
+  const camVideoRef = useRef<HTMLVideoElement>(null);
+  const camStreamRef = useRef<MediaStream | null>(null);
+  const camRecorderRef = useRef<MediaRecorder | null>(null);
 
-  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files ?? []);
-    if (!files.length) return;
-    setImgUploading(true);
-    try {
-      const newUrls: string[] = [];
-      for (const file of files) {
-        const blob = await compressToBlob(file);
-        const url = await uploadImage(blob);
-        if (url) newUrls.push(url);
-      }
-      setExtraImgs(prev => [...prev, ...newUrls]);
-    } finally {
-      setImgUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
-  };
+  const fromCityCode = defaultWarehouse?.cityCode ?? "";
+  const fromCityName = defaultWarehouse?.cityName ?? "";
 
+  // Загружаем видео из эфира + делаем превью
   useEffect(() => {
+    setFVideoBlobUrl(videoBlobUrl);
+
     grabThumbFromBlob(videoBlobUrl).then(async thumbDataUrl => {
       if (!thumbDataUrl) return;
       try {
         const res = await fetch(thumbDataUrl);
         const blob = await res.blob();
-        const url = await uploadImage(blob);
-        setThumbUrl(url);
+        const reader = new FileReader();
+        reader.onload = async ev => {
+          const dataUrl = ev.target?.result as string;
+          const resp = await fetch(UPLOAD_IMAGE_API, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ data_url: dataUrl }) });
+          const data = await resp.json();
+          if (data.url) setFImages(prev => prev.includes(data.url) ? prev : [data.url, ...prev]);
+        };
+        reader.readAsDataURL(blob);
       } catch { /* ignore */ }
     });
 
     (async () => {
       try {
         const blob = await fetch(videoBlobUrl).then(r => r.blob());
-        const dataUrl = await blobToDataUrl(blob);
+        const dataUrl = await new Promise<string>((res, rej) => {
+          const r = new FileReader(); r.onload = e => res(e.target?.result as string); r.onerror = rej; r.readAsDataURL(blob);
+        });
         const resp = await fetch(UPLOAD_VIDEO_API, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ data_url: dataUrl, folder: "products" }) });
         const data = await resp.json();
-        if (data.url) setVideoUrl(data.url);
-      } catch (e) { console.error("[quickvideo] catch:", e); }
+        if (data.url) setFVideoUrl(data.url);
+      } catch (e) { console.error("[quickvideo] error:", e); }
+      finally { setCamUploading(false); camUploadingRef.current = false; }
     })();
   }, [videoBlobUrl]);
 
-  const wholesaleNum = wholesalePrice ? Number(wholesalePrice.replace(/\s/g, "").replace(",", ".")) : 0;
-  const markupNum = Number(retailMarkup) || 0;
+  const wholesaleNum = fWholesalePrice ? Number(fWholesalePrice.replace(/\s/g, "").replace(",", ".")) : 0;
+  const markupNum = Number(fRetailMarkup) || 0;
   const retailNum = wholesaleNum > 0 ? Math.round(wholesaleNum * (1 + markupNum / 100)) : 0;
+  const fPrice = retailNum > 0 ? String(retailNum) : fWholesalePrice;
 
-  const handleWholesaleChange = (v: string) => setWholesalePrice(v);
-  const handleMarkupChange = (v: string) => setRetailMarkup(v.replace(/\D/g, ""));
+  const stopCamStream = useCallback(() => {
+    camStreamRef.current?.getTracks().forEach(t => t.stop());
+    camStreamRef.current = null;
+  }, []);
 
-  const save = async () => {
-    if (!name.trim() || !wholesaleNum || saving) return;
-    setSaving(true);
+  const openCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30 } },
+        audio: false,
+      });
+      camStreamRef.current = stream;
+      setCamOpen(true);
+      setTimeout(() => {
+        if (camVideoRef.current) {
+          camVideoRef.current.srcObject = stream;
+          camVideoRef.current.play().catch(() => {});
+        }
+      }, 50);
+    } catch {
+      alert("Нет доступа к камере. Разрешите в настройках браузера.");
+    }
+  };
+
+  const closeCamera = useCallback(() => {
+    stopCamStream();
+    setCamOpen(false);
+  }, [stopCamStream]);
+
+  const handleSave = async () => {
+    setFError(null);
+    if (!fName.trim()) { setFError("Введите название товара"); return; }
+    if (!wholesaleNum || wholesaleNum <= 0) { setFError("Введите оптовую цену"); return; }
+    if (camUploadingRef.current) {
+      await new Promise<void>(resolve => {
+        const check = setInterval(() => { if (!camUploadingRef.current) { clearInterval(check); resolve(); } }, 300);
+      });
+    }
+    setFSaving(true);
     try {
       await addProduct({
-        name: name.trim(),
+        name: fName.trim(),
         price: retailNum || wholesaleNum,
         wholesalePrice: wholesaleNum,
         retailMarkupPct: markupNum,
-        category: "Разное",
-        description: "",
-        images: [thumbUrl, ...extraImgs].filter(Boolean) as string[],
-        videoUrl: videoUrl ?? undefined,
+        category: fCategory,
+        description: fDesc,
+        images: fImages,
+        videoUrl: fVideoUrl ?? undefined,
         sellerId,
         sellerName,
         sellerAvatar,
-        inStock: parseInt(stock) || 0,
-        weightG: parseInt(weightG) || 500,
-        lengthCm: parseInt(lengthCm) || 20,
-        widthCm: parseInt(widthCm) || 15,
-        heightCm: parseInt(heightCm) || 10,
+        inStock: parseInt(fInStock) || 1,
+        weightG: parseInt(fWeightG) || 500,
+        lengthCm: parseInt(fLengthCm) || 20,
+        widthCm: parseInt(fWidthCm) || 15,
+        heightCm: parseInt(fHeightCm) || 10,
         cdekEnabled: !!defaultWarehouse,
-        fromCityCode: defaultWarehouse?.cityCode ?? "",
-        fromCityName: defaultWarehouse?.cityName ?? "",
+        fromCityCode,
+        fromCityName,
+        isUsed: fIsUsed,
       } as never);
       onSaved();
-    } catch { /* ignore */ }
-    finally { setSaving(false); }
+    } catch { setFError("Ошибка сохранения, попробуйте ещё раз"); }
+    finally { setFSaving(false); }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70" onClick={onClose}>
-      <div
-        className="w-full max-w-lg bg-zinc-900 rounded-t-2xl p-4"
-        style={{ paddingBottom: "calc(2rem + 56px + env(safe-area-inset-bottom, 0px))" }}
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <p className="font-semibold text-white text-sm">Видео-товар из эфира</p>
-          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-full bg-white/10">
-            <Icon name="X" size={14} className="text-white" />
-          </button>
-        </div>
-
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          multiple
-          className="hidden"
-          onChange={handlePhotoUpload}
+    <>
+      <ProductFormModal
+        editId={null}
+        fVideoBlobUrl={fVideoBlobUrl}
+        fVideoUrl={fVideoUrl}
+        camUploading={camUploading}
+        onOpenCamera={openCamera}
+        onClearVideo={() => { setFVideoBlobUrl(null); setFVideoUrl(null); }}
+        fName={fName} setFName={setFName}
+        fCategory={fCategory} setFCategory={setFCategory}
+        fDesc={fDesc} setFDesc={setFDesc}
+        fWholesalePrice={fWholesalePrice}
+        fRetailMarkup={fRetailMarkup}
+        fPrice={fPrice}
+        onWholesalePriceChange={setFWholesalePrice}
+        onRetailMarkupChange={v => setFRetailMarkup(v.replace(/\D/g, ""))}
+        fInStock={fInStock} setFInStock={setFInStock}
+        fFromCityName={fromCityName}
+        fWeightG={fWeightG} setFWeightG={setFWeightG}
+        fLengthCm={fLengthCm} setFLengthCm={setFLengthCm}
+        fWidthCm={fWidthCm} setFWidthCm={setFWidthCm}
+        fHeightCm={fHeightCm} setFHeightCm={setFHeightCm}
+        fImages={fImages} setFImages={setFImages}
+        fIsUsed={fIsUsed} setFIsUsed={setFIsUsed}
+        fError={fError}
+        saving={fSaving}
+        onSave={handleSave}
+        onClose={onClose}
+      />
+      {camOpen && (
+        <ProductCameraModal
+          camVideoRef={camVideoRef}
+          onClose={closeCamera}
+          onVideoReady={(blobUrl, uploadUrl) => {
+            setFVideoBlobUrl(blobUrl);
+            setFVideoUrl(uploadUrl);
+            closeCamera();
+          }}
+          camStreamRef={camStreamRef}
+          camRecorderRef={camRecorderRef}
         />
-
-        <div className="flex gap-3 mb-4">
-          <div className="flex flex-col gap-1.5">
-            <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-black border border-orange-500/40 relative">
-              <video
-                src={videoBlobUrl}
-                autoPlay
-                loop
-                muted
-                playsInline
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute bottom-1 right-1 bg-orange-500 rounded-full p-0.5">
-                <Icon name="Video" size={9} className="text-white" />
-              </div>
-            </div>
-            {extraImgs.map((url, i) => (
-              <div key={url} className="relative w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-white/10">
-                <img src={url} className="w-full h-full object-cover" />
-                <button
-                  type="button"
-                  onClick={() => setExtraImgs(prev => prev.filter((_, j) => j !== i))}
-                  className="absolute top-0.5 right-0.5 w-5 h-5 bg-black/60 rounded-full flex items-center justify-center"
-                >
-                  <Icon name="X" size={9} className="text-white" />
-                </button>
-              </div>
-            ))}
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={imgUploading}
-              className="w-20 h-8 rounded-xl border border-dashed border-white/20 flex items-center justify-center gap-1 hover:border-primary/50 transition-colors disabled:opacity-40"
-            >
-              {imgUploading
-                ? <Icon name="Loader" size={12} className="text-white/40 animate-spin" />
-                : <><Icon name="Plus" size={12} className="text-white/40" /><span className="text-[10px] text-white/40">фото</span></>
-              }
-            </button>
-          </div>
-          <div className="flex-1 flex flex-col gap-2">
-            <input
-              value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder="Название товара..."
-              className="bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/30 outline-none focus:border-primary/60 w-full"
-              style={{ fontSize: 16 }}
-              autoFocus
-            />
-            <div className="relative w-24">
-              <input
-                value={stock}
-                onChange={e => setStock(e.target.value.replace(/[^0-9]/g, ""))}
-                placeholder="Кол-во"
-                inputMode="numeric"
-                className="bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/30 outline-none focus:border-primary/60 w-full pr-7"
-                style={{ fontSize: 16 }}
-              />
-              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-white/40 text-[10px]">шт</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Цены */}
-        <div className="bg-white/5 border border-white/10 rounded-xl p-3 mb-3 space-y-2">
-          <p className="text-[11px] font-medium text-white/60 flex items-center gap-1.5">
-            <Icon name="Layers" size={12} className="text-primary" />
-            Цены
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <p className="text-[10px] text-white/40 mb-1">Оптовая цена, ₽ *</p>
-              <input
-                value={wholesalePrice}
-                onChange={e => handleWholesaleChange(e.target.value)}
-                placeholder="Введите стоимость"
-                inputMode="decimal"
-                className="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/20 outline-none focus:border-primary/60"
-                style={{ fontSize: 16 }}
-              />
-            </div>
-            <div>
-              <p className="text-[10px] text-white/40 mb-1">Наценка для розницы, %</p>
-              <input
-                value={retailMarkup}
-                onChange={e => handleMarkupChange(e.target.value)}
-                placeholder="0"
-                inputMode="numeric"
-                className="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/30 outline-none focus:border-primary/60"
-                style={{ fontSize: 16 }}
-              />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div className="bg-white/5 rounded-lg px-3 py-2 text-center">
-              <p className="text-[10px] text-white/40 mb-0.5">Оптом</p>
-              <p className="font-oswald text-sm font-semibold text-white">
-                {wholesaleNum > 0 ? `${wholesaleNum.toLocaleString("ru")} ₽` : "—"}
-              </p>
-            </div>
-            <div className="bg-primary/20 rounded-lg px-3 py-2 text-center">
-              <p className="text-[10px] text-white/40 mb-0.5">В розницу</p>
-              <p className="font-oswald text-sm font-semibold text-primary">
-                {retailNum > 0 ? `${retailNum.toLocaleString("ru")} ₽` : "—"}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {defaultWarehouse ? (
-          <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-3 py-2 mb-3">
-            <Icon name="Warehouse" size={13} className="text-white/40 flex-shrink-0" />
-            <span className="text-[11px] text-white/50">Склад:</span>
-            <span className="text-[11px] text-white/80 font-medium truncate">{defaultWarehouse.name} · {defaultWarehouse.cityName}</span>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2 bg-yellow-500/10 border border-yellow-500/20 rounded-xl px-3 py-2 mb-3">
-            <Icon name="AlertTriangle" size={13} className="text-yellow-400 flex-shrink-0" />
-            <span className="text-[11px] text-yellow-400">Склад не задан — доставка СДЭК не будет рассчитана</span>
-          </div>
-        )}
-
-        <div className="mb-3">
-          <p className="text-[11px] text-white/40 mb-2">Вес и габариты (для доставки)</p>
-          <DimensionPicker
-            weightG={weightG} setWeightG={setWeightG}
-            lengthCm={lengthCm} setLengthCm={setLengthCm}
-            widthCm={widthCm} setWidthCm={setWidthCm}
-            heightCm={heightCm} setHeightCm={setHeightCm}
-            dark
-          />
-        </div>
-
-        {!videoUrl && (
-          <p className="text-[11px] text-orange-400/70 text-center mb-3">Загружаю видео...</p>
-        )}
-
-        <button
-          onClick={save}
-          disabled={!name.trim() || !wholesaleNum || saving}
-          className="w-full bg-orange-500 text-white font-bold py-3 rounded-xl text-sm disabled:opacity-40 flex items-center justify-center gap-2"
-        >
-          {saving ? <Icon name="Loader" size={15} className="animate-spin" /> : <Icon name="Plus" size={15} />}
-          {saving ? "Сохраняю..." : "Добавить видео-товар"}
-        </button>
-      </div>
-    </div>
+      )}
+    </>
   );
 }
