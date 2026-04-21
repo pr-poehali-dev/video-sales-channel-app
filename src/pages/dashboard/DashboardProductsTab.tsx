@@ -27,7 +27,7 @@ interface Props {
 
 export default function DashboardProductsTab({ warehouses, onGoToProfile, autoOpenForm, onAutoOpenDone }: Props) {
   const { user } = useAuth();
-  const { addProduct, updateProduct, deleteProduct, getSellerProducts } = useStore();
+  const { addProduct, updateProduct, deleteProduct, getSellerProducts, loadSellerProducts } = useStore();
   const { check, checking } = useSellerProfileCheck(user?.id);
 
   const products = user ? getSellerProducts(user.id) : [];
@@ -75,6 +75,11 @@ export default function DashboardProductsTab({ warehouses, onGoToProfile, autoOp
   const camVideoRef    = useRef<HTMLVideoElement>(null);
   const camStreamRef   = useRef<MediaStream | null>(null);
   const camRecorderRef = useRef<MediaRecorder | null>(null);
+
+  // ── Загрузка товаров продавца (включая pending) ───────────────────────────
+  useEffect(() => {
+    if (user?.id) loadSellerProducts(user.id);
+  }, [user?.id, loadSellerProducts]);
 
   // ── Поиск города (для cityQuery, не используется в UI, но useEffect работает) ──
   useEffect(() => {

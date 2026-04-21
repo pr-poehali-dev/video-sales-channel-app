@@ -120,6 +120,7 @@ interface StoreContextType {
   addSellerReview: (data: Omit<SellerReview, "id" | "createdAt">) => Promise<SellerReview>;
   moderateProduct: (id: string, status: "approved" | "rejected", comment?: string) => Promise<void>;
   getPendingProducts: () => Promise<StoreProduct[]>;
+  loadSellerProducts: (sellerId: string) => Promise<void>;
 }
 
 const StoreContext = createContext<StoreContextType | null>(null);
@@ -211,6 +212,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const getPendingProducts = useCallback(async (): Promise<StoreProduct[]> => {
     return api("get_products_pending");
+  }, []);
+
+  const loadSellerProducts = useCallback(async (sellerId: string) => {
+    const sellerProds: StoreProduct[] = await api(`get_products&seller_id=${sellerId}`);
+    setProducts(prev => {
+      // мержим: убираем старые товары этого продавца, добавляем свежие
+      const others = prev.filter(p => p.sellerId !== sellerId);
+      return [...sellerProds, ...others];
+    });
   }, []);
 
   /* ── STREAMS ── */
@@ -311,7 +321,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       getStreamMessages, addChatMessage, banChatUser, unbanChatUser,
       getProductReviews, addReview, hasUserReviewed,
       getSellerReviews, addSellerReview,
-      moderateProduct, getPendingProducts,
+      moderateProduct, getPendingProducts, loadSellerProducts,
     }}>
       {children}
     </StoreContext.Provider>
