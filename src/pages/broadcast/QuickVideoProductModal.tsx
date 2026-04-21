@@ -4,6 +4,7 @@ import { useStore } from "@/context/StoreContext";
 import { DimensionPicker } from "@/components/ui/scroll-picker";
 
 const API = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c";
+const UPLOAD_IMAGE_API = "https://functions.poehali.dev/746ac9d7-8e84-4d88-ae53-5ed67f533bf6";
 const UPLOAD_VIDEO_API = "https://functions.poehali.dev/c69feec2-8522-4f96-aca5-363656289751";
 
 
@@ -79,7 +80,7 @@ export default function QuickVideoProductModal({ videoBlobUrl, sellerId, sellerN
           reader.onerror = reject;
           reader.readAsDataURL(file);
         });
-        const resp = await fetch(`${API}?action=upload_image`, {
+        const resp = await fetch(`${UPLOAD_IMAGE_API}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ data_url: dataUrl }),
@@ -98,7 +99,7 @@ export default function QuickVideoProductModal({ videoBlobUrl, sellerId, sellerN
     // Загружаем превью и видео параллельно независимо друг от друга
     grabThumbFromBlob(videoBlobUrl).then(thumbDataUrl => {
       if (!thumbDataUrl) return;
-      fetch(`${API}?action=upload_image`, {
+      fetch(`${UPLOAD_IMAGE_API}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ data_url: thumbDataUrl }),

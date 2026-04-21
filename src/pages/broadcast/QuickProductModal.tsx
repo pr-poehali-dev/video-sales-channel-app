@@ -4,6 +4,7 @@ import { useStore } from "@/context/StoreContext";
 import { DimensionPicker } from "@/components/ui/scroll-picker";
 
 const API = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c";
+const UPLOAD_IMAGE_API = "https://functions.poehali.dev/746ac9d7-8e84-4d88-ae53-5ed67f533bf6";
 
 interface QuickProductModalProps {
   imageDataUrl: string;
@@ -44,7 +45,7 @@ export default function QuickProductModal({ imageDataUrl, sellerId, sellerName, 
           reader.onerror = reject;
           reader.readAsDataURL(file);
         });
-        const resp = await fetch(`${API}?action=upload_image`, {
+        const resp = await fetch(`${UPLOAD_IMAGE_API}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ data_url: dataUrl }),
@@ -62,7 +63,7 @@ export default function QuickProductModal({ imageDataUrl, sellerId, sellerName, 
   useEffect(() => {
     (async () => {
       try {
-        const resp = await fetch(`${API}?action=upload_image`, {
+        const resp = await fetch(`${UPLOAD_IMAGE_API}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ data_url: imageDataUrl }),

@@ -1,0 +1,19 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS returns 200",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "invalid data returns 400",
+      "method": "POST",
+      "path": "/",
+      "body": {"data_url": "data:video/mp4;base64,abc"},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "invalid image data"},
+      "bodyMatcher": "partial"
+    }
+  ]
+}
