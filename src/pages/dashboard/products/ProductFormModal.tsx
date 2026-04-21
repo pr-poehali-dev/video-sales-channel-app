@@ -80,6 +80,20 @@ export default function ProductFormModal({
 }: ProductFormModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imgUploading, setImgUploading] = useState(false);
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+
+  const fieldError = (field: string): string | null => {
+    if (!touched[field]) return null;
+    if (field === "name" && !fName.trim()) return "Введите название товара";
+    if (field === "price" && (!fWholesalePrice.trim() || Number(fWholesalePrice.replace(/\s/g, "").replace(",", ".")) <= 0)) return "Введите оптовую цену";
+    if (field === "stock" && (!fInStock || Number(fInStock) <= 0)) return "Укажите количество товара";
+    return null;
+  };
+
+  const handleSaveWithValidation = () => {
+    setTouched({ name: true, price: true, stock: true });
+    onSave();
+  };
 
   const compressToBlob = (file: File, maxPx = 1200, quality = 0.82): Promise<Blob> =>
     new Promise((resolve, reject) => {
@@ -240,10 +254,12 @@ export default function ProductFormModal({
 
           {/* Название */}
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Название *</label>
-            <input value={fName} onChange={e => setFName(e.target.value)}
+            <label className="text-xs text-muted-foreground mb-1 block">Название <span className="text-destructive">*</span></label>
+            <input value={fName} onChange={e => { setFName(e.target.value); setTouched(t => ({ ...t, name: true })); }}
+              onBlur={() => setTouched(t => ({ ...t, name: true }))}
               placeholder="Например: Серьги золотые с жемчугом"
-              className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors" />
+              className={`w-full bg-secondary border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors ${fieldError("name") ? "border-destructive bg-destructive/5" : "border-border"}`} />
+            {fieldError("name") && <p className="text-xs text-destructive mt-1 flex items-center gap-1"><span>⚠</span>{fieldError("name")}</p>}
           </div>
 
           {/* Б/у */}
@@ -282,10 +298,12 @@ export default function ProductFormModal({
             </p>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Оптовая цена, ₽ *</label>
-                <input value={fWholesalePrice} onChange={e => onWholesalePriceChange(e.target.value)}
+                <label className="text-xs text-muted-foreground mb-1 block">Оптовая цена, ₽ <span className="text-destructive">*</span></label>
+                <input value={fWholesalePrice} onChange={e => { onWholesalePriceChange(e.target.value); setTouched(t => ({ ...t, price: true })); }}
+                  onBlur={() => setTouched(t => ({ ...t, price: true }))}
                   placeholder="400" inputMode="decimal"
-                  className="w-full bg-card border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors" />
+                  className={`w-full bg-card border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors ${fieldError("price") ? "border-destructive bg-destructive/5" : "border-border"}`} />
+                {fieldError("price") && <p className="text-xs text-destructive mt-1 flex items-center gap-1"><span>⚠</span>{fieldError("price")}</p>}
               </div>
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Наценка для розницы, %</label>
@@ -322,13 +340,15 @@ export default function ProductFormModal({
           {/* Количество и город отправки */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Количество, шт *</label>
+              <label className="text-xs text-muted-foreground mb-1 block">Количество, шт <span className="text-destructive">*</span></label>
               <input
                 value={fInStock}
-                onChange={e => setFInStock(e.target.value.replace(/\D/g, ""))}
+                onChange={e => { setFInStock(e.target.value.replace(/\D/g, "")); setTouched(t => ({ ...t, stock: true })); }}
+                onBlur={() => setTouched(t => ({ ...t, stock: true }))}
                 placeholder="1" inputMode="numeric"
-                className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors"
+                className={`w-full bg-secondary border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors ${fieldError("stock") ? "border-destructive bg-destructive/5" : "border-border"}`}
               />
+              {fieldError("stock") && <p className="text-xs text-destructive mt-1 flex items-center gap-1"><span>⚠</span>{fieldError("stock")}</p>}
             </div>
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Город отправки</label>
@@ -360,7 +380,7 @@ export default function ProductFormModal({
         {/* Зафиксированные кнопки снизу */}
         <div style={{ flexShrink: 0, borderTop: "1px solid var(--border)", padding: "16px 20px", display: "flex", gap: 12, background: "var(--card)" }}>
           <button
-            onClick={onSave}
+            onClick={handleSaveWithValidation}
             disabled={imgUploading || camUploading || saving}
             className="flex-1 bg-primary text-primary-foreground font-semibold py-3 rounded-xl hover:opacity-90 transition-opacity text-sm disabled:opacity-60 flex items-center justify-center gap-2"
           >
