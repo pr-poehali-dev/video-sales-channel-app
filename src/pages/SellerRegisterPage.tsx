@@ -761,8 +761,7 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
               {/* Транспортные компании */}
               <div>
                 <label className={labelCls}>Транспортные компании</label>
-                <p className="text-[11px] text-muted-foreground mb-2">Выберите ТК, через которые отправляете заказы</p>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="flex flex-wrap gap-1.5 mt-1">
                   {([
                     ["СДЭК", "Truck", true],
                     ["ПЭК", "Package", false],
@@ -771,23 +770,20 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
                   ] as const).map(([name, icon, available]) => {
                     const active = carriers.includes(name);
                     if (!available) return (
-                      <div key={name} className="flex items-center gap-2 p-3 rounded-xl border border-border bg-secondary/40 opacity-50 cursor-not-allowed relative">
-                        <Icon name={icon} size={14} className="flex-shrink-0 text-muted-foreground" />
-                        <div className="min-w-0">
-                          <span className="text-xs font-medium leading-tight text-muted-foreground">{name}</span>
-                          <p className="text-[10px] text-muted-foreground/70 leading-tight">Скоро</p>
-                        </div>
+                      <div key={name} className="flex items-center gap-1 px-2 py-1 rounded-lg border border-border bg-secondary/40 opacity-40 cursor-not-allowed">
+                        <Icon name={icon} size={11} className="text-muted-foreground" />
+                        <span className="text-[11px] text-muted-foreground">{name}</span>
                       </div>
                     );
                     return (
                       <button key={name} type="button"
                         onClick={() => setCarriers(prev => active ? prev.filter(c => c !== name) : [...prev, name])}
-                        className={`flex items-center gap-2 p-3 rounded-xl border text-left transition-all ${
+                        className={`flex items-center gap-1 px-2 py-1 rounded-lg border transition-all ${
                           active ? "border-green-500/50 bg-green-500/10 text-green-700" : "border-border bg-secondary text-muted-foreground hover:border-primary/30"
                         }`}>
-                        <Icon name={icon} size={14} className="flex-shrink-0" />
-                        <span className="text-xs font-medium leading-tight">{name}</span>
-                        {active && <Icon name="Check" size={12} className="ml-auto flex-shrink-0 text-green-600" />}
+                        <Icon name={icon} size={11} />
+                        <span className="text-[11px] font-medium">{name}</span>
+                        {active && <Icon name="Check" size={10} className="ml-0.5 text-green-600" />}
                       </button>
                     );
                   })}
@@ -1027,8 +1023,7 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
           {/* Транспортные компании */}
           <div>
             <label className={labelCls}>Транспортные компании</label>
-            <p className="text-[11px] text-muted-foreground mb-2">Выберите ТК, через которые отправляете заказы</p>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="flex flex-wrap gap-1.5 mt-1">
               {([
                 ["СДЭК", "Truck", true],
                 ["ПЭК", "Package", false],
@@ -1037,23 +1032,20 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
               ] as const).map(([name, icon, available]) => {
                 const active = carriers.includes(name);
                 if (!available) return (
-                  <div key={name} className="flex items-center gap-2 p-3 rounded-xl border border-border bg-secondary/40 opacity-50 cursor-not-allowed">
-                    <Icon name={icon} size={14} className="flex-shrink-0 text-muted-foreground" />
-                    <div className="min-w-0">
-                      <span className="text-xs font-medium leading-tight text-muted-foreground">{name}</span>
-                      <p className="text-[10px] text-muted-foreground/70 leading-tight">Скоро</p>
-                    </div>
+                  <div key={name} className="flex items-center gap-1 px-2 py-1 rounded-lg border border-border bg-secondary/40 opacity-40 cursor-not-allowed">
+                    <Icon name={icon} size={11} className="text-muted-foreground" />
+                    <span className="text-[11px] text-muted-foreground">{name}</span>
                   </div>
                 );
                 return (
                   <button key={name} type="button"
                     onClick={() => setCarriers(prev => active ? prev.filter(c => c !== name) : [...prev, name])}
-                    className={`flex items-center gap-2 p-3 rounded-xl border text-left transition-all ${
+                    className={`flex items-center gap-1 px-2 py-1 rounded-lg border transition-all ${
                       active ? "border-green-500/50 bg-green-500/10 text-green-700" : "border-border bg-secondary text-muted-foreground hover:border-primary/30"
                     }`}>
-                    <Icon name={icon} size={14} className="flex-shrink-0" />
-                    <span className="text-xs font-medium leading-tight">{name}</span>
-                    {active && <Icon name="Check" size={12} className="ml-auto flex-shrink-0 text-green-600" />}
+                    <Icon name={icon} size={11} />
+                    <span className="text-[11px] font-medium">{name}</span>
+                    {active && <Icon name="Check" size={10} className="ml-0.5 text-green-600" />}
                   </button>
                 );
               })}
@@ -1064,10 +1056,10 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
 
         {/* ── Документы ── */}
         {!isIndividual && (
-        <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+        <div className="bg-card border border-border rounded-xl p-3 space-y-2">
           <div>
-            <h2 className="text-sm font-semibold text-foreground">Документы</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">Могут потребоваться для модерации или по запросу банка</p>
+            <h2 className="text-xs font-semibold text-foreground">Документы</h2>
+            <p className="text-[11px] text-muted-foreground">Могут потребоваться для модерации</p>
           </div>
           <div className="flex items-center gap-3 bg-secondary/60 rounded-xl p-3">
             <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
