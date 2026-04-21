@@ -36,16 +36,38 @@ export default function ProductCameraRecorder({
             <Icon name="X" size={18} className="text-white" />
           </button>
           <span className="text-white text-sm font-medium bg-black/60 px-3 py-1.5 rounded-full">
-            Снимите товар 5 секунд
+            Снимите товар 10 секунд
           </span>
           <div className="w-10" />
         </div>
 
-        {/* Центр — обратный отсчёт */}
+        {/* Центр — обратный отсчёт с прогресс-кольцом */}
         {camRecording && (
-          <div className="flex items-center justify-center">
-            <div className="w-24 h-24 rounded-full bg-red-500/20 border-4 border-red-500 flex items-center justify-center">
-              <span className="text-white font-bold text-4xl font-oswald">{camCountdown}</span>
+          <div className="flex flex-col items-center justify-center gap-4">
+            <div className="relative w-28 h-28 flex items-center justify-center">
+              <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 112 112">
+                <circle cx="56" cy="56" r="50" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="6" />
+                <circle
+                  cx="56" cy="56" r="50"
+                  fill="none"
+                  stroke="#ef4444"
+                  strokeWidth="6"
+                  strokeLinecap="round"
+                  strokeDasharray={`${2 * Math.PI * 50}`}
+                  strokeDashoffset={`${2 * Math.PI * 50 * (camCountdown / 10)}`}
+                  style={{ transition: "stroke-dashoffset 0.2s linear" }}
+                />
+              </svg>
+              <div className="w-20 h-20 rounded-full bg-red-500/20 flex items-center justify-center">
+                <span className="text-white font-bold text-4xl font-oswald">{camCountdown}</span>
+              </div>
+            </div>
+            {/* Линейная шкала снизу */}
+            <div className="w-48 h-1.5 rounded-full bg-white/20 overflow-hidden">
+              <div
+                className="h-full bg-red-500 rounded-full"
+                style={{ width: `${((10 - camCountdown) / 10) * 100}%`, transition: "width 0.2s linear" }}
+              />
             </div>
           </div>
         )}
