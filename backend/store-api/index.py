@@ -505,6 +505,9 @@ def handler(event: dict, context) -> dict:
                 if f in body:
                     fields.append(f"{f}=%s")
                     vals.append(body[f])
+            if "isUsed" in body:
+                fields.append("is_used=%s")
+                vals.append(bool(body["isUsed"]))
             if not fields:
                 return err("nothing to update")
             vals.append(pid)

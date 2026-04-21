@@ -169,6 +169,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       video_url: data.videoUrl ?? "",
       wholesale_price: (data as { wholesalePrice?: number | null }).wholesalePrice ?? null,
       retail_markup_pct: (data as { retailMarkupPct?: number }).retailMarkupPct ?? 0,
+      isUsed: (data as { isUsed?: boolean }).isUsed ?? false,
     });
     setProducts(prev => [p, ...prev]);
     return p;
@@ -196,6 +197,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ...(d.videoUrl !== undefined && { video_url: d.videoUrl }),
       ...(d.wholesalePrice !== undefined && { wholesale_price: d.wholesalePrice }),
       ...(d.retailMarkupPct !== undefined && { retail_markup_pct: d.retailMarkupPct }),
+      ...(d.isUsed !== undefined && { isUsed: d.isUsed }),
     });
     setProducts(prev => prev.map(p => p.id === id ? updated : p));
   }, []);
