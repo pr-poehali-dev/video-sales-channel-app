@@ -171,6 +171,15 @@ export default function CartPage({ cart, removeFromCart, updateQty, onGoToAuth, 
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   type PaymentMethod = "card" | "sbp" | "invoice";
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
+
+  // Реквизиты покупателя для оплаты по счёту
+  const [invoiceInn, setInvoiceInn] = useState("");
+  const [invoiceOrgName, setInvoiceOrgName] = useState("");
+  const [invoiceKpp, setInvoiceKpp] = useState("");
+  const [invoiceLegalAddress, setInvoiceLegalAddress] = useState("");
+  const [invoiceProfileLoaded, setInvoiceProfileLoaded] = useState(false);
+  const [invoiceProfileLoading, setInvoiceProfileLoading] = useState(false);
+
   const [orderDone,  setOrderDone]  = useState(false);
   const [orderId,    setOrderId]    = useState<string | null>(null);
   const [cdekTrack,  setCdekTrack]  = useState<string | null>(null);
@@ -178,6 +187,25 @@ export default function CartPage({ cart, removeFromCart, updateQty, onGoToAuth, 
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const contactFilled = buyerLastName.trim() && buyerFirstName.trim() && buyerPhone.trim();
+
+  // ── Загрузка реквизитов покупателя при выборе оплаты по счёту ─────────────
+  useEffect(() => {
+    if (paymentMethod !== "invoice" || !user || invoiceProfileLoaded) return;
+    setInvoiceProfileLoading(true);
+    fetch(`${STORE_API}?action=get_seller_profile&user_id=${user.id}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data) {
+          setInvoiceInn(data.inn || "");
+          setInvoiceOrgName(data.legalName || "");
+          setInvoiceKpp(data.kpp || "");
+          setInvoiceLegalAddress(data.legalAddress || "");
+        }
+        setInvoiceProfileLoaded(true);
+      })
+      .catch(() => setInvoiceProfileLoaded(true))
+      .finally(() => setInvoiceProfileLoading(false));
+  }, [paymentMethod, user, invoiceProfileLoaded]);
 
   // ── Оформление заказа ─────────────────────────────────────────────────────
   const createOrder = async (): Promise<string | null> => {
@@ -200,6 +228,10 @@ export default function CartPage({ cart, removeFromCart, updateQty, onGoToAuth, 
         cdek_pvz_apiship_id:  cdekPvzApishipId || undefined,
         items: selectedCart.map(c => ({ id: c.id, name: c.name, price: getItemPrice(c, mode), qty: c.qty, image: c.image, videoUrl: c.videoUrl || "", sellerId: c.sellerId || "", is_used: c.isUsed ?? false })),
         payment_method: paymentMethod,
+        buyer_inn: invoiceInn.trim(),
+        buyer_org_name: invoiceOrgName.trim(),
+        buyer_kpp: invoiceKpp.trim(),
+        buyer_legal_address: invoiceLegalAddress.trim(),
         goods_total:    goodsTotal,
         order_total:    orderTotal,
       };
@@ -280,6 +312,14 @@ export default function CartPage({ cart, removeFromCart, updateQty, onGoToAuth, 
       setValidationError("Необходимо принять условия оферты и согласие на обработку данных");
       return;
     }
+    if (paymentMethod === "invoice" && !invoiceInn.trim()) {
+      setValidationError("Для оплаты по счёту укажите ИНН организации");
+      return;
+    }
+    if (paymentMethod === "invoice" && !invoiceOrgName.trim()) {
+      setValidationError("Для оплаты по счёту укажите наименование организации");
+      return;
+    }
     if (!user && buyerEmail.trim() && buyerPassword && buyerPassword.length < 6) {
       setValidationError("Пароль должен быть не менее 6 символов");
       return;
@@ -356,7 +396,17 @@ export default function CartPage({ cart, removeFromCart, updateQty, onGoToAuth, 
   };
 
   // ── Guard screens ─────────────────────────────────────────────────────────
-  if (orderDone) return <CartOrderDone orderId={orderId} cdekTrack={cdekTrack} />;
+  if (orderDone) return (
+    <CartOrderDone
+      orderId={orderId}
+      cdekTrack={cdekTrack}
+      paymentMethod={paymentMethod}
+      invoiceOrgName={invoiceOrgName}
+      invoiceInn={invoiceInn}
+      orderTotal={orderTotal}
+      buyerEmail={buyerEmail}
+    />
+  );
 
   if (cart.length === 0) {
     return (
@@ -647,9 +697,77 @@ export default function CartPage({ cart, removeFromCart, updateQty, onGoToAuth, 
             </div>
 
             {paymentMethod === "invoice" && (
-              <div className="flex items-start gap-2 bg-amber-500/10 text-amber-700 text-[11px] px-3 py-2 rounded-lg">
-                <Icon name="Info" size={12} className="flex-shrink-0 mt-0.5" />
-                <span>После оформления мы вышлем счёт на ваш Email. Отгрузка — после поступления оплаты.</span>
+              <div className="space-y-3 pt-1 border-t border-border">
+                <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                  <Icon name="Building2" size={13} className="text-muted-foreground" />
+                  Реквизиты вашей организации
+                </p>
+
+                {invoiceProfileLoading ? (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+                    <div className="w-3.5 h-3.5 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin" />
+                    Загружаем данные из профиля…
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {invoiceProfileLoaded && !invoiceInn && (
+                      <div className="flex items-start gap-2 bg-amber-500/10 text-amber-700 text-[11px] px-3 py-2 rounded-lg">
+                        <Icon name="AlertCircle" size={12} className="flex-shrink-0 mt-0.5" />
+                        <span>Реквизиты не найдены в профиле — заполните поля ниже. Они сохранятся для будущих заказов.</span>
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="text-[11px] text-muted-foreground mb-0.5 block">ИНН организации / ИП *</label>
+                      <input
+                        value={invoiceInn}
+                        onChange={e => setInvoiceInn(e.target.value.replace(/\D/g, ""))}
+                        placeholder="1234567890"
+                        maxLength={12}
+                        inputMode="numeric"
+                        className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] text-muted-foreground mb-0.5 block">Наименование организации / ИП *</label>
+                      <input
+                        value={invoiceOrgName}
+                        onChange={e => setInvoiceOrgName(e.target.value)}
+                        placeholder="ООО «Ромашка» или ИП Иванов И.И."
+                        className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[11px] text-muted-foreground mb-0.5 block">КПП</label>
+                        <input
+                          value={invoiceKpp}
+                          onChange={e => setInvoiceKpp(e.target.value.replace(/\D/g, ""))}
+                          placeholder="770101001"
+                          maxLength={9}
+                          inputMode="numeric"
+                          className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] text-muted-foreground mb-0.5 block">Юр. адрес</label>
+                        <input
+                          value={invoiceLegalAddress}
+                          onChange={e => setInvoiceLegalAddress(e.target.value)}
+                          placeholder="г. Москва, ул. …"
+                          className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-2 bg-blue-500/10 text-blue-700 text-[11px] px-3 py-2 rounded-lg">
+                      <Icon name="Info" size={12} className="flex-shrink-0 mt-0.5" />
+                      <span>После оформления пришлём счёт на ваш Email. Отгрузка — после поступления оплаты на расчётный счёт.</span>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
