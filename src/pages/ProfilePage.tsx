@@ -540,6 +540,14 @@ export default function ProfilePage({ setPage, onAddProduct }: ProfilePageProps)
               <SellerRegisterPage setPage={setPage} embedded />
             </>
           )}
+
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center justify-center gap-2 border border-border rounded-xl py-2.5 text-sm font-semibold text-muted-foreground hover:text-red-500 hover:border-red-500/40 transition-colors mt-2"
+          >
+            <Icon name="LogOut" size={15} />
+            Выйти из аккаунта
+          </button>
         </div>
       )}
 
