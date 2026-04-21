@@ -719,10 +719,34 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
                 label="ИНН * (12 цифр)"
                 onChange={v => set("inn", v)}
               />
-              <Field label="Телефон в «Мой налог» *" hint="Тот номер, на который зарегистрировано приложение «Мой налог»">
-                <input value={form.phoneForTax} onChange={e => set("phoneForTax", e.target.value)}
-                  placeholder="+7 900 000-00-00" className={inputCls} />
-              </Field>
+              <div>
+                <label className={labelCls}>Телефон в «Мой налог» *</label>
+                <div className="relative">
+                  <input
+                    value={form.phoneForTax}
+                    onChange={e => set("phoneForTax", e.target.value.replace(/[^\d+\s()-]/g, ""))}
+                    placeholder="+7 900 000-00-00"
+                    inputMode="tel"
+                    className={inputCls + " pr-8 " + (
+                      form.phoneForTax.replace(/\D/g, "").length >= 10
+                        ? "border-green-500/60"
+                        : form.phoneForTax.length > 0
+                        ? "border-destructive/60"
+                        : ""
+                    )}
+                  />
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                    {form.phoneForTax.replace(/\D/g, "").length >= 10 && <Icon name="CheckCircle" size={14} className="text-green-500" />}
+                    {form.phoneForTax.length > 0 && form.phoneForTax.replace(/\D/g, "").length < 10 && <Icon name="XCircle" size={14} className="text-destructive" />}
+                  </div>
+                </div>
+                {form.phoneForTax.replace(/\D/g, "").length >= 10
+                  ? <p className="text-[11px] text-green-600 mt-1 flex items-center gap-1"><Icon name="CheckCircle" size={10} />Номер корректный</p>
+                  : form.phoneForTax.length > 0
+                  ? <p className="text-[11px] text-destructive mt-1 flex items-center gap-1"><Icon name="AlertCircle" size={10} />Введите не менее 10 цифр</p>
+                  : <p className="text-[11px] text-muted-foreground mt-1">Тот номер, на который зарегистрировано приложение «Мой налог»</p>
+                }
+              </div>
 
               {/* Способ выплат */}
               <div>
