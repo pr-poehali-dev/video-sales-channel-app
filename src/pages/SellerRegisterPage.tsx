@@ -512,7 +512,7 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
       const isIndividualType = form.legalType === "individual";
       await updateUser({
         name: isIndividualType ? (form.legalName.trim() || pName.trim()) : pName.trim(),
-        phone: pPhone.trim(),
+        phone: contactPhone.trim(),
         city: pCity.trim(),
         ...((shopName.trim() || isIndividualType) && cityCode ? {
           shopName: isIndividualType ? (form.legalName.trim() || pName.trim()) : shopName.trim(),
@@ -807,9 +807,34 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
                 <Icon name="Info" size={13} />
                 {lt === "ip" ? "Для ИП — ОГРНИП 15 цифр, ИНН 12 цифр" : "Для ООО — ОГРН 13 цифр, ИНН 10 цифр"}
               </div>
-              <Field label="Телефон *">
-                <input value={pPhone} onChange={handlePhoneChange} placeholder="+7 (900) 000-00-00" inputMode="tel" className={inputCls} />
-              </Field>
+              <div>
+                <label className={labelCls}>Контактный телефон *</label>
+                <div className="relative">
+                  <input
+                    value={pPhone}
+                    onChange={handlePhoneChange}
+                    placeholder="+7 (900) 000-00-00"
+                    inputMode="tel"
+                    className={inputCls + " pr-8 " + (
+                      pPhone.replace(/\D/g, "").length >= 10
+                        ? "border-green-500/60"
+                        : pPhone.length > 0
+                        ? "border-destructive/60"
+                        : ""
+                    )}
+                  />
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                    {pPhone.replace(/\D/g, "").length >= 10 && <Icon name="CheckCircle" size={14} className="text-green-500" />}
+                    {pPhone.length > 0 && pPhone.replace(/\D/g, "").length < 10 && <Icon name="XCircle" size={14} className="text-destructive" />}
+                  </div>
+                </div>
+                {pPhone.replace(/\D/g, "").length >= 10
+                  ? <p className="text-[11px] text-green-600 mt-1 flex items-center gap-1"><Icon name="CheckCircle" size={10} />Номер корректный</p>
+                  : pPhone.length > 0
+                  ? <p className="text-[11px] text-destructive mt-1 flex items-center gap-1"><Icon name="AlertCircle" size={10} />Введите не менее 10 цифр</p>
+                  : <p className="text-[11px] text-muted-foreground mt-1">Для связи по вопросам заказов</p>
+                }
+              </div>
               <div>
                 <label className={labelCls}>Email</label>
                 <div className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 text-sm text-muted-foreground truncate">{user.email}</div>
@@ -838,21 +863,34 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
               {/* ОГРН, название, адрес — скрыты до автозаполнения по ИНН */}
               {innFieldsVisible && (
                 <div className="space-y-3 animate-fade-in">
-                  <Field label={lt === "ip" ? "ОГРНИП *" : "ОГРН *"}>
-                    <input value={form.ogrn} onChange={e => set("ogrn", e.target.value.replace(/\D/g, ""))}
-                      placeholder={lt === "ip" ? "15 цифр" : "13 цифр"}
-                      maxLength={lt === "ip" ? 15 : 13}
-                      className={inputCls + (innResolved && form.ogrn ? " border-green-500/40 bg-green-500/5" : "")} />
+                  <Field
+                    label={lt === "ip" ? "ОГРНИП *" : "ОГРН *"}
+                    hint={lt === "ip" ? "15 цифр — из свидетельства ИП" : "13 цифр — из свидетельства о регистрации ООО"}
+                  >
+                    <div className="relative">
+                      <input value={form.ogrn} onChange={e => set("ogrn", e.target.value.replace(/\D/g, ""))}
+                        placeholder={lt === "ip" ? "123456789012345" : "1234567890123"}
+                        maxLength={lt === "ip" ? 15 : 13}
+                        className={inputCls + " pr-8 " + (
+                          form.ogrn.length === (lt === "ip" ? 15 : 13) ? " border-green-500/60" :
+                          form.ogrn.length > 0 ? " border-destructive/60" : ""
+                        )} />
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                        {form.ogrn.length === (lt === "ip" ? 15 : 13) && <Icon name="CheckCircle" size={14} className="text-green-500" />}
+                        {form.ogrn.length > 0 && form.ogrn.length < (lt === "ip" ? 15 : 13) && <Icon name="XCircle" size={14} className="text-destructive" />}
+                      </div>
+                    </div>
                   </Field>
-                  <Field label={lt === "ip" ? "Полное наименование (ИП Иванов И.И.) *" : "Полное наименование (ООО «Ромашка») *"}>
+                  <Field label={lt === "ip" ? "Полное наименование ИП *" : "Полное наименование организации *"}
+                    hint={lt === "ip" ? "Например: ИП Иванов Иван Иванович" : 'Например: ООО "Ромашка"'}>
                     <input value={form.legalName} onChange={e => set("legalName", e.target.value)}
                       placeholder={lt === "ip" ? "ИП Иванов Иван Иванович" : 'ООО "Ромашка"'}
-                      className={inputCls + (innResolved && form.legalName ? " border-green-500/40 bg-green-500/5" : "")} />
+                      className={inputCls + (form.legalName.trim().length > 3 ? " border-green-500/40" : "")} />
                   </Field>
-                  <Field label="Юридический адрес *">
+                  <Field label="Юридический адрес *" hint="Адрес регистрации из ЕГРИП/ЕГРЮЛ">
                     <input value={form.legalAddress} onChange={e => set("legalAddress", e.target.value)}
                       placeholder="129110, г. Москва, ул. Примерная, д. 1"
-                      className={inputCls + (innResolved && form.legalAddress ? " border-green-500/40 bg-green-500/5" : "")} />
+                      className={inputCls + (form.legalAddress.trim().length > 5 ? " border-green-500/40" : "")} />
                   </Field>
                 </div>
               )}
@@ -864,10 +902,24 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
                   Банковские реквизиты
                 </p>
                 {(innFieldsVisible && form.ogrn && form.legalName) ? (
-                  <Field label="Расчётный счёт * (20 цифр)">
-                    <input value={form.bankAccount} onChange={e => set("bankAccount", e.target.value.replace(/\D/g, ""))}
-                      placeholder="40702810000000000000" maxLength={20} className={inputCls} />
-                  </Field>
+                  <div>
+                    <label className={labelCls}>Расчётный счёт * (20 цифр)</label>
+                    <div className="relative">
+                      <input value={form.bankAccount} onChange={e => set("bankAccount", e.target.value.replace(/\D/g, ""))}
+                        placeholder="40702810000000000000" maxLength={20}
+                        className={inputCls + " pr-8 " + (form.bankAccount.length === 20 ? " border-green-500/60" : form.bankAccount.length > 0 ? " border-destructive/60" : "")} />
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                        {form.bankAccount.length === 20 && <Icon name="CheckCircle" size={14} className="text-green-500" />}
+                        {form.bankAccount.length > 0 && form.bankAccount.length < 20 && <Icon name="XCircle" size={14} className="text-destructive" />}
+                      </div>
+                    </div>
+                    {form.bankAccount.length === 20
+                      ? <p className="text-[11px] text-green-600 mt-1 flex items-center gap-1"><Icon name="CheckCircle" size={10} />Счёт заполнен</p>
+                      : form.bankAccount.length > 0
+                      ? <p className="text-[11px] text-destructive mt-1 flex items-center gap-1"><Icon name="AlertCircle" size={10} />Нужно ровно 20 цифр (сейчас {form.bankAccount.length})</p>
+                      : <p className="text-[11px] text-muted-foreground mt-1">Начинается на 407 (ООО) или 408 (ИП)</p>
+                    }
+                  </div>
                 ) : !innFieldsVisible && (
                   <p className="text-[11px] text-muted-foreground">Заполните ИНН, ОГРН и название — поля появятся автоматически</p>
                 )}
