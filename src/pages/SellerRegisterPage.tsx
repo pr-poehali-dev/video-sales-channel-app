@@ -17,7 +17,7 @@ const LEGAL_LABELS: Record<LegalType, { short: string; long: string; icon: strin
   individual:     { short: "Физлицо",      long: "Физическое лицо (б/у товары)", icon: "User" },
   self_employed:  { short: "Самозанятый",  long: "Самозанятый (НПД)", icon: "Briefcase" },
   ip:             { short: "ИП",           long: "Индивидуальный предприниматель", icon: "Building" },
-  ooo:            { short: "ООО / ЗАО",   long: "Юридическое лицо",  icon: "Building2" },
+  ooo:            { short: "ООО/ЗАО",   long: "Юридическое лицо",  icon: "Building2" },
 };
 
 // Способ выплат для самозанятых/физлиц
@@ -606,7 +606,6 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
   const lt = form.legalType;
   const isIpOoo = lt === "ip" || lt === "ooo";
   const isSelf = lt === "self_employed";
-  const isIndividual = lt === "individual";
 
   return (
     <div className="max-w-2xl mx-auto px-3 py-3 animate-fade-in">
@@ -648,14 +647,14 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
           </div>
 
           <div className="flex gap-1.5">
-            {(Object.keys(LEGAL_LABELS) as LegalType[]).map(type => {
+            {(Object.keys(LEGAL_LABELS) as LegalType[]).filter(t => t !== "individual").map(type => {
               const info = LEGAL_LABELS[type];
               const isActive = form.legalType === type;
               const isSavedType = savedLegalType === type;
               return (
                 <button key={type} onClick={() => {
                   set("legalType", type);
-                  if (type !== "individual") setShopName("");
+                  setShopName("");
                 }}
                   className={`flex-1 flex flex-col items-center gap-0.5 px-1 py-1.5 rounded-lg border text-center transition-all ${
                     isSavedType
@@ -672,121 +671,6 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
               );
             })}
           </div>
-
-          {/* ── Блок: Физическое лицо ── */}
-          {isIndividual && (
-            <div className="space-y-2 pt-1">
-              <div className="flex items-center gap-1.5 text-[11px] text-orange-700 bg-orange-500/10 px-2 py-1.5 rounded-lg">
-                <Icon name="Info" size={11} />
-                Физлица продают только б/у товары. Бесплатно.
-              </div>
-              <div>
-                <label className={labelCls}>Email</label>
-                <div className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 text-sm text-muted-foreground truncate">{user.email}</div>
-              </div>
-              <div>
-                <label className={labelCls}>ФИО полностью *</label>
-                <input value={form.legalName} onChange={e => set("legalName", e.target.value)}
-                  placeholder="Иванов Иван Иванович" className={inputCls} />
-                {form.legalName.trim() && form.legalName.trim().split(/\s+/).length < 2 && (
-                  <p className="text-[11px] text-amber-600 mt-1 flex items-center gap-1">
-                    <Icon name="AlertCircle" size={11} />
-                    Введите минимум фамилию и имя
-                  </p>
-                )}
-                {form.legalName.trim().split(/\s+/).length >= 2 && (
-                  <p className="text-[11px] text-green-600 mt-1 flex items-center gap-1">
-                    <Icon name="CheckCircle" size={11} />
-                    Принято
-                  </p>
-                )}
-              </div>
-              <Field label="Телефон *">
-                <input value={pPhone} onChange={handlePhoneChange} placeholder="+7 (900) 000-00-00" inputMode="tel" className={inputCls} />
-              </Field>
-              <Field label="Номер карты для выплат *" hint="На эту карту будут переводиться деньги за продажи">
-                <input value={form.cardNumber} onChange={e => set("cardNumber", e.target.value.replace(/\D/g, ""))}
-                  placeholder="1234 5678 9012 3456" maxLength={16} className={inputCls} />
-              </Field>
-
-              {/* Город отправки */}
-              <div className="relative">
-                <label className={labelCls}>
-                  Город отправки *
-                  {cityCode && (
-                    <span className="ml-1.5 text-green-600 font-normal">· будет подставляться в каждый товар</span>
-                  )}
-                </label>
-                {!cityCode && (
-                  <p className="text-[11px] text-amber-600 mb-1.5 flex items-center gap-1">
-                    <Icon name="AlertCircle" size={11} />
-                    Укажите город — он автоматически заполнится в карточке каждого товара
-                  </p>
-                )}
-                {cityCode && cityQuery === cityName ? (
-                  <div className="flex items-center gap-3 bg-secondary border border-border rounded-xl px-4 py-2.5">
-                    <Icon name="MapPin" size={14} className="text-primary flex-shrink-0" />
-                    <span className="text-sm text-foreground flex-1">{cityName}</span>
-                    <button onClick={() => { setCityCode(""); setCityQuery(""); setCityName(""); setCityGuid(""); }}>
-                      <Icon name="X" size={14} className="text-muted-foreground" />
-                    </button>
-                  </div>
-                ) : (
-                  <div className="relative">
-                    <Icon name="MapPin" size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                    <input value={cityQuery}
-                      onChange={e => { setCityQuery(e.target.value); setCityCode(""); setCityName(""); }}
-                      placeholder="Начните вводить город..."
-                      className={inputCls + " pl-9 pr-9"} />
-                    {cityLoading && <Icon name="Loader" size={14} className="absolute right-3 top-3 text-muted-foreground animate-spin" />}
-                  </div>
-                )}
-                {suggestions.length > 0 && (
-                  <div className="absolute z-20 top-full left-0 right-0 bg-card border border-border rounded-xl shadow-xl mt-1 overflow-hidden">
-                    {suggestions.map(c => (
-                      <button key={c.code} type="button" onMouseDown={() => selectCity(c)}
-                        className="w-full text-left px-4 py-2.5 text-sm hover:bg-secondary transition-colors border-b border-border/50 last:border-0">
-                        <span className="font-medium text-foreground">{c.city}</span>
-                        {c.region && <span className="text-muted-foreground text-xs ml-1.5">{c.region}</span>}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Транспортные компании */}
-              <div>
-                <label className={labelCls}>Транспортные компании</label>
-                <div className="flex flex-wrap gap-1.5 mt-1">
-                  {([
-                    ["СДЭК", "Truck", true],
-                    ["ПЭК", "Package", false],
-                    ["Почта России", "Mail", false],
-                    ["Деловые линии", "Container", false],
-                  ] as const).map(([name, icon, available]) => {
-                    const active = carriers.includes(name);
-                    if (!available) return (
-                      <div key={name} className="flex items-center gap-1 px-2 py-1 rounded-lg border border-border bg-secondary/40 opacity-40 cursor-not-allowed">
-                        <Icon name={icon} size={11} className="text-muted-foreground" />
-                        <span className="text-[11px] text-muted-foreground">{name}</span>
-                      </div>
-                    );
-                    return (
-                      <button key={name} type="button"
-                        onClick={() => setCarriers(prev => active ? prev.filter(c => c !== name) : [...prev, name])}
-                        className={`flex items-center gap-1 px-2 py-1 rounded-lg border transition-all ${
-                          active ? "border-green-500/50 bg-green-500/10 text-green-700" : "border-border bg-secondary text-muted-foreground hover:border-primary/30"
-                        }`}>
-                        <Icon name={icon} size={11} />
-                        <span className="text-[11px] font-medium">{name}</span>
-                        {active && <Icon name="Check" size={10} className="ml-0.5 text-green-600" />}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* ── Блок: Самозанятый ── */}
           {isSelf && (
