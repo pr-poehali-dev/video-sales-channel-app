@@ -141,15 +141,15 @@ def handler(event: dict, context) -> dict:
             ext = header.split("/")[1].split(";")[0]  # jpeg, png, webp
             img_bytes = base64.b64decode(encoded)
             key = f"products/{uuid.uuid4().hex}.{ext}"
-            s3 = get_s3_video()
+            s3 = get_s3()
             s3.put_object(
-                Bucket="strimbazar",
+                Bucket="files",
                 Key=key,
                 Body=img_bytes,
                 ContentType=f"image/{ext}",
-                ACL="public-read",
             )
-            url = f"{REGRU_CDN_BASE}/{key}"
+            url = f"{CDN_BASE}/{key}"
+            print(f"[UPLOAD_IMAGE] ok key={key} size={len(img_bytes)}")
             return ok({"url": url})
 
         # ─────────── UPLOAD VIDEO ───────────
