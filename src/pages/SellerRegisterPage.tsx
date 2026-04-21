@@ -728,10 +728,23 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
                 <label className={labelCls}>Email</label>
                 <div className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 text-sm text-muted-foreground truncate">{user.email}</div>
               </div>
-              <Field label="ФИО полностью *">
+              <div>
+                <label className={labelCls}>ФИО полностью *</label>
                 <input value={form.legalName} onChange={e => set("legalName", e.target.value)}
                   placeholder="Иванов Иван Иванович" className={inputCls} />
-              </Field>
+                {form.legalName.trim() && form.legalName.trim().split(/\s+/).length < 2 && (
+                  <p className="text-[11px] text-amber-600 mt-1 flex items-center gap-1">
+                    <Icon name="AlertCircle" size={11} />
+                    Введите минимум фамилию и имя
+                  </p>
+                )}
+                {form.legalName.trim().split(/\s+/).length >= 2 && (
+                  <p className="text-[11px] text-green-600 mt-1 flex items-center gap-1">
+                    <Icon name="CheckCircle" size={11} />
+                    Принято
+                  </p>
+                )}
+              </div>
               <Field label="Телефон *">
                 <input value={pPhone} onChange={handlePhoneChange} placeholder="+7 (900) 000-00-00" inputMode="tel" className={inputCls} />
               </Field>
