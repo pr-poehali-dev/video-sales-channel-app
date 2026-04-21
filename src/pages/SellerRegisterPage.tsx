@@ -52,8 +52,8 @@ interface Props {
   onGoAddProduct?: () => void;
 }
 
-const inputCls = "w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors";
-const labelCls = "text-xs text-muted-foreground mb-1 block";
+const inputCls = "w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors";
+const labelCls = "text-[11px] text-muted-foreground mb-0.5 block";
 
 // ── Компонент поля ИНН с индикатором валидности ─────────────────────────────
 interface InnFieldProps {
@@ -605,10 +605,10 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
   const isIndividual = lt === "individual";
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8 animate-fade-in">
+    <div className="max-w-2xl mx-auto px-3 py-3 animate-fade-in">
       {!embedded && (
         <button onClick={() => setPage("dashboard")}
-          className="flex items-center gap-2 text-muted-foreground hover:text-foreground text-sm mb-6 transition-colors">
+          className="flex items-center gap-2 text-muted-foreground hover:text-foreground text-sm mb-3 transition-colors">
           <Icon name="ArrowLeft" size={16} />
           Назад в кабинет
         </button>
@@ -616,47 +616,31 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
 
       {/* Статус: если уже сохранено — показываем сводку */}
       {savedLegalType && (
-        <div className="bg-green-500/10 border border-green-500/30 rounded-2xl p-4 mb-4 flex items-start gap-3">
-          <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-            <Icon name="Check" size={15} className="text-white" />
-          </div>
-          <div className="flex-1">
-            <p className="text-sm font-semibold text-green-700">Данные сохранены</p>
-            <p className="text-xs text-green-600 mt-0.5">
-              Тип: <strong>{LEGAL_LABELS[savedLegalType]?.short}</strong> ·{" "}
-              {savedLegalType === "individual" ? "Продажа б/у товаров" : "Продажа новых товаров оптом и в розницу"}
-            </p>
-          </div>
-          <Icon name="CheckCircle" size={16} className="text-green-500 flex-shrink-0 mt-0.5" />
+        <div className="bg-green-500/10 border border-green-500/30 rounded-xl px-3 py-2 mb-2 flex items-center gap-2">
+          <Icon name="CheckCircle" size={14} className="text-green-500 flex-shrink-0" />
+          <p className="text-xs text-green-700">
+            <strong>{LEGAL_LABELS[savedLegalType]?.short}</strong> · данные сохранены
+          </p>
+          {draftStatus === "saving" && <Icon name="Loader" size={12} className="text-muted-foreground animate-spin ml-auto" />}
+          {draftStatus === "saved" && <Icon name="CheckCircle" size={12} className="text-green-500 ml-auto" />}
         </div>
       )}
 
-      <div className="mb-5">
-        <div className="flex items-center justify-between">
-          <h1 className="font-oswald text-xl font-semibold text-foreground tracking-wide">Данные и реквизиты</h1>
-          {draftStatus === "saving" && (
-            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Icon name="Loader" size={12} className="animate-spin" />
-              Сохраняю...
-            </span>
-          )}
-          {draftStatus === "saved" && (
-            <span className="flex items-center gap-1.5 text-xs text-green-600">
-              <Icon name="CheckCircle" size={12} />
-              Черновик сохранён
-            </span>
-          )}
+      {!savedLegalType && (
+        <div className="flex items-center justify-between mb-2">
+          <h1 className="font-oswald text-base font-semibold text-foreground tracking-wide">Данные и реквизиты</h1>
+          {draftStatus === "saving" && <span className="flex items-center gap-1 text-xs text-muted-foreground"><Icon name="Loader" size={11} className="animate-spin" />Сохраняю...</span>}
+          {draftStatus === "saved" && <span className="flex items-center gap-1 text-xs text-green-600"><Icon name="CheckCircle" size={11} />Сохранено</span>}
         </div>
-        <p className="text-sm text-muted-foreground mt-0.5">Данные сохраняются автоматически по мере заполнения</p>
-      </div>
+      )}
 
-      <div className="space-y-4">
+      <div className="space-y-2">
 
         {/* ── Налоговый статус ── */}
-        <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+        <div className="bg-card border border-border rounded-xl p-3 space-y-2">
           <div>
-            <h2 className="text-sm font-semibold text-foreground">Кто вы?</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">Выберите ваш статус — от этого зависят поля и возможности</p>
+            <h2 className="text-xs font-semibold text-foreground">Кто вы?</h2>
+            <p className="text-[11px] text-muted-foreground">Выберите статус — от него зависят поля</p>
           </div>
 
           <div className="grid grid-cols-2 gap-2">
@@ -672,25 +656,22 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
               };
               return (
                 <button key={type} onClick={() => set("legalType", type)}
-                  className={`flex flex-col p-3 rounded-xl border text-left transition-all relative ${
+                  className={`flex items-center gap-1.5 px-2 py-2 rounded-lg border text-left transition-all relative ${
                     isSavedType
                       ? "border-green-500/60 bg-green-500/8"
                       : isActive
                       ? "border-primary bg-primary/10"
                       : "border-border bg-secondary hover:border-primary/30"
                   }`}>
-                  <div className="flex items-center gap-2 mb-1">
-                    <Icon name={info.icon} size={13} className={isSavedType ? "text-green-600" : isActive ? "text-primary" : "text-muted-foreground"} />
-                    <span className={`text-xs font-semibold leading-tight ${isSavedType ? "text-green-700" : isActive ? "text-primary" : "text-foreground"}`}>
+                  <Icon name={info.icon} size={12} className={isSavedType ? "text-green-600" : isActive ? "text-primary" : "text-muted-foreground"} />
+                  <div className="flex-1 min-w-0">
+                    <span className={`text-xs font-semibold leading-tight block ${isSavedType ? "text-green-700" : isActive ? "text-primary" : "text-foreground"}`}>
                       {info.short}
                     </span>
-                    {isSavedType && (
-                      <div className="ml-auto w-4 h-4 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
-                        <Icon name="Check" size={9} className="text-white" />
-                      </div>
-                    )}
+                    <span className="text-[10px] text-muted-foreground leading-tight">{descriptions[type]}</span>
                   </div>
-                  <span className="text-[10px] text-muted-foreground leading-tight">{descriptions[type]}</span>
+                  {isSavedType && <Icon name="Check" size={10} className="text-green-500 flex-shrink-0" />}
+                  {isActive && !isSavedType && <Icon name="Check" size={10} className="text-primary flex-shrink-0" />}
                 </button>
               );
             })}
@@ -698,10 +679,10 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
 
           {/* ── Блок: Физическое лицо ── */}
           {isIndividual && (
-            <div className="space-y-3 pt-1">
-              <div className="flex items-center gap-2 text-xs text-orange-700 bg-orange-500/10 px-3 py-2 rounded-lg">
-                <Icon name="Info" size={13} />
-                Физлица могут продавать только б/у товары. Размещение бесплатно.
+            <div className="space-y-2 pt-1">
+              <div className="flex items-center gap-1.5 text-[11px] text-orange-700 bg-orange-500/10 px-2 py-1.5 rounded-lg">
+                <Icon name="Info" size={11} />
+                Физлица продают только б/у товары. Бесплатно.
               </div>
               <div>
                 <label className={labelCls}>Email</label>
@@ -980,8 +961,8 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
 
         {/* ── Магазин ── */}
         {!isIndividual && (
-        <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
-          <h2 className="text-sm font-semibold text-foreground">Магазин</h2>
+        <div className="bg-card border border-border rounded-xl p-3 space-y-2">
+          <h2 className="text-xs font-semibold text-foreground">Магазин</h2>
           <Field label="Название магазина" hint="Отображается покупателям в корзине">
             <input value={shopName} onChange={e => setShopName(e.target.value)}
               placeholder="Например: Украшения Марины" className={inputCls} />
@@ -1102,64 +1083,37 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
         )}
 
         {/* ── Согласия ── */}
-        <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
-          <h2 className="text-sm font-semibold text-foreground">Согласия</h2>
-
-          {/* Единый чекбокс оферты + ПД */}
-          <label className="flex items-start gap-3 cursor-pointer group">
-            <button
-              onClick={() => { set("agreedOffer", !form.agreedOffer); set("agreedPd", !form.agreedOffer); }}
-              className={`w-5 h-5 rounded flex-shrink-0 mt-0.5 border-2 flex items-center justify-center transition-all ${
-                form.agreedOffer ? "bg-primary border-primary" : "border-border group-hover:border-primary/50"
-              }`}
-            >
-              {form.agreedOffer && <Icon name="Check" size={12} className="text-primary-foreground" />}
-            </button>
-            <span className="text-sm text-muted-foreground leading-snug">
-              Я принимаю условия{" "}
-              <button
-                onClick={e => { e.preventDefault(); e.stopPropagation(); setPage("oferta-seller"); }}
-                className="text-primary underline hover:no-underline"
-              >
-                Оферты для продавцов
-              </button>
-              {" "}и{" "}
-              <button
-                onClick={e => { e.preventDefault(); e.stopPropagation(); setPage("oferta-buyer"); }}
-                className="text-primary underline hover:no-underline"
-              >
-                Пользовательского соглашения
-              </button>
-              , а также даю согласие на обработку персональных данных и их передачу в Т‑Банк для проведения выплат
-            </span>
-          </label>
-        </div>
+        <label className="flex items-center gap-2 cursor-pointer group px-1">
+          <button
+            onClick={() => { set("agreedOffer", !form.agreedOffer); set("agreedPd", !form.agreedOffer); }}
+            className={`w-4 h-4 rounded flex-shrink-0 border-2 flex items-center justify-center transition-all ${
+              form.agreedOffer ? "bg-primary border-primary" : "border-border group-hover:border-primary/50"
+            }`}
+          >
+            {form.agreedOffer && <Icon name="Check" size={10} className="text-primary-foreground" />}
+          </button>
+          <span className="text-[11px] text-muted-foreground leading-snug">
+            Принимаю{" "}
+            <button onClick={e => { e.preventDefault(); e.stopPropagation(); setPage("oferta-seller"); }} className="text-primary underline">оферту</button>
+            {" "}и{" "}
+            <button onClick={e => { e.preventDefault(); e.stopPropagation(); setPage("oferta-buyer"); }} className="text-primary underline">соглашение</button>
+            , согласен на обработку ПД и передачу в Т‑Банк
+          </span>
+        </label>
 
         {error && (
-          <div className="flex items-center gap-2 bg-destructive/10 text-destructive text-sm px-4 py-3 rounded-xl">
-            <Icon name="AlertCircle" size={16} />{error}
-          </div>
-        )}
-
-        {saved && (
-          <div className="flex items-center gap-3 bg-green-500/10 border border-green-500/30 text-green-700 px-4 py-3 rounded-xl animate-fade-in">
-            <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
-              <Icon name="Check" size={16} className="text-white" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold">Данные сохранены!</p>
-              <p className="text-xs text-green-600 mt-0.5">Галочка появилась на вашем типе регистрации</p>
-            </div>
+          <div className="flex items-center gap-2 bg-destructive/10 text-destructive text-xs px-3 py-2 rounded-lg">
+            <Icon name="AlertCircle" size={13} />{error}
           </div>
         )}
 
         <button onClick={handleSaveAll} disabled={saving}
-          className="w-full bg-primary text-primary-foreground font-semibold py-4 rounded-2xl hover:bg-primary/90 transition-all disabled:opacity-50 flex items-center justify-center gap-2 text-sm">
+          className="w-full bg-primary text-primary-foreground font-semibold py-2.5 rounded-xl hover:bg-primary/90 transition-all disabled:opacity-50 flex items-center justify-center gap-2 text-sm">
           {saving
-            ? <><Icon name="Loader" size={16} className="animate-spin" />Сохраняем...</>
+            ? <><Icon name="Loader" size={15} className="animate-spin" />Сохраняем...</>
             : savedLegalType
-              ? <><Icon name="CheckCircle" size={16} />Обновить данные</>
-              : <><Icon name="Save" size={16} />Сохранить все данные</>}
+              ? <><Icon name="CheckCircle" size={15} />Обновить данные</>
+              : <><Icon name="Save" size={15} />Сохранить</>}
         </button>
 
       </div>
