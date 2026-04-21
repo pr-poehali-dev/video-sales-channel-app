@@ -1,0 +1,1 @@
+UPDATE t_p63706319_video_sales_channel_.products SET moderation_status = 'approved' WHERE moderation_status = 'pending';

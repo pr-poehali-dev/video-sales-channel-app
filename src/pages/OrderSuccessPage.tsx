@@ -44,7 +44,8 @@ export default function OrderSuccessPage({ setPage, clearCart }: OrderSuccessPag
     window.history.replaceState({}, "", window.location.pathname);
 
     if (!paymentIdRef.current && !orderIdRef.current) {
-      setStatus("paid");
+      // нет параметров — пользователь попал сюда напрямую/обновил страницу, идём на главную
+      setPage("home");
       return;
     }
     checkStatus();
