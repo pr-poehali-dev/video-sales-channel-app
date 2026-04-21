@@ -23,7 +23,7 @@ interface Order {
   deliveryType: string; cdekTrackNumber?: string; createdAt: string;
 }
 
-interface ProfilePageProps { setPage: (p: Page) => void; }
+interface ProfilePageProps { setPage: (p: Page) => void; onAddProduct?: () => void; }
 
 // ============================================================================
 // !! ВНИМАНИЕ: ProfilePage — это кабинет ПОКУПАТЕЛЯ (заказы + аккаунт) !!
@@ -31,7 +31,7 @@ interface ProfilePageProps { setPage: (p: Page) => void; }
 // Роутинг: admin → "dashboard", продавец → "dashboard", покупатель → "profile"
 // Не добавляй сюда admin-блоки — они сломаются при редактировании этого файла.
 // ============================================================================
-export default function ProfilePage({ setPage }: ProfilePageProps) {
+export default function ProfilePage({ setPage, onAddProduct }: ProfilePageProps) {
   const { user, logout, updateUser } = useAuth();
   type ProfileMode = "personal" | "legal";
   const [mode, setMode] = useState<ProfileMode>("personal");
@@ -359,27 +359,43 @@ export default function ProfilePage({ setPage }: ProfilePageProps) {
         </div>
       )}
 
-      {/* ── Fixed-кнопка продавца (только физ. лицо) ── */}
+      {/* ── Fixed-кнопки (только физ. лицо) ── */}
       {mode === "personal" && (
         <div className="fixed bottom-16 left-0 right-0 z-40 px-4 pb-2 pointer-events-none">
-          <div className="max-w-xl mx-auto pointer-events-auto">
+          <div className="max-w-xl mx-auto pointer-events-auto flex gap-2">
+
+            {/* Подать объявление */}
             <button
-              onClick={() => isSeller ? setPage("dashboard") : setPage("seller-register")}
-              className="w-full flex items-center gap-3 bg-card border border-border rounded-2xl px-4 py-3 shadow-lg hover:border-primary/40 transition-all"
+              onClick={() => onAddProduct ? onAddProduct() : setPage("dashboard")}
+              className="flex-1 flex items-center gap-2.5 bg-primary text-primary-foreground rounded-2xl px-4 py-3 shadow-lg hover:opacity-90 transition-opacity"
             >
-              <div className="w-9 h-9 rounded-xl bg-primary/15 flex items-center justify-center flex-shrink-0">
-                <Icon name="Store" size={16} className="text-primary" />
+              <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
+                <Icon name="Plus" size={16} />
               </div>
               <div className="flex-1 text-left">
-                <p className="text-sm font-semibold text-foreground">
-                  {isSeller ? user.shopName : "Стать продавцом"}
+                <p className="text-sm font-semibold leading-tight">Подать объявление</p>
+                <p className="text-[11px] opacity-75 leading-tight">Продать товар быстро</p>
+              </div>
+            </button>
+
+            {/* Кабинет / Стать продавцом */}
+            <button
+              onClick={() => isSeller ? setPage("dashboard") : setPage("seller-register")}
+              className="flex items-center gap-2 bg-card border border-border rounded-2xl px-3 py-3 shadow-lg hover:border-primary/40 transition-all"
+            >
+              <div className="w-8 h-8 rounded-xl bg-primary/15 flex items-center justify-center flex-shrink-0">
+                <Icon name="Store" size={15} className="text-primary" />
+              </div>
+              <div className="text-left">
+                <p className="text-xs font-semibold text-foreground leading-tight whitespace-nowrap">
+                  {isSeller ? "Кабинет" : "Продавцом"}
                 </p>
-                <p className="text-xs text-muted-foreground">
-                  {isSeller ? "Перейти в кабинет продавца" : "Продавай новые и б/у товары в эфире"}
+                <p className="text-[10px] text-muted-foreground leading-tight">
+                  {isSeller ? "продавца" : "Стать"}
                 </p>
               </div>
-              <Icon name="ChevronRight" size={16} className="text-muted-foreground flex-shrink-0" />
             </button>
+
           </div>
         </div>
       )}
