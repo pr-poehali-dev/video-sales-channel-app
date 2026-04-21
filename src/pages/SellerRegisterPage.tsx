@@ -464,8 +464,10 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
 
     // ── Общие поля ──
     if (lt !== "individual" && !pName.trim()) { setError("Введите ваше имя"); return; }
-    if (!pPhone.trim()) { setError("Введите телефон"); return; }
-    if (pPhone.replace(/\D/g, "").length < 10) { setError("Введите корректный номер телефона (не менее 10 цифр)"); return; }
+    // Для самозанятых контактный телефон = телефон из «Мой налог»
+    const contactPhone = (lt === "self_employed") ? form.phoneForTax : pPhone;
+    if (!contactPhone.trim()) { setError("Введите телефон"); return; }
+    if (contactPhone.replace(/\D/g, "").length < 10) { setError("Введите корректный номер телефона (не менее 10 цифр)"); return; }
 
     // ── Валидация по типу ──
     if (lt === "individual") {
@@ -534,7 +536,7 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
           user_id: user!.id,
           ...form,
           userType: form.legalType,
-          contactPhone: pPhone.trim(),
+          contactPhone: contactPhone.trim(),
           contactEmail: user!.email,
         }),
       });
