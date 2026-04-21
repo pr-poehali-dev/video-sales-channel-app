@@ -12,10 +12,8 @@ interface AuthPageProps {
 export default function AuthPage({ onSuccess, initialEmail = "" }: AuthPageProps) {
   const { login, register, requestReset, confirmReset } = useAuth();
   const [mode, setMode] = useState<AuthMode>("login");
-  const [name, setName] = useState("");
   const [email, setEmail] = useState(initialEmail);
   const [phone, setPhone] = useState("");
-  const [city, setCity] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [resetCode, setResetCode] = useState("");
@@ -56,7 +54,6 @@ export default function AuthPage({ onSuccess, initialEmail = "" }: AuthPageProps
       return;
     }
     if (mode === "register") {
-      if (!name.trim()) { setError("Введите имя"); return; }
       if (password.length < 6) { setError("Пароль должен быть не менее 6 символов"); return; }
       if (password !== confirm) { setError("Пароли не совпадают"); return; }
     }
@@ -65,7 +62,7 @@ export default function AuthPage({ onSuccess, initialEmail = "" }: AuthPageProps
     if (mode === "login") {
       err = await login(email, password);
     } else {
-      err = await register({ name, email, phone, password, role: "user", city });
+      err = await register({ name: "", email, phone, password, role: "user", city: "" });
     }
     setLoading(false);
     if (err) { setError(err); return; }
@@ -176,18 +173,6 @@ export default function AuthPage({ onSuccess, initialEmail = "" }: AuthPageProps
             {/* ── LOGIN / REGISTER ── */}
             {!isReset && (
               <>
-                {mode === "register" && (
-                  <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">Имя и фамилия *</label>
-                    <input
-                      value={name}
-                      onChange={e => setName(e.target.value)}
-                      placeholder="Анна Иванова"
-                      className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors"
-                    />
-                  </div>
-                )}
-
                 <div>
                   <label className="text-xs text-muted-foreground mb-1 block">
                     {mode === "login" ? "Email или телефон *" : "Email *"}
@@ -201,28 +186,7 @@ export default function AuthPage({ onSuccess, initialEmail = "" }: AuthPageProps
                   />
                 </div>
 
-                {mode === "register" && (
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs text-muted-foreground mb-1 block">Телефон</label>
-                      <input
-                        value={phone}
-                        onChange={e => setPhone(e.target.value)}
-                        placeholder="+7 900 000-00-00"
-                        className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-muted-foreground mb-1 block">Город</label>
-                      <input
-                        value={city}
-                        onChange={e => setCity(e.target.value)}
-                        placeholder="Москва"
-                        className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors"
-                      />
-                    </div>
-                  </div>
-                )}
+
 
                 <div>
                   <div className="flex items-center justify-between mb-1">
