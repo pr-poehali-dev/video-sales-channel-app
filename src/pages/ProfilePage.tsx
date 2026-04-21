@@ -402,44 +402,23 @@ export default function ProfilePage({ setPage, onAddProduct }: ProfilePageProps)
         </div>
       )}
 
-      {/* ── Fixed-кнопки (только физ. лицо) ── */}
+      {/* ── Кнопки действий (только физ. лицо) ── */}
       {mode === "personal" && (
-        <div className="fixed bottom-16 left-0 right-0 z-40 px-4 pb-2 pointer-events-none">
-          <div className="max-w-xl mx-auto pointer-events-auto flex gap-2">
-
-            {/* Подать объявление */}
-            <button
-              onClick={() => onAddProduct ? onAddProduct() : setPage("dashboard")}
-              className="flex-1 flex items-center gap-2.5 bg-primary text-primary-foreground rounded-2xl px-4 py-3 shadow-lg hover:opacity-90 transition-opacity"
-            >
-              <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
-                <Icon name="Plus" size={16} />
-              </div>
-              <div className="flex-1 text-left">
-                <p className="text-sm font-semibold leading-tight">Подать объявление</p>
-                <p className="text-[11px] opacity-75 leading-tight">Продать товар быстро</p>
-              </div>
-            </button>
-
-            {/* Кабинет / Стать продавцом */}
-            <button
-              onClick={() => isSeller ? setPage("dashboard") : setPage("seller-register")}
-              className="flex items-center gap-2 bg-card border border-border rounded-2xl px-3 py-3 shadow-lg hover:border-primary/40 transition-all"
-            >
-              <div className="w-8 h-8 rounded-xl bg-primary/15 flex items-center justify-center flex-shrink-0">
-                <Icon name="Store" size={15} className="text-primary" />
-              </div>
-              <div className="text-left">
-                <p className="text-xs font-semibold text-foreground leading-tight whitespace-nowrap">
-                  {isSeller ? "Кабинет" : "Продавцом"}
-                </p>
-                <p className="text-[10px] text-muted-foreground leading-tight">
-                  {isSeller ? "продавца" : "Стать"}
-                </p>
-              </div>
-            </button>
-
-          </div>
+        <div className="flex gap-2 mt-2">
+          <button
+            onClick={() => setPage("catalog")}
+            className="flex-1 flex items-center justify-center gap-2 bg-primary text-primary-foreground rounded-xl px-3 py-2.5 hover:opacity-90 transition-opacity text-sm font-semibold"
+          >
+            <Icon name="Plus" size={15} />
+            Подать объявление
+          </button>
+          <button
+            onClick={() => isSeller ? handleSetMode("legal") : setPage("seller-register")}
+            className="flex items-center gap-1.5 bg-card border border-border rounded-xl px-3 py-2.5 hover:border-primary/40 transition-all text-sm font-semibold text-foreground whitespace-nowrap"
+          >
+            <Icon name="Store" size={15} className="text-primary" />
+            {isSeller ? "Кабинет" : "Стать продавцом"}
+          </button>
         </div>
       )}
 
