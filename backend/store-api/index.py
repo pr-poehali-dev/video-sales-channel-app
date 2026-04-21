@@ -286,6 +286,13 @@ def handler(event: dict, context) -> dict:
                       body_mapped.get("product_category",""),
                       is_draft, datetime.now(timezone.utc) if is_draft else None))
             conn.commit()
+            # Синхронизируем seller_name во всех товарах продавца если изменилось имя
+            if "legal_name" in body_mapped and body_mapped["legal_name"]:
+                cur.execute(
+                    "UPDATE products SET seller_name=%s WHERE seller_id=%s",
+                    (body_mapped["legal_name"], user_id)
+                )
+                conn.commit()
             cur.execute("SELECT * FROM sellers WHERE user_id=%s", (user_id,))
             return ok(_fmt_seller(cur.fetchone()))
 
