@@ -459,6 +459,8 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
       if (form.payoutMethod === "account" && !form.bankAccount.trim()) { setError("Введите расчётный счёт"); return; }
       if (form.payoutMethod === "account" && !form.bik.trim()) { setError("Введите БИК банка"); return; }
       if (!cityCode) { setError("Укажите город отправки — он будет подставляться в каждый товар"); return; }
+      if (!shopName.trim()) { setError("Введите название магазина"); return; }
+      if (!form.productCategory) { setError("Выберите категорию товаров"); return; }
     }
 
     if (lt === "ip" || lt === "ooo") {
@@ -470,6 +472,8 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
       if (!form.bankAccount.trim()) { setError("Введите расчётный счёт"); return; }
       if (!form.bik.trim()) { setError("Введите БИК банка"); return; }
       if (!cityCode) { setError("Укажите город отправки — он будет подставляться в каждый товар"); return; }
+      if (!shopName.trim()) { setError("Введите название магазина"); return; }
+      if (!form.productCategory) { setError("Выберите категорию товаров"); return; }
     }
 
     if (!form.agreedOffer) { setError("Необходимо принять условия договора оферты"); return; }
