@@ -448,6 +448,7 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
       if (form.payoutMethod === "card" && !form.cardNumber.trim()) { setError("Введите номер карты для выплат"); return; }
       if (form.payoutMethod === "account" && !form.bankAccount.trim()) { setError("Введите расчётный счёт"); return; }
       if (form.payoutMethod === "account" && !form.bik.trim()) { setError("Введите БИК банка"); return; }
+      if (!cityCode) { setError("Укажите город отправки — он будет подставляться в каждый товар"); return; }
     }
 
     if (lt === "ip" || lt === "ooo") {
@@ -458,6 +459,7 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
       if (!form.legalAddress.trim()) { setError("Введите юридический адрес"); return; }
       if (!form.bankAccount.trim()) { setError("Введите расчётный счёт"); return; }
       if (!form.bik.trim()) { setError("Введите БИК банка"); return; }
+      if (!cityCode) { setError("Укажите город отправки — он будет подставляться в каждый товар"); return; }
     }
 
     if (!form.agreedOffer) { setError("Необходимо принять условия договора оферты"); return; }
@@ -975,7 +977,18 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
 
           {/* Город отправки */}
           <div className="relative">
-            <label className={labelCls}>Город отправки</label>
+            <label className={labelCls}>
+              Город отправки *
+              {cityCode && (
+                <span className="ml-1.5 text-green-600 font-normal">· будет подставляться в каждый товар</span>
+              )}
+            </label>
+            {!cityCode && (
+              <p className="text-[11px] text-amber-600 mb-1.5 flex items-center gap-1">
+                <Icon name="AlertCircle" size={11} />
+                Укажите город — он автоматически заполнится в карточке каждого товара
+              </p>
+            )}
             {cityCode && cityQuery === cityName ? (
               <div className="flex items-center gap-3 bg-secondary border border-border rounded-xl px-4 py-2.5">
                 <Icon name="MapPin" size={14} className="text-primary flex-shrink-0" />
