@@ -45,7 +45,9 @@ export default function ProfilePage({ setPage, onAddProduct }: ProfilePageProps)
   const activeStream = myStreams.find(s => s.isLive) ?? null;
   type ProfileMode = "personal" | "legal";
   const [mode, setMode] = useState<ProfileMode>(() => {
-    return (localStorage.getItem("profileMode") as ProfileMode) ?? "personal";
+    const saved = localStorage.getItem("profileMode") as ProfileMode | null;
+    if (saved) return saved;
+    return user?.shopName ? "legal" : "personal";
   });
 
   const handleSetMode = (m: ProfileMode) => {
