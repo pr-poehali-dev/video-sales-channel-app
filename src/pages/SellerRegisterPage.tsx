@@ -364,7 +364,7 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
         if (data) {
           setForm(prev => ({
             ...prev,
-            legalType: data.legalType || "self_employed",
+            legalType: (data.legalType && data.legalType !== "individual") ? data.legalType : "self_employed",
             legalName: data.legalName || "",
             inn: data.inn || "",
             ogrn: data.ogrn || "",
@@ -381,7 +381,7 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
             agreedPd: data.agreedPd || false,
           }));
           if (data.inn) setInnFieldsVisible(true);
-          if (data.legalType) setSavedLegalType(data.legalType);
+          if (data.legalType && data.legalType !== "individual") setSavedLegalType(data.legalType);
         }
       })
       .catch(() => {})
