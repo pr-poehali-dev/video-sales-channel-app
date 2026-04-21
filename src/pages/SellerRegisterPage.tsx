@@ -131,10 +131,10 @@ function validateInn(inn: string): { valid: boolean; error: string | null } {
   return { valid: false, error: `ИНН должен быть 10 или 12 цифр (сейчас ${inn.length})` };
 }
 
-function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+function Field({ label, hint, children, required }: { label: string; hint?: string; children: React.ReactNode; required?: boolean }) {
   return (
     <div>
-      <label className={labelCls}>{label}</label>
+      <label className={labelCls}>{label}{required && <span className="text-destructive ml-0.5">*</span>}</label>
       {children}
       {hint && <p className="text-[11px] text-muted-foreground mt-1">{hint}</p>}
     </div>
@@ -952,13 +952,13 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
         {!isIndividual && (
         <div className="bg-card border border-border rounded-xl p-3 space-y-2">
           <h2 className="text-xs font-semibold text-foreground">Магазин</h2>
-          <Field label="Название магазина" hint="Отображается покупателям в корзине">
+          <Field label="Название магазина" hint="Отображается покупателям в корзине" required>
             <input value={shopName} onChange={e => setShopName(e.target.value)}
               placeholder="Например: Украшения Марины" className={inputCls} />
           </Field>
 
           {/* Категория товаров */}
-          <Field label="Категория товаров" hint="Используется для настройки ставок и комиссий">
+          <Field label="Категория товаров" hint="Используется для настройки ставок и комиссий" required>
             <select
               value={form.productCategory}
               onChange={e => set("productCategory", e.target.value)}
