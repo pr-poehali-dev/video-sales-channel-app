@@ -51,6 +51,7 @@ export interface CartItem {
   videoUrl?: string;
   wholesalePrice?: number | null;
   retailMarkupPct?: number;
+  isUsed?: boolean;
 }
 
 function AppInner() {

@@ -92,6 +92,7 @@ export default function ProductFormModal({
 
   const handleSaveWithValidation = () => {
     setTouched({ name: true, price: true, stock: true });
+    if (isIndividual && Number(fInStock) > 1) return;
     onSave();
   };
 
@@ -349,6 +350,11 @@ export default function ProductFormModal({
                 className={`w-full bg-secondary border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors ${fieldError("stock") ? "border-destructive bg-destructive/5" : "border-border"}`}
               />
               {fieldError("stock") && <p className="text-xs text-destructive mt-1 flex items-center gap-1"><span>⚠</span>{fieldError("stock")}</p>}
+              {isIndividual && Number(fInStock) > 1 && (
+                <p className="text-xs text-amber-600 mt-1 leading-snug">
+                  Физлицам разрешена продажа только 1 шт. б/у товара. Для продажи нескольких единиц зарегистрируйтесь как самозанятый.
+                </p>
+              )}
             </div>
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Город отправки</label>

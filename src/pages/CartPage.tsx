@@ -196,7 +196,7 @@ export default function CartPage({ cart, removeFromCart, updateQty, onGoToAuth, 
         delivery_cost:        deliveryCost || 0,
         cdek_pvz_code:        cdekPvzCode || "",
         cdek_pvz_apiship_id:  cdekPvzApishipId || undefined,
-        items: selectedCart.map(c => ({ id: c.id, name: c.name, price: getItemPrice(c, mode), qty: c.qty, image: c.image, videoUrl: c.videoUrl || "", sellerId: c.sellerId || "" })),
+        items: selectedCart.map(c => ({ id: c.id, name: c.name, price: getItemPrice(c, mode), qty: c.qty, image: c.image, videoUrl: c.videoUrl || "", sellerId: c.sellerId || "", is_used: c.isUsed ?? false })),
         payment_method: "",
         goods_total:    goodsTotal,
         order_total:    orderTotal,
@@ -305,6 +305,9 @@ export default function CartPage({ cart, removeFromCart, updateQty, onGoToAuth, 
     const sellerIds = [...new Set(selectedCart.map(c => c.sellerId).filter(Boolean))];
     const sellerAccount = sellerIds.length === 1 ? sellerIds[0] : "";
 
+    // C2C-признак: все товары б/у (физлицо → физлицо, агентская схема, без чека)
+    const isC2C = selectedCart.every(c => c.isUsed === true);
+
     try {
       const payRes = await fetch(PAYMENT_API, {
         method: "POST",
@@ -319,10 +322,12 @@ export default function CartPage({ cart, removeFromCart, updateQty, onGoToAuth, 
           delivery_cost: deliveryCost || 0,
           seller_account: sellerAccount,
           platform_fee_pct: 10,
+          payment_type: isC2C ? "c2c_transfer" : "sale",
           items: selectedCart.map(c => ({
             name: c.name,
             price: getItemPrice(c, mode),
             qty: c.qty,
+            is_used: c.isUsed ?? false,
           })),
         }),
       });

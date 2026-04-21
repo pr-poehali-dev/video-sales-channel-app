@@ -83,6 +83,7 @@ export default function ProductCard({ product, addToCart, updateQty, cartQty = 0
       videoUrl: product.videoUrl,
       wholesalePrice: product.wholesalePrice,
       retailMarkupPct: product.retailMarkupPct,
+      isUsed: product.isUsed,
     });
   };
 
@@ -105,6 +106,7 @@ export default function ProductCard({ product, addToCart, updateQty, cartQty = 0
       videoUrl: product.videoUrl,
       wholesalePrice: product.wholesalePrice,
       retailMarkupPct: product.retailMarkupPct,
+      isUsed: product.isUsed,
     });
   };
 
