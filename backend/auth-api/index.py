@@ -167,8 +167,6 @@ def handler(event: dict, context) -> dict:
             city = (body.get("city") or "").strip()
             password = body.get("password") or ""
 
-            if not name:
-                return err("Введите имя")
             if not email:
                 return err("Введите email")
             if len(password) < 6:
@@ -183,6 +181,8 @@ def handler(event: dict, context) -> dict:
 
             user_id = "user_" + secrets.token_hex(8)
             pwd_hash = hash_password(password)
+            if not name:
+                name = email.split("@")[0]
             avatar = make_avatar(name)
             joined_at = make_joined_at()
 
