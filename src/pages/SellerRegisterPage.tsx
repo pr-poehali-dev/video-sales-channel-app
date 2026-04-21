@@ -649,7 +649,7 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
               const isActive = form.legalType === type;
               const isSavedType = savedLegalType === type;
               return (
-                <button key={type} onClick={() => set("legalType", type)}
+                <button key={type} onClick={() => { set("legalType", type); if (type !== "individual") setShopName(""); }}
                   className={`flex-1 flex flex-col items-center gap-0.5 px-1 py-1.5 rounded-lg border text-center transition-all ${
                     isSavedType
                       ? "border-green-500/60 bg-green-500/10"
