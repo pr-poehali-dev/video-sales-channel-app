@@ -411,89 +411,86 @@ export default function ProfilePage({ setPage, onAddProduct }: ProfilePageProps)
       {mode === "legal" && (
         <div className="animate-fade-in space-y-3">
 
-          {isSeller && (
-            <>
-              {/* Шапка продавца */}
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-primary/20 text-primary text-lg font-bold flex items-center justify-center font-oswald flex-shrink-0">
-                  {user.avatar}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h2 className="font-oswald text-lg font-semibold text-foreground tracking-wide truncate">{user.shopName || user.name}</h2>
-                  <p className="text-xs text-muted-foreground">Кабинет продавца</p>
-                </div>
+          {/* Шапка продавца */}
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-full bg-primary/20 text-primary text-lg font-bold flex items-center justify-center font-oswald flex-shrink-0">
+              {user.avatar}
+            </div>
+            <div className="flex-1 min-w-0">
+              <h2 className="font-oswald text-lg font-semibold text-foreground tracking-wide truncate">{user.shopName || user.name}</h2>
+              <p className="text-xs text-muted-foreground">Кабинет продавца</p>
+            </div>
+          </div>
+
+          {/* Плитки статистики */}
+          <div className="grid grid-cols-4 gap-2">
+            <button onClick={() => {}}
+              className="bg-card border border-primary/30 rounded-xl p-2.5 text-left hover:border-primary/60 transition-colors">
+              <div className="w-6 h-6 rounded-full bg-primary/20 text-primary text-[9px] font-bold flex items-center justify-center mb-1.5 font-oswald">
+                {user.avatar}
               </div>
+              <div className="font-oswald text-[10px] font-semibold text-foreground leading-tight truncate">{(user.shopName || user.name).slice(0, 8)}...</div>
+              <div className="text-[9px] text-muted-foreground mt-0.5 leading-tight">Данные и реквизиты</div>
+            </button>
 
-              {/* Плитки статистики */}
-              <div className="grid grid-cols-4 gap-2">
-                <button onClick={() => setPage("seller-register")}
-                  className="bg-card border border-primary/30 rounded-xl p-2.5 text-left hover:border-primary/60 transition-colors">
-                  <div className="w-6 h-6 rounded-full bg-primary/20 text-primary text-[9px] font-bold flex items-center justify-center mb-1.5 font-oswald">
-                    {user.avatar}
-                  </div>
-                  <div className="font-oswald text-[10px] font-semibold text-foreground leading-tight truncate">{(user.shopName || user.name).slice(0, 8)}...</div>
-                  <div className="text-[9px] text-muted-foreground mt-0.5 leading-tight">Данные и реквизиты</div>
-                </button>
+            <button onClick={() => setPage("dashboard")}
+              className="bg-card border border-border rounded-xl p-2.5 text-left hover:border-primary/40 transition-colors">
+              <Icon name="Package" size={13} className="text-muted-foreground mb-1.5" />
+              <div className="font-oswald text-sm font-semibold text-foreground">{products.length}</div>
+              <div className="text-[10px] text-muted-foreground mt-0.5">Товары</div>
+            </button>
 
-                <button onClick={() => setPage("dashboard")}
-                  className="bg-card border border-border rounded-xl p-2.5 text-left hover:border-primary/40 transition-colors">
-                  <Icon name="Package" size={13} className="text-muted-foreground mb-1.5" />
-                  <div className="font-oswald text-sm font-semibold text-foreground">{products.length}</div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">Товары</div>
-                </button>
+            <button onClick={() => setPage("dashboard")}
+              className="bg-card border border-border rounded-xl p-2.5 text-left hover:border-primary/40 transition-colors">
+              <Icon name="Radio" size={13} className="text-muted-foreground mb-1.5" />
+              <div className="font-oswald text-sm font-semibold text-foreground">{myStreams.length}</div>
+              <div className="text-[10px] text-muted-foreground mt-0.5">Эфиры</div>
+            </button>
 
-                <button onClick={() => setPage("dashboard")}
-                  className="bg-card border border-border rounded-xl p-2.5 text-left hover:border-primary/40 transition-colors">
-                  <Icon name="Radio" size={13} className="text-muted-foreground mb-1.5" />
-                  <div className="font-oswald text-sm font-semibold text-foreground">{myStreams.length}</div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">Эфиры</div>
-                </button>
+            <button onClick={() => setPage("dashboard")}
+              className="bg-card border border-border rounded-xl p-2.5 text-left hover:border-primary/40 transition-colors">
+              <Icon name="BarChart2" size={13} className="text-muted-foreground mb-1.5" />
+              <div className="font-oswald text-sm font-semibold text-foreground">0 ₽</div>
+              <div className="text-[10px] text-muted-foreground mt-0.5">Продажи</div>
+            </button>
+          </div>
 
-                <button onClick={() => setPage("dashboard")}
-                  className="bg-card border border-border rounded-xl p-2.5 text-left hover:border-primary/40 transition-colors">
-                  <Icon name="BarChart2" size={13} className="text-muted-foreground mb-1.5" />
-                  <div className="font-oswald text-sm font-semibold text-foreground">0 ₽</div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">Статистика</div>
-                </button>
+          {/* Заказы */}
+          <button onClick={() => setPage("dashboard")}
+            className="w-full bg-card border border-border rounded-xl p-3 text-left hover:border-primary/40 transition-colors flex items-center gap-3">
+            <Icon name="ShoppingBag" size={16} className="text-muted-foreground flex-shrink-0" />
+            <div className="flex-1">
+              <div className="text-sm font-semibold text-foreground">Заказы от покупателей</div>
+              <div className="text-[11px] text-muted-foreground">Управление и отправка</div>
+            </div>
+            <Icon name="ChevronRight" size={15} className="text-muted-foreground flex-shrink-0" />
+          </button>
+
+          {/* Начать эфир + Добавить товар */}
+          <div className="flex items-center gap-2">
+            {activeStream ? (
+              <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 px-4 py-2.5 rounded-xl flex-1">
+                <span className="w-2 h-2 rounded-full bg-red-500 animate-live-pulse flex-shrink-0" />
+                <span className="text-sm font-semibold text-red-500 truncate flex-1">{activeStream.title}</span>
               </div>
-
-              {/* Заказы */}
-              <button onClick={() => setPage("dashboard")}
-                className="w-full bg-card border border-border rounded-xl p-3 text-left hover:border-primary/40 transition-colors flex items-center gap-3">
-                <Icon name="ShoppingBag" size={16} className="text-muted-foreground flex-shrink-0" />
-                <div className="flex-1">
-                  <div className="text-sm font-semibold text-foreground">Заказы от покупателей</div>
-                  <div className="text-[11px] text-muted-foreground">Управление и отправка</div>
-                </div>
-                <Icon name="ChevronRight" size={15} className="text-muted-foreground flex-shrink-0" />
+            ) : (
+              <button onClick={() => setPage("broadcast")}
+                className="flex-1 bg-primary text-primary-foreground font-semibold px-4 py-2.5 rounded-xl hover:opacity-90 transition-opacity text-sm flex items-center justify-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-white animate-live-pulse" />
+                Начать эфир
               </button>
+            )}
+            <button onClick={() => onAddProduct ? onAddProduct() : setPage("dashboard")}
+              className="flex items-center gap-1.5 border border-primary/40 text-primary font-semibold px-3 py-2.5 rounded-xl hover:bg-primary/5 transition-colors text-sm whitespace-nowrap">
+              <Icon name="Plus" size={15} />
+              Продать товар
+            </button>
+          </div>
 
-              {/* Начать эфир + Добавить товар */}
-              <div className="flex items-center gap-2">
-                {activeStream ? (
-                  <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 px-4 py-2.5 rounded-xl flex-1">
-                    <span className="w-2 h-2 rounded-full bg-red-500 animate-live-pulse flex-shrink-0" />
-                    <span className="text-sm font-semibold text-red-500 truncate flex-1">{activeStream.title}</span>
-                  </div>
-                ) : (
-                  <button onClick={() => setPage("broadcast")}
-                    className="flex-1 bg-primary text-primary-foreground font-semibold px-4 py-2.5 rounded-xl hover:opacity-90 transition-opacity text-sm flex items-center justify-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-white animate-live-pulse" />
-                    Начать эфир
-                  </button>
-                )}
-                <button onClick={() => onAddProduct ? onAddProduct() : setPage("dashboard")}
-                  className="flex items-center gap-1.5 border border-primary/40 text-primary font-semibold px-4 py-2.5 rounded-xl hover:bg-primary/5 transition-colors text-sm">
-                  <Icon name="Plus" size={15} />
-                  Добавить товар
-                </button>
-              </div>
-
-              <div className="border-t border-border pt-3">
-                <p className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wide">Данные и реквизиты</p>
-              </div>
-            </>
-          )}
+          {/* Разделитель перед формой */}
+          <div className="border-t border-border pt-1">
+            <p className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wide">Данные и реквизиты</p>
+          </div>
 
           <SellerRegisterPage setPage={setPage} embedded />
         </div>
