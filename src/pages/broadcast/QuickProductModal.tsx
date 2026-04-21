@@ -32,6 +32,26 @@ export default function QuickProductModal({ imageDataUrl, sellerId, sellerName, 
   const [imgUploading, setImgUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const compressImage = (file: File, maxPx = 1200, quality = 0.82): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        let { width, height } = img;
+        if (width > maxPx || height > maxPx) {
+          if (width > height) { height = Math.round(height * maxPx / width); width = maxPx; }
+          else { width = Math.round(width * maxPx / height); height = maxPx; }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width; canvas.height = height;
+        canvas.getContext("2d")!.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = reject;
+      img.src = url;
+    });
+
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
     if (!files.length) return;
@@ -39,12 +59,7 @@ export default function QuickProductModal({ imageDataUrl, sellerId, sellerName, 
     try {
       const newUrls: string[] = [];
       for (const file of files) {
-        const dataUrl = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = ev => resolve(ev.target?.result as string);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
+        const dataUrl = await compressImage(file);
         const resp = await fetch(`${UPLOAD_IMAGE_API}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -54,6 +69,9 @@ export default function QuickProductModal({ imageDataUrl, sellerId, sellerName, 
         if (data.url) newUrls.push(data.url);
       }
       setExtraImgs(prev => [...prev, ...newUrls]);
+    } catch (err) {
+      console.error("[UPLOAD_IMAGE] error", err);
+      alert("Не удалось загрузить фото. Попробуйте ещё раз.");
     } finally {
       setImgUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
