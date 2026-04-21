@@ -5,7 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 type AuthMode = "login" | "register" | "reset_request" | "reset_confirm";
 
 interface AuthPageProps {
-  onSuccess: () => void;
+  onSuccess: (isNewUser?: boolean) => void;
   initialEmail?: string;
 }
 
@@ -66,7 +66,7 @@ export default function AuthPage({ onSuccess, initialEmail = "" }: AuthPageProps
     }
     setLoading(false);
     if (err) { setError(err); return; }
-    onSuccess();
+    onSuccess(mode === "register");
   };
 
   const isReset = mode === "reset_request" || mode === "reset_confirm";

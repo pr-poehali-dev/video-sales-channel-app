@@ -19,6 +19,7 @@ import AdminProductsPage from "@/pages/AdminProductsPage";
 import AdminStreamsPage from "@/pages/AdminStreamsPage";
 import AdminUsersPage from "@/pages/AdminUsersPage";
 import SellerRegisterPage from "@/pages/SellerRegisterPage";
+import WelcomePage from "@/pages/WelcomePage";
 import SupportPage from "@/pages/SupportPage";
 import SupportAdminPage from "@/pages/SupportAdminPage";
 import OrderSuccessPage from "@/pages/OrderSuccessPage";
@@ -35,7 +36,7 @@ export type Page =
   | "home" | "streams" | "catalog" | "profile" | "cart" | "favorites"
   | "dashboard" | "product" | "seller" | "auth" | "broadcast" | "admin" | "seller-register"
   | "support" | "support-admin" | "order-success" | "admin-products" | "admin-streams" | "admin-users"
-  | "oferta-seller" | "oferta-buyer";
+  | "oferta-seller" | "oferta-buyer" | "welcome";
 
 export interface CartItem {
   id: string;
@@ -123,7 +124,8 @@ function AppInner() {
         {page === "profile" && <ProfilePage setPage={navSetPage} />}
         {page === "cart" && <CartPage cart={cart} removeFromCart={removeFromCart} updateQty={updateQty} onGoToAuth={(email) => { setAuthInitialEmail(email || ""); navSetPage("auth"); }} setPage={navSetPage} />}
         {page === "dashboard" && <DashboardPage setPage={navSetPage} />}
-        {page === "auth" && <AuthPage onSuccess={() => navSetPage("home")} initialEmail={authInitialEmail} />}
+        {page === "auth" && <AuthPage onSuccess={(isNew) => navSetPage(isNew ? "welcome" : "home")} initialEmail={authInitialEmail} />}
+        {page === "welcome" && <WelcomePage setPage={navSetPage} />}
         {broadcastMounted && (
           <div className={page !== "broadcast" ? "hidden" : ""}>
             <Suspense fallback={null}>
