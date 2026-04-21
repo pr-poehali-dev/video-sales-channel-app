@@ -231,19 +231,7 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
 
   // Личные данные
   const [pName, setPName] = useState(user?.name ?? "");
-  const [pPhone, setPPhone] = useState(() => {
-    const raw = user?.phone ?? "";
-    if (!raw) return "";
-    const digits = raw.replace(/\D/g, "");
-    const norm = digits.startsWith("8") ? "7" + digits.slice(1) : digits.startsWith("7") ? digits : "7" + digits;
-    const d = norm.slice(0, 11);
-    let out = "+7";
-    if (d.length > 1) out += " (" + d.slice(1, 4);
-    if (d.length >= 4) out += ") " + d.slice(4, 7);
-    if (d.length >= 7) out += "-" + d.slice(7, 9);
-    if (d.length >= 9) out += "-" + d.slice(9, 11);
-    return out;
-  });
+  const [pPhone, setPPhone] = useState(user?.phone ?? "");
   const [pCity, setPCity] = useState(user?.city ?? "");
 
   // Магазин
@@ -405,25 +393,11 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
     setCityQuery(c.city); setSuggestions([]);
   };
 
-  const formatPhone = (raw: string) => {
-    const digits = raw.replace(/\D/g, "");
-    if (!digits) return "";
-    const norm = digits.startsWith("8") ? "7" + digits.slice(1) : digits.startsWith("7") ? digits : "7" + digits;
-    const d = norm.slice(0, 11);
-    let out = "+7";
-    if (d.length > 1) out += " (" + d.slice(1, 4);
-    if (d.length >= 4) out += ") " + d.slice(4, 7);
-    if (d.length >= 7) out += "-" + d.slice(7, 9);
-    if (d.length >= 9) out += "-" + d.slice(9, 11);
-    return out;
-  };
-
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
-    // Если пользователь стёр всё или осталось только "+7" — сбрасываем в пустую строку
-    const digits = val.replace(/\D/g, "");
-    if (!digits || digits === "7") { setPPhone(""); return; }
-    setPPhone(formatPhone(val));
+    // Разрешаем только цифры, +, пробелы, скобки, дефис
+    const cleaned = val.replace(/[^\d+\s()-]/g, "");
+    setPPhone(cleaned);
   };
 
   const set = <K extends keyof SellerProfile>(key: K, val: SellerProfile[K]) =>
