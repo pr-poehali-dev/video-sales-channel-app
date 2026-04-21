@@ -1,6 +1,9 @@
 """
 Создание платежа через Т-Банк (Tinkoff Acquiring API).
 Поддерживает Мультирасчёты (marketplace): автоматически делит платёж между продавцом и площадкой.
+Реквизиты продавца определяются по legal_type из его профиля:
+  - individual / self_employed → карта (cardNumber)
+  - ip / ooo                  → расчётный счёт (bankAccount + bik)
 Возвращает PaymentURL для перенаправления покупателя.
 """
 import json
@@ -12,10 +15,13 @@ import psycopg2.extras
 
 
 TBANK_API = "https://securepay.tinkoff.ru/v2"
+SCHEMA = "t_p63706319_video_sales_channel_"
 
 
 def get_conn():
-    return psycopg2.connect(os.environ["DATABASE_URL"])
+    conn = psycopg2.connect(os.environ["DATABASE_URL"])
+    conn.cursor_factory = psycopg2.extras.RealDictCursor
+    return conn
 
 
 def tbank_token(params: dict, password: str) -> str:
@@ -43,7 +49,7 @@ def tbank_request(method: str, payload: dict) -> dict:
 
 
 def handler(event: dict, context) -> dict:
-    """Создаёт платёж в Т-Банк. Если в заказе есть seller_id — добавляет Мультирасчёты."""
+    """Создаёт платёж в Т-Банк с реквизитами продавца по его типу (физлицо/самозанятый → карта, ИП/ООО → счёт)."""
     headers = {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -54,24 +60,46 @@ def handler(event: dict, context) -> dict:
     if event.get("httpMethod") == "OPTIONS":
         return {"statusCode": 200, "headers": headers, "body": ""}
 
-    terminal_key = os.environ.get("TBANK_TERMINAL_KEY", "TinkoffBankTest")
-    secret_key = os.environ.get("TBANK_SECRET_KEY", "TinkoffBankTest")
-
     body = json.loads(event.get("body") or "{}")
-    order_id = body.get("order_id", "")
-    amount = body.get("amount")
+    order_id    = body.get("order_id", "")
+    amount      = body.get("amount")
     description = body.get("description", "Заказ в СтримБазар")
-    return_url = body.get("return_url", "https://стримбазар.рф/")
-    items = body.get("items", [])
+    return_url  = body.get("return_url", "https://стримбазар.рф/")
+    items       = body.get("items", [])
     delivery_cost = float(body.get("delivery_cost", 0))
+    email = body.get("email", "").strip()
+    phone = body.get("phone", "").strip()
 
     if not amount or float(amount) <= 0:
         return {"statusCode": 400, "headers": headers, "body": json.dumps({"error": "Укажите сумму платежа"})}
 
     amount_kopecks = int(float(amount) * 100)
-    email = body.get("email", "").strip()
-    phone = body.get("phone", "").strip()
 
+    # ── Шаг 1: получаем реквизиты продавца из заказа ДО формирования payload ──
+    seller_id_val  = ""
+    legal_type     = ""
+    requisites     = {}
+    multimarket_enabled = os.environ.get("TBANK_MULTIMARKET_ENABLED", "false").lower() == "true"
+
+    if order_id:
+        try:
+            conn = get_conn()
+            cur  = conn.cursor()
+            cur.execute(
+                f'SELECT seller_id, seller_legal_type, seller_requisites FROM "{SCHEMA}".orders WHERE id=%s',
+                (order_id,)
+            )
+            row = cur.fetchone()
+            if row:
+                seller_id_val = row["seller_id"] or ""
+                legal_type    = row["seller_legal_type"] or ""
+                requisites    = row["seller_requisites"] or {}
+            cur.close()
+            conn.close()
+        except Exception as e:
+            print(f"[PAYMENT] Failed to load seller requisites: {e}")
+
+    # ── Шаг 2: формируем базовый payload ──
     payload = {
         "OrderId": order_id,
         "Amount": amount_kopecks,
@@ -81,7 +109,6 @@ def handler(event: dict, context) -> dict:
     }
 
     # Receipt — только если есть email или телефон (Т-Банк требует хотя бы одно)
-    # Сумма позиций чека ОБЯЗАНА совпадать с Amount (включая доставку)
     if (email or phone) and items:
         receipt: dict = {"Taxation": "usn_income", "Items": []}
         if email:
@@ -100,7 +127,6 @@ def handler(event: dict, context) -> dict:
                 "PaymentMethod": "full_prepayment",
                 "PaymentObject": "commodity",
             })
-        # Доставка как отдельная позиция
         if delivery_cost > 0:
             delivery_kopecks = int(delivery_cost * 100)
             receipt["Items"].append({
@@ -114,21 +140,53 @@ def handler(event: dict, context) -> dict:
             })
         payload["Receipt"] = receipt
 
-    # Мультирасчёты: только если включены явно (требует отдельного договора с Т-Банк)
-    seller_account = body.get("seller_account", "")
-    multimarket_enabled = os.environ.get("TBANK_MULTIMARKET_ENABLED", "false").lower() == "true"
-    if seller_account and multimarket_enabled:
-        platform_fee_pct = 0
-        platform_fee = 0
-        seller_amount = amount_kopecks
-        payload["Shops"] = [
-            {
-                "ShopCode": seller_account,
-                "Amount": seller_amount,
-                "Name": description,
-            }
-        ]
+    # ── Шаг 3: мультирасчёты с правильными реквизитами по типу продавца ──
+    if seller_id_val and multimarket_enabled and legal_type:
+        payout_method = requisites.get("payoutMethod", "")
+        card_number   = requisites.get("cardNumber", "")
+        bank_account  = requisites.get("bankAccount", "")
+        bik           = requisites.get("bik", "")
+        corr_account  = requisites.get("corrAccount", "")
+        bank_name     = requisites.get("bankName", "")
 
+        # Физлицо и самозанятый — выплата на карту
+        if legal_type in ("individual", "self_employed") and card_number:
+            shop_entry = {
+                "ShopCode": seller_id_val,
+                "Amount":   amount_kopecks,
+                "Name":     description,
+                "PayoutDetails": {
+                    "Type":       "Card",
+                    "CardNumber": card_number,
+                },
+            }
+            payload["Shops"] = [shop_entry]
+            print(f"[PAYMENT] Multimarket: type={legal_type} → Card *{card_number[-4:]}")
+
+        # ИП и ООО — выплата на расчётный счёт
+        elif legal_type in ("ip", "ooo") and bank_account and bik:
+            shop_entry = {
+                "ShopCode": seller_id_val,
+                "Amount":   amount_kopecks,
+                "Name":     description,
+                "PayoutDetails": {
+                    "Type":        "Account",
+                    "Account":     bank_account,
+                    "BankBik":     bik,
+                    "CorrAccount": corr_account,
+                    "BankName":    bank_name,
+                },
+            }
+            payload["Shops"] = [shop_entry]
+            print(f"[PAYMENT] Multimarket: type={legal_type} → Account {bank_account[:6]}... BIK={bik}")
+
+        else:
+            print(f"[PAYMENT] Multimarket skipped: type={legal_type} missing requisites (payout={payout_method})")
+    else:
+        if legal_type:
+            print(f"[PAYMENT] Multimarket disabled or no seller. type={legal_type} enabled={multimarket_enabled}")
+
+    # ── Шаг 4: отправляем в Т-Банк ──
     print(f"[PAYMENT] Init payload: {json.dumps(payload, ensure_ascii=False)}")
     result = tbank_request("Init", payload)
     print(f"[PAYMENT] Init result: {json.dumps(result, ensure_ascii=False)}")
@@ -140,50 +198,32 @@ def handler(event: dict, context) -> dict:
             "body": json.dumps({"error": result.get("Message", "Ошибка создания платежа"), "details": result}),
         }
 
-    payment_id = result.get("PaymentId")
+    payment_id  = result.get("PaymentId")
     payment_url = result.get("PaymentURL")
 
-    # Сохраняем payment_id в заказ + создаём транзакцию в таблице финансов
+    # ── Шаг 5: сохраняем payment_id в заказ + транзакцию ──
     if order_id and payment_id:
         try:
             conn = get_conn()
-            cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            cur  = conn.cursor()
 
-            # Обновляем заказ
             cur.execute(
-                "UPDATE \"t_p63706319_video_sales_channel_\".orders SET tbank_payment_id = %s, payment_method = 'tbank' WHERE id = %s",
+                f'UPDATE "{SCHEMA}".orders SET tbank_payment_id=%s, payment_method=\'tbank\' WHERE id=%s',
                 (str(payment_id), order_id),
             )
 
-            # Получаем данные заказа вместе с типом и реквизитами продавца
             cur.execute(
-                "SELECT seller_id, seller_legal_type, seller_requisites, order_total FROM \"t_p63706319_video_sales_channel_\".orders WHERE id = %s",
+                f'SELECT order_total FROM "{SCHEMA}".orders WHERE id=%s',
                 (order_id,),
             )
             order_row = cur.fetchone()
             if order_row:
-                seller_id_val   = order_row["seller_id"] or ""
-                legal_type      = order_row["seller_legal_type"] or ""
-                requisites      = order_row["seller_requisites"] or {}
                 full_amount     = float(order_row["order_total"] or amount)
                 marketplace_fee = 0.0
-                seller_amount   = round(full_amount, 2)
+                seller_payout   = round(full_amount, 2)
 
-                # Логируем тип продавца — важно для банка при переводе
-                payout_method = requisites.get("payoutMethod", "")
-                card_number   = requisites.get("cardNumber", "")
-                bank_account  = requisites.get("bankAccount", "")
-                bik           = requisites.get("bik", "")
-                print(
-                    f"[PAYMENT] Seller type={legal_type} payout={payout_method} "
-                    f"card={'*'+card_number[-4:] if card_number else '-'} "
-                    f"account={bank_account[:6]+'...' if bank_account else '-'} bik={bik} "
-                    f"order={order_id} amount={full_amount}"
-                )
-
-                # Upsert транзакции — фиксируем холд
-                cur.execute("""
-                    INSERT INTO "t_p63706319_video_sales_channel_".transactions
+                cur.execute(f"""
+                    INSERT INTO "{SCHEMA}".transactions
                         (order_id, seller_id, full_amount, seller_amount, marketplace_fee,
                          hold_date, status, payment_id, updated_at)
                     VALUES (%s, %s, %s, %s, %s, now(), 'hold', %s, now())
@@ -195,14 +235,15 @@ def handler(event: dict, context) -> dict:
                         hold_date       = now(),
                         status          = 'hold',
                         updated_at      = now()
-                """, (order_id, seller_id_val, full_amount, seller_amount, marketplace_fee, str(payment_id)))
-                print(f"[PAYMENT] Transaction logged: order={order_id} legal_type={legal_type} seller_amount={seller_amount}")
+                """, (order_id, seller_id_val, full_amount, seller_payout, marketplace_fee, str(payment_id)))
+
+                print(f"[PAYMENT] Transaction saved: order={order_id} legal_type={legal_type} amount={full_amount}")
 
             conn.commit()
             cur.close()
             conn.close()
         except Exception as e:
-            print(f"[PAYMENT] DB update error: {e}")
+            print(f"[PAYMENT] DB save error: {e}")
 
     return {
         "statusCode": 200,
