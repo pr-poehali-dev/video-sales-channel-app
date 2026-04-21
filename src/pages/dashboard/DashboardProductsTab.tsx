@@ -168,14 +168,17 @@ export default function DashboardProductsTab({ warehouses, onGoToProfile, autoOp
       } finally { setCamUploading(false); }
     };
     setCamRecording(true);
-    setCamCountdown(6);
-    recorder.start(500);
-    let rem = 6;
+    setCamCountdown(10);
+    recorder.start(100);
+    const startedAt = Date.now();
+    const DURATION = 10000;
     const tick = setInterval(() => {
-      rem -= 1;
+      const elapsed = Date.now() - startedAt;
+      const rem = Math.max(0, Math.ceil((DURATION - elapsed) / 1000));
       setCamCountdown(rem);
-      if (rem <= 0) { clearInterval(tick); recorder.stop(); }
-    }, 1000);
+      if (elapsed >= DURATION) { clearInterval(tick); recorder.stop(); }
+    }, 200);
+    setTimeout(() => { clearInterval(tick); if (recorder.state === "recording") recorder.stop(); }, DURATION + 300);
   };
 
   // ── Форма ─────────────────────────────────────────────────────────────────
