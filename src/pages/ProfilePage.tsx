@@ -44,7 +44,14 @@ export default function ProfilePage({ setPage, onAddProduct }: ProfilePageProps)
   const myStreams = user ? getSellerStreams(user.id) : [];
   const activeStream = myStreams.find(s => s.isLive) ?? null;
   type ProfileMode = "personal" | "legal";
-  const [mode, setMode] = useState<ProfileMode>("personal");
+  const [mode, setMode] = useState<ProfileMode>(() => {
+    return (localStorage.getItem("profileMode") as ProfileMode) ?? "personal";
+  });
+
+  const handleSetMode = (m: ProfileMode) => {
+    localStorage.setItem("profileMode", m);
+    setMode(m);
+  };
 
   // ── Кабинет продавца (табы) ──
   const [tab, setTab] = useState<string | null>(null);
@@ -154,25 +161,25 @@ export default function ProfilePage({ setPage, onAddProduct }: ProfilePageProps)
       <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-sm pt-4 pb-3 -mx-4 px-4 border-b border-border/60 mb-4">
         <div className="flex gap-2">
           <button
-            onClick={() => setMode("personal")}
+            onClick={() => handleSetMode("personal")}
             className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-sm transition-all ${
               mode === "personal"
                 ? "bg-primary text-primary-foreground shadow-sm"
                 : "bg-secondary text-muted-foreground hover:text-foreground"
             }`}
           >
-            <Icon name="User" size={15} />
+            {mode === "personal" ? <Icon name="Check" size={15} /> : <Icon name="User" size={15} />}
             Физ. лицо
           </button>
           <button
-            onClick={() => setMode("legal")}
+            onClick={() => handleSetMode("legal")}
             className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-sm transition-all ${
               mode === "legal"
                 ? "bg-primary text-primary-foreground shadow-sm"
                 : "bg-secondary text-muted-foreground hover:text-foreground"
             }`}
           >
-            <Icon name="Building2" size={15} />
+            {mode === "legal" ? <Icon name="Check" size={15} /> : <Icon name="Building2" size={15} />}
             Юр. лицо
           </button>
         </div>
