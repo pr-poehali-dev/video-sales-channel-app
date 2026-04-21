@@ -1,7 +1,7 @@
 """
-Загрузка фото товаров в Reg.ru S3 (strimbazar).
+Загрузка фото товаров в основное S3 хранилище проекта (poehali.dev).
 Вынесена отдельно чтобы иметь увеличенный таймаут и не блокировать store-api.
-Принимает base64 data_url, возвращает публичный URL.
+Принимает base64 data_url, возвращает публичный CDN URL.
 """
 import json
 import os
@@ -16,15 +16,15 @@ CORS = {
     "Access-Control-Allow-Headers": "Content-Type",
 }
 
-REGRU_CDN_BASE = "https://strimbazar.s3.regru.cloud"
+CDN_BASE = f"https://cdn.poehali.dev/projects/{os.environ.get('AWS_ACCESS_KEY_ID', '')}/bucket"
 
 
 def get_s3():
     return boto3.client(
         "s3",
-        endpoint_url="https://s3.regru.cloud",
-        aws_access_key_id=os.environ["REGRU_S3_ACCESS_KEY"],
-        aws_secret_access_key=os.environ["REGRU_S3_SECRET_KEY"],
+        endpoint_url="https://bucket.poehali.dev",
+        aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
+        aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"],
         config=Config(signature_version="s3v4"),
     )
 
@@ -38,7 +38,7 @@ def err(msg):
 
 
 def handler(event: dict, context) -> dict:
-    """Загрузка фото товара в Reg.ru S3. Таймаут 60 сек."""
+    """Загрузка фото товара в S3 poehali. Таймаут 60 сек."""
     if event.get("httpMethod") == "OPTIONS":
         return {"statusCode": 200, "headers": CORS, "body": ""}
 
@@ -62,13 +62,12 @@ def handler(event: dict, context) -> dict:
 
     s3 = get_s3()
     s3.put_object(
-        Bucket="strimbazar",
+        Bucket="files",
         Key=key,
         Body=img_bytes,
         ContentType=f"image/{ext}",
-        ACL="public-read",
     )
 
-    url = f"{REGRU_CDN_BASE}/{key}"
+    url = f"{CDN_BASE}/{key}"
     print(f"[UPLOAD_IMAGE] ok key={key} size={len(img_bytes)}")
     return ok({"url": url})
