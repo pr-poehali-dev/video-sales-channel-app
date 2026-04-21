@@ -1,7 +1,7 @@
 import { useRef, useCallback } from "react";
 import Icon from "@/components/ui/icon";
 
-const STORE_API = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c";
+const REGRU_UPLOAD_URL_API = "https://functions.poehali.dev/6aea68a2-cfc2-4613-934a-b3c3d1656fc3";
 
 interface Props {
   camOpen: boolean;
@@ -62,25 +62,22 @@ export default function ProductCameraModal({
       setFVideoBlobUrl(blobUrl);
       setCamUploading(true);
       try {
-        const reader = new FileReader();
-        reader.onload = async (ev) => {
-          const dataUrl = ev.target?.result as string;
-          const resp = await fetch(`${STORE_API}?action=upload_video`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ data_url: dataUrl }),
-          });
-          const data = await resp.json();
-          if (data.url) setFVideoUrl(data.url);
-        };
-        reader.readAsDataURL(blob);
-      } catch { /* ignore */ }
+        const contentType = mimeType.split(";")[0];
+        const urlResp = await fetch(REGRU_UPLOAD_URL_API, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content_type: contentType, folder: "products" }),
+        });
+        const { upload_url, cdn_url } = await urlResp.json();
+        await fetch(upload_url, { method: "PUT", headers: { "Content-Type": contentType, "x-amz-acl": "public-read" }, body: blob });
+        setFVideoUrl(cdn_url);
+      } catch (e) { console.error("[UPLOAD_VIDEO]", e); }
       finally { setCamUploading(false); }
     };
     setCamRecording(true);
-    setCamCountdown(5);
+    setCamCountdown(10);
     recorder.start();
-    let rem = 5;
+    let rem = 10;
     const tick = setInterval(() => {
       rem -= 1;
       setCamCountdown(rem);
@@ -105,7 +102,7 @@ export default function ProductCameraModal({
             <Icon name="X" size={18} className="text-white" />
           </button>
           <span className="text-white text-sm font-medium bg-black/60 px-3 py-1.5 rounded-full">
-            Снимите товар 5 секунд
+            Снимите товар 10 секунд
           </span>
           <div className="w-10" />
         </div>

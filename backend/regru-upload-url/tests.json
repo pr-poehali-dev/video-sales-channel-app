@@ -1,0 +1,28 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS returns 200",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "missing content_type returns 400",
+      "method": "POST",
+      "path": "/",
+      "body": {},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "content_type обязателен (image/* или video/*)"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "image/jpeg returns upload_url and cdn_url",
+      "method": "POST",
+      "path": "/",
+      "body": {"content_type": "image/jpeg", "folder": "products"},
+      "expectedStatus": 200,
+      "expectedBody": {"upload_url": "string", "cdn_url": "string"},
+      "bodyMatcher": "partial"
+    }
+  ]
+}

@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import Icon from "@/components/ui/icon";
 import { DimensionPicker } from "@/components/ui/scroll-picker";
 
-const UPLOAD_IMAGE_API = "https://functions.poehali.dev/746ac9d7-8e84-4d88-ae53-5ed67f533bf6";
+const REGRU_UPLOAD_URL_API = "https://functions.poehali.dev/6aea68a2-cfc2-4613-934a-b3c3d1656fc3";
 
 const CATEGORIES = [
   "Украшения", "Одежда", "Красота", "Аксессуары",
@@ -79,7 +79,7 @@ export default function ProductFormModal({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imgUploading, setImgUploading] = useState(false);
 
-  const compressImage = (file: File, maxPx = 1200, quality = 0.82): Promise<string> =>
+  const compressToBlob = (file: File, maxPx = 1200, quality = 0.82): Promise<Blob> =>
     new Promise((resolve, reject) => {
       const img = new Image();
       const url = URL.createObjectURL(file);
@@ -93,11 +93,22 @@ export default function ProductFormModal({
         const canvas = document.createElement("canvas");
         canvas.width = width; canvas.height = height;
         canvas.getContext("2d")!.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL("image/jpeg", quality));
+        canvas.toBlob(b => b ? resolve(b) : reject(new Error("canvas error")), "image/jpeg", quality);
       };
       img.onerror = reject;
       img.src = url;
     });
+
+  const uploadFileToRegru = async (blob: Blob, contentType: string, folder = "products"): Promise<string> => {
+    const urlResp = await fetch(REGRU_UPLOAD_URL_API, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content_type: contentType, folder }),
+    });
+    const { upload_url, cdn_url } = await urlResp.json();
+    await fetch(upload_url, { method: "PUT", headers: { "Content-Type": contentType, "x-amz-acl": "public-read" }, body: blob });
+    return cdn_url;
+  };
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
@@ -106,15 +117,9 @@ export default function ProductFormModal({
     try {
       const newUrls: string[] = [];
       for (const file of files) {
-        const dataUrl = await compressImage(file);
-        const resp = await fetch(`${UPLOAD_IMAGE_API}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ data_url: dataUrl }),
-        });
-        const data = await resp.json();
-        if (data.url) newUrls.push(data.url);
-        else console.error("[UPLOAD_IMAGE] no url in response", data);
+        const blob = await compressToBlob(file);
+        const cdnUrl = await uploadFileToRegru(blob, "image/jpeg");
+        newUrls.push(cdnUrl);
       }
       setFImages([...fImages, ...newUrls]);
     } catch (err) {
