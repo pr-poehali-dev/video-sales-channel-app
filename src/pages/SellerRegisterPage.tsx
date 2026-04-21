@@ -430,12 +430,15 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
     const lt = form.legalType;
 
     // ── Общие поля ──
-    if (!pName.trim()) { setError("Введите ваше имя"); return; }
+    if (lt !== "individual" && !pName.trim()) { setError("Введите ваше имя"); return; }
     if (!pPhone.trim()) { setError("Введите телефон"); return; }
+    if (pPhone.replace(/\D/g, "").length < 10) { setError("Введите корректный номер телефона (не менее 10 цифр)"); return; }
 
     // ── Валидация по типу ──
     if (lt === "individual") {
       if (!form.legalName.trim()) { setError("Введите ФИО полностью"); return; }
+      const nameParts = form.legalName.trim().split(/\s+/);
+      if (nameParts.length < 2) { setError("Введите фамилию и имя полностью"); return; }
       if (!form.cardNumber.trim()) { setError("Введите номер карты для выплат"); return; }
       if (!cityCode) { setError("Укажите город отправки — он будет подставляться в каждый товар"); return; }
     }
@@ -469,7 +472,7 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
     try {
       const isIndividualType = form.legalType === "individual";
       await updateUser({
-        name: pName.trim(),
+        name: isIndividualType ? (form.legalName.trim() || pName.trim()) : pName.trim(),
         phone: pPhone.trim(),
         city: pCity.trim(),
         ...((shopName.trim() || isIndividualType) && cityCode ? {
