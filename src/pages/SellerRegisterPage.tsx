@@ -836,7 +836,6 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
         </div>
 
         {/* ── Магазин ── */}
-        {!isIndividual && (
         <div className="bg-card border border-border rounded-xl p-3 space-y-2">
           <h2 className="text-xs font-semibold text-foreground">Магазин</h2>
           <Field label="Название магазина" hint="Отображается покупателям в корзине" required>
@@ -932,10 +931,8 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
             </div>
           </div>
         </div>
-        )}
 
         {/* ── Документы ── */}
-        {!isIndividual && (
         <div className="bg-card border border-border rounded-xl p-3 space-y-2">
           <div>
             <h2 className="text-xs font-semibold text-foreground">Документы</h2>
@@ -952,7 +949,6 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
             <span className="text-[10px] bg-secondary border border-border px-2 py-1 rounded-md text-muted-foreground whitespace-nowrap">Скоро</span>
           </div>
         </div>
-        )}
 
         {/* ── Согласия ── */}
         <label className="flex items-center gap-2 cursor-pointer group px-1">
