@@ -61,6 +61,7 @@ export default function ProfilePage({ setPage, onAddProduct }: ProfilePageProps)
     if (pending) { sessionStorage.removeItem("profileOpenTab"); return pending; }
     return null;
   });
+  const [autoOpenProductForm, setAutoOpenProductForm] = useState(false);
   const [stoppingStream, setStoppingStream] = useState<string | null>(null);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const { subscribed, isSupported, subscribe, unsubscribe, status: pushStatus } = usePushNotifications(user?.id ?? null);
@@ -410,7 +411,12 @@ export default function ProfilePage({ setPage, onAddProduct }: ProfilePageProps)
       {mode === "personal" && (
         <div className="flex gap-2 mt-2">
           <button
-            onClick={() => setPage("catalog")}
+            onClick={() => {
+              if (!isSeller) { setPage("seller-register"); return; }
+              setAutoOpenProductForm(true);
+              handleSetMode("legal");
+              setTab("Товары");
+            }}
             className="flex-1 flex items-center justify-center gap-2 bg-primary text-primary-foreground rounded-xl px-3 py-2.5 hover:opacity-90 transition-opacity text-sm font-semibold"
           >
             <Icon name="Plus" size={15} />
@@ -522,7 +528,7 @@ export default function ProfilePage({ setPage, onAddProduct }: ProfilePageProps)
 
           {/* ── Контент таба ── */}
           {tab === "Заказы от покупателей" && <DashboardOrdersTab />}
-          {tab === "Товары" && <DashboardProductsTab warehouses={warehouses} onGoToProfile={() => setTab("Реквизиты")} autoOpenForm={false} onAutoOpenDone={() => {}} />}
+          {tab === "Товары" && <DashboardProductsTab warehouses={warehouses} onGoToProfile={() => setTab("Реквизиты")} autoOpenForm={autoOpenProductForm} onAutoOpenDone={() => setAutoOpenProductForm(false)} />}
           {tab === "Мои эфиры" && <DashboardStreamsTab setPage={setPage} />}
           {tab === "Статистика" && (
             <div className="animate-fade-in text-center py-12">
