@@ -231,7 +231,19 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
 
   // Личные данные
   const [pName, setPName] = useState(user?.name ?? "");
-  const [pPhone, setPPhone] = useState(user?.phone ?? "");
+  const [pPhone, setPPhone] = useState(() => {
+    const raw = user?.phone ?? "";
+    if (!raw) return "";
+    const digits = raw.replace(/\D/g, "");
+    const norm = digits.startsWith("8") ? "7" + digits.slice(1) : digits.startsWith("7") ? digits : "7" + digits;
+    const d = norm.slice(0, 11);
+    let out = "+7";
+    if (d.length > 1) out += " (" + d.slice(1, 4);
+    if (d.length >= 4) out += ") " + d.slice(4, 7);
+    if (d.length >= 7) out += "-" + d.slice(7, 9);
+    if (d.length >= 9) out += "-" + d.slice(9, 11);
+    return out;
+  });
   const [pCity, setPCity] = useState(user?.city ?? "");
 
   // Магазин
@@ -391,6 +403,22 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
   const selectCity = (c: CdekCity) => {
     setCityCode(c.code); setCityName(c.city); setCityGuid(c.guid || "");
     setCityQuery(c.city); setSuggestions([]);
+  };
+
+  const formatPhone = (raw: string) => {
+    const digits = raw.replace(/\D/g, "");
+    const norm = digits.startsWith("8") ? "7" + digits.slice(1) : digits.startsWith("7") ? digits : digits ? "7" + digits : "";
+    const d = norm.slice(0, 11);
+    let out = "+7";
+    if (d.length > 1) out += " (" + d.slice(1, 4);
+    if (d.length >= 4) out += ") " + d.slice(4, 7);
+    if (d.length >= 7) out += "-" + d.slice(7, 9);
+    if (d.length >= 9) out += "-" + d.slice(9, 11);
+    return out;
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPPhone(formatPhone(e.target.value));
   };
 
   const set = <K extends keyof SellerProfile>(key: K, val: SellerProfile[K]) =>
@@ -705,7 +733,7 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
                   placeholder="Иванов Иван Иванович" className={inputCls} />
               </Field>
               <Field label="Телефон *">
-                <input value={pPhone} onChange={e => setPPhone(e.target.value)} placeholder="+7 900 000-00-00" className={inputCls} />
+                <input value={pPhone} onChange={handlePhoneChange} placeholder="+7 (900) 000-00-00" inputMode="tel" className={inputCls} />
               </Field>
               <Field label="Номер карты для выплат *" hint="На эту карту будут переводиться деньги за продажи">
                 <input value={form.cardNumber} onChange={e => set("cardNumber", e.target.value.replace(/\D/g, ""))}
@@ -880,7 +908,7 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
                 {lt === "ip" ? "Для ИП — ОГРНИП 15 цифр, ИНН 12 цифр" : "Для ООО — ОГРН 13 цифр, ИНН 10 цифр"}
               </div>
               <Field label="Телефон *">
-                <input value={pPhone} onChange={e => setPPhone(e.target.value)} placeholder="+7 900 000-00-00" className={inputCls} />
+                <input value={pPhone} onChange={handlePhoneChange} placeholder="+7 (900) 000-00-00" inputMode="tel" className={inputCls} />
               </Field>
               <div>
                 <label className={labelCls}>Email</label>
