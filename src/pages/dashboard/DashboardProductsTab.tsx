@@ -62,6 +62,7 @@ export default function DashboardProductsTab({ warehouses, onGoToProfile, autoOp
   const [fWholesalePrice, setFWholesalePrice] = useState("");
   const [fRetailMarkup,  setFRetailMarkup]  = useState("0");
   const [fIsUsed,        setFIsUsed]        = useState(false);
+  const [fSaving,        setFSaving]        = useState(false);
 
   // ── Видео/камера ──────────────────────────────────────────────────────────
   const [fVideoUrl,      setFVideoUrl]      = useState<string | null>(null);
@@ -70,6 +71,7 @@ export default function DashboardProductsTab({ warehouses, onGoToProfile, autoOp
   const [camRecording,   setCamRecording]   = useState(false);
   const [camCountdown,   setCamCountdown]   = useState(0);
   const [camUploading,   setCamUploading]   = useState(false);
+  const camUploadingRef = useRef(false);
   const camVideoRef    = useRef<HTMLVideoElement>(null);
   const camStreamRef   = useRef<MediaStream | null>(null);
   const camRecorderRef = useRef<MediaRecorder | null>(null);
@@ -147,25 +149,28 @@ export default function DashboardProductsTab({ warehouses, onGoToProfile, autoOp
       const blob = new Blob(chunks, { type: mimeType });
       const blobUrl = URL.createObjectURL(blob);
       setFVideoBlobUrl(blobUrl);
+      camUploadingRef.current = true;
       setCamUploading(true);
       try {
-        const reader = new FileReader();
-        reader.onload = async (ev) => {
-          const dataUrl = ev.target?.result as string;
-          console.log("[video] blob size KB:", Math.round(blob.size / 1024), "dataUrl KB:", Math.round(dataUrl.length / 1024));
-          const resp = await fetch(UPLOAD_VIDEO_API, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ data_url: dataUrl, folder: "products" }),
-          });
-          const data = await resp.json();
-          console.log("[video] response:", data);
-          if (data.url) setFVideoUrl(data.url);
-        };
-        reader.readAsDataURL(blob);
+        const dataUrl = await new Promise<string>((res, rej) => {
+          const reader = new FileReader();
+          reader.onload = ev => res(ev.target?.result as string);
+          reader.onerror = rej;
+          reader.readAsDataURL(blob);
+        });
+        const resp = await fetch(UPLOAD_VIDEO_API, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ data_url: dataUrl, folder: "products" }),
+        });
+        const data = await resp.json();
+        if (data.url) setFVideoUrl(data.url);
       } catch (e) {
         console.error("[video upload] catch:", e);
-      } finally { setCamUploading(false); }
+      } finally {
+        camUploadingRef.current = false;
+        setCamUploading(false);
+      }
     };
     setCamRecording(true);
     setCamCountdown(10);
@@ -263,43 +268,56 @@ export default function DashboardProductsTab({ warehouses, onGoToProfile, autoOp
     document.body.style.overflow = "";
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setFError(null);
     if (!fName.trim()) { setFError("Введите название товара"); return; }
     const wholesaleNum = fWholesalePrice.trim() ? Number(fWholesalePrice.replace(/\s/g, "").replace(",", ".")) : null;
     if (!wholesaleNum || wholesaleNum <= 0) { setFError("Введите оптовую цену"); return; }
     const priceNum = Number(fPrice.replace(/\s/g, "").replace(",", ".")) || wholesaleNum;
     if (fCdek && !fFromCityCode) { setFError("Укажите склад отправления для доставки СДЭК"); return; }
-    const extraFields = {
-      weightG: Number(fWeightG) || 500,
-      lengthCm: Number(fLengthCm) || 20,
-      widthCm: Number(fWidthCm) || 15,
-      heightCm: Number(fHeightCm) || 10,
-      cdekEnabled: fCdek,
-      nalogEnabled: fNalog,
-      fittingEnabled: fFitting,
-      fromCityCode: fFromCityCode,
-      fromCityName: fFromCityName,
-      inStock: Number(fInStock) || 1,
-      wholesalePrice: wholesaleNum,
-      retailMarkupPct: Number(fRetailMarkup) || 0,
-      isUsed: fIsUsed,
-    };
-    if (editId) {
-      updateProduct(editId, {
-        name: fName.trim(), price: priceNum, category: fCategory,
-        description: fDesc.trim(), images: fImages, videoUrl: fVideoUrl ?? "", ...extraFields,
-      } as never);
-    } else {
-      addProduct({
-        name: fName.trim(), price: priceNum, category: fCategory,
-        description: fDesc.trim(), images: fImages, videoUrl: fVideoUrl ?? "",
-        sellerId: user!.id, sellerName: user!.name, sellerAvatar: user!.avatar,
-        ...extraFields,
-      } as never);
+    // Ждём завершения загрузки видео если оно ещё идёт
+    if (camUploadingRef.current) {
+      await new Promise<void>(resolve => {
+        const check = setInterval(() => { if (!camUploadingRef.current) { clearInterval(check); resolve(); } }, 300);
+      });
     }
-    if (fVideoBlobUrl) URL.revokeObjectURL(fVideoBlobUrl);
-    closeForm();
+    setFSaving(true);
+    try {
+      const extraFields = {
+        weightG: Number(fWeightG) || 500,
+        lengthCm: Number(fLengthCm) || 20,
+        widthCm: Number(fWidthCm) || 15,
+        heightCm: Number(fHeightCm) || 10,
+        cdekEnabled: fCdek,
+        nalogEnabled: fNalog,
+        fittingEnabled: fFitting,
+        fromCityCode: fFromCityCode,
+        fromCityName: fFromCityName,
+        inStock: Number(fInStock) || 1,
+        wholesalePrice: wholesaleNum,
+        retailMarkupPct: Number(fRetailMarkup) || 0,
+        isUsed: fIsUsed,
+      };
+      if (editId) {
+        await updateProduct(editId, {
+          name: fName.trim(), price: priceNum, category: fCategory,
+          description: fDesc.trim(), images: fImages, videoUrl: fVideoUrl ?? "", ...extraFields,
+        } as never);
+      } else {
+        await addProduct({
+          name: fName.trim(), price: priceNum, category: fCategory,
+          description: fDesc.trim(), images: fImages, videoUrl: fVideoUrl ?? "",
+          sellerId: user!.id, sellerName: user!.name, sellerAvatar: user!.avatar,
+          ...extraFields,
+        } as never);
+      }
+      if (fVideoBlobUrl) URL.revokeObjectURL(fVideoBlobUrl);
+      closeForm();
+    } catch (e) {
+      setFError("Ошибка сохранения. Попробуйте ещё раз.");
+    } finally {
+      setFSaving(false);
+    }
   };
 
   const handleDelete = (id: string) => {
@@ -366,6 +384,7 @@ export default function DashboardProductsTab({ warehouses, onGoToProfile, autoOp
           fIsUsed={fIsUsed} setFIsUsed={setFIsUsed}
           isIndividual={sellerLegalType === "individual"}
           fError={fError}
+          saving={fSaving}
           onSave={handleSave}
           onClose={closeForm}
         />

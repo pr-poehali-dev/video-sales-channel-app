@@ -52,6 +52,7 @@ interface ProductFormModalProps {
   isIndividual?: boolean;
   // Ошибка и действия
   fError: string | null;
+  saving?: boolean;
   onSave: () => void;
   onClose: () => void;
 }
@@ -74,6 +75,7 @@ export default function ProductFormModal({
   fIsUsed, setFIsUsed,
   isIndividual,
   fError,
+  saving,
   onSave, onClose,
 }: ProductFormModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -357,12 +359,21 @@ export default function ProductFormModal({
 
         {/* Зафиксированные кнопки снизу */}
         <div style={{ flexShrink: 0, borderTop: "1px solid var(--border)", padding: "16px 20px", display: "flex", gap: 12, background: "var(--card)" }}>
-          <button onClick={onSave}
-            className="flex-1 bg-primary text-primary-foreground font-semibold py-3 rounded-xl hover:opacity-90 transition-opacity text-sm">
-            {editId ? "Сохранить" : "Добавить товар"}
+          <button
+            onClick={onSave}
+            disabled={imgUploading || camUploading || saving}
+            className="flex-1 bg-primary text-primary-foreground font-semibold py-3 rounded-xl hover:opacity-90 transition-opacity text-sm disabled:opacity-60 flex items-center justify-center gap-2"
+          >
+            {(imgUploading || saving) && (
+              <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeOpacity="0.3" />
+                <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+              </svg>
+            )}
+            {imgUploading ? "Загрузка фото..." : saving ? "Сохраняем..." : camUploading ? "Загрузка видео..." : editId ? "Сохранить" : "Добавить товар"}
           </button>
-          <button onClick={onClose}
-            className="px-5 border border-border text-muted-foreground font-medium rounded-xl hover:bg-secondary transition-colors text-sm">
+          <button onClick={onClose} disabled={saving}
+            className="px-5 border border-border text-muted-foreground font-medium rounded-xl hover:bg-secondary transition-colors text-sm disabled:opacity-40">
             Отмена
           </button>
         </div>
