@@ -114,7 +114,7 @@ export default function ProfilePage({ setPage }: ProfilePageProps) {
   const inputCls = "w-full bg-secondary border border-border rounded-xl px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors";
 
   return (
-    <div className="max-w-xl mx-auto px-4 animate-fade-in pb-10">
+    <div className="max-w-xl mx-auto px-4 animate-fade-in pb-28">
 
       {/* ── Sticky переключатель режима ── */}
       <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-sm pt-4 pb-3 -mx-4 px-4 border-b border-border/60 mb-4">
@@ -356,6 +356,31 @@ export default function ProfilePage({ setPage }: ProfilePageProps) {
             )}
           </div>
 
+        </div>
+      )}
+
+      {/* ── Fixed-кнопка продавца (только физ. лицо) ── */}
+      {mode === "personal" && (
+        <div className="fixed bottom-16 left-0 right-0 z-40 px-4 pb-2 pointer-events-none">
+          <div className="max-w-xl mx-auto pointer-events-auto">
+            <button
+              onClick={() => isSeller ? setPage("dashboard") : setPage("seller-register")}
+              className="w-full flex items-center gap-3 bg-card border border-border rounded-2xl px-4 py-3 shadow-lg hover:border-primary/40 transition-all"
+            >
+              <div className="w-9 h-9 rounded-xl bg-primary/15 flex items-center justify-center flex-shrink-0">
+                <Icon name="Store" size={16} className="text-primary" />
+              </div>
+              <div className="flex-1 text-left">
+                <p className="text-sm font-semibold text-foreground">
+                  {isSeller ? user.shopName : "Стать продавцом"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {isSeller ? "Перейти в кабинет продавца" : "Продавай новые и б/у товары в эфире"}
+                </p>
+              </div>
+              <Icon name="ChevronRight" size={16} className="text-muted-foreground flex-shrink-0" />
+            </button>
+          </div>
         </div>
       )}
 
