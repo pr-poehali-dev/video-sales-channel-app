@@ -56,7 +56,11 @@ export default function ProfilePage({ setPage, onAddProduct }: ProfilePageProps)
   };
 
   // ── Кабинет продавца (табы) ──
-  const [tab, setTab] = useState<string | null>(null);
+  const [tab, setTab] = useState<string | null>(() => {
+    const pending = sessionStorage.getItem("profileOpenTab");
+    if (pending) { sessionStorage.removeItem("profileOpenTab"); return pending; }
+    return null;
+  });
   const [stoppingStream, setStoppingStream] = useState<string | null>(null);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const { subscribed, isSupported, subscribe, unsubscribe, status: pushStatus } = usePushNotifications(user?.id ?? null);

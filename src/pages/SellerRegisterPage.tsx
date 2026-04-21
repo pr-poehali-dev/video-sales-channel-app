@@ -588,7 +588,7 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
 
           <div className="space-y-3">
             <button
-              onClick={() => { if (onGoAddProduct) { onGoAddProduct(); } else { setPage("profile"); } }}
+              onClick={() => { if (onGoAddProduct) { onGoAddProduct(); } else { sessionStorage.setItem("profileOpenTab", "Товары"); setPage("profile"); } }}
               className="w-full bg-primary text-primary-foreground rounded-2xl p-5 text-left hover:opacity-90 transition-all group"
             >
               <div className="flex items-center gap-4">
