@@ -21,9 +21,11 @@ interface CdekCity { code: string; city: string; region: string; }
 interface Props {
   warehouses: { id: string; cityCode: string; cityName: string; isDefault: boolean; }[];
   onGoToProfile?: () => void;
+  autoOpenForm?: boolean;
+  onAutoOpenDone?: () => void;
 }
 
-export default function DashboardProductsTab({ warehouses, onGoToProfile }: Props) {
+export default function DashboardProductsTab({ warehouses, onGoToProfile, autoOpenForm, onAutoOpenDone }: Props) {
   const { user } = useAuth();
   const { addProduct, updateProduct, deleteProduct, getSellerProducts } = useStore();
   const { check, checking } = useSellerProfileCheck(user?.id);
@@ -214,6 +216,14 @@ export default function DashboardProductsTab({ warehouses, onGoToProfile }: Prop
     setShowForm(true);
     document.body.style.overflow = "hidden";
   };
+
+  // Авто-открытие формы при переходе из экрана успеха регистрации продавца
+  useEffect(() => {
+    if (autoOpenForm && warehouses !== undefined) {
+      const t = setTimeout(() => { openAddForm(); onAutoOpenDone?.(); }, 300);
+      return () => clearTimeout(t);
+    }
+  }, [autoOpenForm]);
 
   const openEditForm = (id: string) => {
     const p = products.find(x => x.id === id);

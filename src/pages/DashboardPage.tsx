@@ -20,12 +20,14 @@ import { usePushNotifications } from "@/hooks/usePushNotifications";
 
 interface DashboardPageProps {
   setPage: (p: Page) => void;
+  openAddProduct?: boolean;
+  onAutoOpenDone?: () => void;
 }
 
 
 const STORE_API = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c";
 
-export default function DashboardPage({ setPage }: DashboardPageProps) {
+export default function DashboardPage({ setPage, openAddProduct, onAutoOpenDone }: DashboardPageProps) {
   const { user } = useAuth();
   const { updateStream, reload, getSellerProducts, getSellerStreams } = useStore();
 
@@ -241,7 +243,7 @@ export default function DashboardPage({ setPage }: DashboardPageProps) {
 
       {/* ── Контент раздела ──────────────────────────────────────── */}
       {tab === "Заказы от покупателей" && <DashboardOrdersTab />}
-      {tab === "Товары" && <DashboardProductsTab warehouses={warehouses} onGoToProfile={() => setPage("seller-register")} />}
+      {tab === "Товары" && <DashboardProductsTab warehouses={warehouses} onGoToProfile={() => setPage("seller-register")} autoOpenForm={openAddProduct} onAutoOpenDone={onAutoOpenDone} />}
       {tab === "Мои эфиры" && <DashboardStreamsTab setPage={setPage} />}
       {tab === "Статистика" && (
         <div className="animate-fade-in text-center py-16">

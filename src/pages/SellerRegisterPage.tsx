@@ -49,6 +49,7 @@ interface SellerProfile {
 interface Props {
   setPage: (p: Page) => void;
   embedded?: boolean;
+  onGoAddProduct?: () => void;
 }
 
 const inputCls = "w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors";
@@ -217,7 +218,7 @@ const PRODUCT_CATEGORIES = [
   "Рукоделие и хобби", "Другое",
 ];
 
-export default function SellerRegisterPage({ setPage, embedded }: Props) {
+export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }: Props) {
   const { user, updateUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -542,7 +543,7 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
 
           <div className="space-y-3">
             <button
-              onClick={() => setPage("dashboard")}
+              onClick={() => { if (onGoAddProduct) { onGoAddProduct(); } else { setPage("dashboard"); } }}
               className="w-full bg-primary text-primary-foreground rounded-2xl p-5 text-left hover:opacity-90 transition-all group"
             >
               <div className="flex items-center gap-4">
