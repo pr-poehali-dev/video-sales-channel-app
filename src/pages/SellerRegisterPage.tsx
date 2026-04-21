@@ -450,6 +450,9 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
   useEffect(() => {
     if (loading || !user) return;
     if (isFirstLoadRef.current) { isFirstLoadRef.current = false; return; }
+    // Мгновенно в localStorage
+    try { localStorage.setItem(LSKEY(form.legalType), JSON.stringify(form)); } catch { /* ignore */ }
+    // Дебаунс на сервер
     if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
     draftTimerRef.current = setTimeout(() => saveDraft(form, user.id), 1500);
     return () => { if (draftTimerRef.current) clearTimeout(draftTimerRef.current); };
