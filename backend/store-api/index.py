@@ -141,14 +141,15 @@ def handler(event: dict, context) -> dict:
             ext = header.split("/")[1].split(";")[0]  # jpeg, png, webp
             img_bytes = base64.b64decode(encoded)
             key = f"products/{uuid.uuid4().hex}.{ext}"
-            s3 = get_s3()
+            s3 = get_s3_video()
             s3.put_object(
-                Bucket="files",
+                Bucket="strimbazar",
                 Key=key,
                 Body=img_bytes,
                 ContentType=f"image/{ext}",
+                ACL="public-read",
             )
-            url = f"{CDN_BASE}/{key}"
+            url = f"{REGRU_CDN_BASE}/{key}"
             print(f"[UPLOAD_IMAGE] ok key={key} size={len(img_bytes)}")
             return ok({"url": url})
 
@@ -522,6 +523,18 @@ def handler(event: dict, context) -> dict:
             return ok({"ok": True})
 
         # ─────────── THUMBNAIL ───────────
+        # ─────────── CHECK REG.RU S3 ───────────
+        if action == "check_regru_s3":
+            try:
+                s3 = get_s3_video()
+                test_key = "healthcheck/ping.txt"
+                s3.put_object(Bucket="strimbazar", Key=test_key, Body=b"ok", ContentType="text/plain", ACL="public-read")
+                s3.get_object(Bucket="strimbazar", Key=test_key)
+                s3.delete_object(Bucket="strimbazar", Key=test_key)
+                return ok({"status": "ok", "message": "Reg.ru S3 доступен, запись и чтение работают"})
+            except Exception as e:
+                return ok({"status": "error", "message": str(e)})
+
         if action == "upload_thumbnail":
             stream_id = body.get("stream_id")
             data_url  = body.get("data_url", "")
