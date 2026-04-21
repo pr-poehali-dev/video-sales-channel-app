@@ -643,35 +643,24 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
             <p className="text-[11px] text-muted-foreground">Выберите статус — от него зависят поля</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="flex gap-1.5">
             {(Object.keys(LEGAL_LABELS) as LegalType[]).map(type => {
               const info = LEGAL_LABELS[type];
               const isActive = form.legalType === type;
               const isSavedType = savedLegalType === type;
-              const descriptions: Record<LegalType, string> = {
-                individual: "Продажа б/у вещей",
-                self_employed: "Свои товары, НПД",
-                ip: "Бизнес, опт/розница",
-                ooo: "Юр. лицо, опт/розница",
-              };
               return (
                 <button key={type} onClick={() => set("legalType", type)}
-                  className={`flex items-center gap-1.5 px-2 py-2 rounded-lg border text-left transition-all relative ${
+                  className={`flex-1 flex flex-col items-center gap-0.5 px-1 py-1.5 rounded-lg border text-center transition-all ${
                     isSavedType
-                      ? "border-green-500/60 bg-green-500/8"
+                      ? "border-green-500/60 bg-green-500/10"
                       : isActive
                       ? "border-primary bg-primary/10"
                       : "border-border bg-secondary hover:border-primary/30"
                   }`}>
-                  <Icon name={info.icon} size={12} className={isSavedType ? "text-green-600" : isActive ? "text-primary" : "text-muted-foreground"} />
-                  <div className="flex-1 min-w-0">
-                    <span className={`text-xs font-semibold leading-tight block ${isSavedType ? "text-green-700" : isActive ? "text-primary" : "text-foreground"}`}>
-                      {info.short}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground leading-tight">{descriptions[type]}</span>
-                  </div>
-                  {isSavedType && <Icon name="Check" size={10} className="text-green-500 flex-shrink-0" />}
-                  {isActive && !isSavedType && <Icon name="Check" size={10} className="text-primary flex-shrink-0" />}
+                  <Icon name={info.icon} size={13} className={isSavedType ? "text-green-600" : isActive ? "text-primary" : "text-muted-foreground"} />
+                  <span className={`text-[11px] font-semibold leading-none whitespace-nowrap ${isSavedType ? "text-green-700" : isActive ? "text-primary" : "text-foreground"}`}>
+                    {info.short}
+                  </span>
                 </button>
               );
             })}
