@@ -407,7 +407,8 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
 
   const formatPhone = (raw: string) => {
     const digits = raw.replace(/\D/g, "");
-    const norm = digits.startsWith("8") ? "7" + digits.slice(1) : digits.startsWith("7") ? digits : digits ? "7" + digits : "";
+    if (!digits) return "";
+    const norm = digits.startsWith("8") ? "7" + digits.slice(1) : digits.startsWith("7") ? digits : "7" + digits;
     const d = norm.slice(0, 11);
     let out = "+7";
     if (d.length > 1) out += " (" + d.slice(1, 4);
@@ -418,7 +419,11 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
   };
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setPPhone(formatPhone(e.target.value));
+    const val = e.target.value;
+    // Если пользователь стёр всё или осталось только "+7" — сбрасываем в пустую строку
+    const digits = val.replace(/\D/g, "");
+    if (!digits || digits === "7") { setPPhone(""); return; }
+    setPPhone(formatPhone(val));
   };
 
   const set = <K extends keyof SellerProfile>(key: K, val: SellerProfile[K]) =>
