@@ -223,20 +223,20 @@ def handler(event: dict, context) -> dict:
             row = cur.fetchone()
             return ok(_fmt_seller(row) if row else None)
 
-        if action == "save_seller_profile":
+        if action in ("save_seller_profile", "save_seller_draft"):
             user_id = body.get("user_id")
             if not user_id:
                 return err("user_id required")
+            is_draft = (action == "save_seller_draft")
             cur.execute("SELECT user_id FROM sellers WHERE user_id=%s", (user_id,))
             exists = cur.fetchone()
-            fields = ["legal_type","legal_name","inn","bank_account","bank_name","bik",
+            fields = ["legal_type","user_type","legal_name","inn","bank_account","bank_name","bik",
                       "contact_phone","contact_email","agreed_offer","agreed_pd",
                       "ogrn","legal_address","corr_account","phone_for_tax","payout_method",
                       "card_number","passport_series","passport_number","product_category"]
-            # Маппинг camelCase → snake_case для новых полей
             body_mapped = dict(body)
             for camel, snake in [
-                ("legalType","legal_type"), ("legalName","legal_name"),
+                ("legalType","legal_type"), ("userType","user_type"), ("legalName","legal_name"),
                 ("bankAccount","bank_account"), ("bankName","bank_name"),
                 ("agreedOffer","agreed_offer"), ("agreedPd","agreed_pd"),
                 ("ogrn","ogrn"), ("legalAddress","legal_address"),
@@ -248,21 +248,33 @@ def handler(event: dict, context) -> dict:
             ]:
                 if camel in body_mapped:
                     body_mapped[snake] = body_mapped.pop(camel)
+            # Синхронизируем user_type из legal_type если не передан явно
+            if "legal_type" in body_mapped and "user_type" not in body_mapped:
+                body_mapped["user_type"] = body_mapped["legal_type"]
             if exists:
                 set_parts = [f"{f}=%s" for f in fields if f in body_mapped]
                 vals = [body_mapped[f] for f in fields if f in body_mapped]
+                if is_draft:
+                    set_parts += ["is_draft=%s", "draft_saved_at=%s"]
+                    vals += [True, datetime.now(timezone.utc)]
+                else:
+                    set_parts += ["is_draft=%s"]
+                    vals += [False]
                 if set_parts:
                     vals.append(user_id)
                     cur.execute(f"UPDATE sellers SET {', '.join(set_parts)} WHERE user_id=%s", vals)
             else:
+                lt = body_mapped.get("legal_type", "self_employed")
                 cur.execute("""
-                    INSERT INTO sellers (user_id,legal_type,legal_name,inn,bank_account,bank_name,bik,
+                    INSERT INTO sellers (user_id,legal_type,user_type,legal_name,inn,bank_account,bank_name,bik,
                                         contact_phone,contact_email,agreed_offer,agreed_pd,
                                         ogrn,legal_address,corr_account,phone_for_tax,payout_method,
-                                        card_number,passport_series,passport_number,product_category)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                                        card_number,passport_series,passport_number,product_category,
+                                        is_draft,draft_saved_at)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                 """, (user_id,
-                      body_mapped.get("legal_type","self_employed"), body_mapped.get("legal_name",""),
+                      lt, body_mapped.get("user_type", lt),
+                      body_mapped.get("legal_name",""),
                       body_mapped.get("inn",""), body_mapped.get("bank_account",""), body_mapped.get("bank_name",""),
                       body_mapped.get("bik",""), body_mapped.get("contact_phone",""), body_mapped.get("contact_email",""),
                       body_mapped.get("agreed_offer",False), body_mapped.get("agreed_pd",False),
@@ -270,7 +282,8 @@ def handler(event: dict, context) -> dict:
                       body_mapped.get("corr_account",""), body_mapped.get("phone_for_tax",""),
                       body_mapped.get("payout_method","card"), body_mapped.get("card_number",""),
                       body_mapped.get("passport_series",""), body_mapped.get("passport_number",""),
-                      body_mapped.get("product_category","")))
+                      body_mapped.get("product_category",""),
+                      is_draft, datetime.now(timezone.utc) if is_draft else None))
             conn.commit()
             cur.execute("SELECT * FROM sellers WHERE user_id=%s", (user_id,))
             return ok(_fmt_seller(cur.fetchone()))
@@ -926,10 +939,11 @@ def _fmt_seller(r):
     if not r:
         return None
     return {
-        "userId":       r["user_id"],
-        "legalType":    r["legal_type"],
-        "legalName":    r["legal_name"],
-        "inn":          r["inn"],
+        "userId":          r["user_id"],
+        "legalType":       r["legal_type"],
+        "userType":        r.get("user_type") or r["legal_type"],
+        "legalName":       r["legal_name"],
+        "inn":             r["inn"],
         "bankAccount":     r["bank_account"],
         "bankName":        r["bank_name"],
         "bik":             r["bik"],
@@ -938,6 +952,8 @@ def _fmt_seller(r):
         "agreedOffer":     r["agreed_offer"],
         "agreedPd":        r["agreed_pd"],
         "verified":        r["verified"],
+        "isDraft":         r.get("is_draft", True),
+        "draftSavedAt":    r["draft_saved_at"].isoformat() if r.get("draft_saved_at") else None,
         "createdAt":       r["created_at"].strftime("%d.%m.%Y") if r["created_at"] else "",
         "ogrn":            r.get("ogrn", ""),
         "legalAddress":    r.get("legal_address", ""),

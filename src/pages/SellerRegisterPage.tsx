@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Icon from "@/components/ui/icon";
 import { useAuth } from "@/context/AuthContext";
 import type { Page } from "@/App";
@@ -224,6 +224,9 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
   const [saved, setSaved] = useState(false);
   const [savedLegalType, setSavedLegalType] = useState<LegalType | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [draftStatus, setDraftStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isFirstLoadRef = useRef(true);
 
   // Личные данные
   const [pName, setPName] = useState(user?.name ?? "");
@@ -392,6 +395,35 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
   const set = <K extends keyof SellerProfile>(key: K, val: SellerProfile[K]) =>
     setForm(prev => ({ ...prev, [key]: val }));
 
+  // ── Сохранение черновика (fire-and-forget) ────────────────────────────────
+  const saveDraft = useCallback(async (formData: SellerProfile, userId: string) => {
+    setDraftStatus("saving");
+    try {
+      await fetch(`${STORE_API}?action=save_seller_draft`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: userId,
+          ...formData,
+          userType: formData.legalType,
+        }),
+      });
+      setDraftStatus("saved");
+      setTimeout(() => setDraftStatus("idle"), 2500);
+    } catch {
+      setDraftStatus("idle");
+    }
+  }, []);
+
+  // ── Debounce: автосохранение при изменении формы ──────────────────────────
+  useEffect(() => {
+    if (loading || !user) return;
+    if (isFirstLoadRef.current) { isFirstLoadRef.current = false; return; }
+    if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+    draftTimerRef.current = setTimeout(() => saveDraft(form, user.id), 1500);
+    return () => { if (draftTimerRef.current) clearTimeout(draftTimerRef.current); };
+  }, [form, loading, user, saveDraft]);
+
   const handleSaveAll = async () => {
     setError(null);
     const lt = form.legalType;
@@ -457,6 +489,7 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
         body: JSON.stringify({
           user_id: user!.id,
           ...form,
+          userType: form.legalType,
           contactPhone: pPhone.trim(),
           contactEmail: user!.email,
         }),
@@ -526,8 +559,22 @@ export default function SellerRegisterPage({ setPage, embedded }: Props) {
       )}
 
       <div className="mb-5">
-        <h1 className="font-oswald text-xl font-semibold text-foreground tracking-wide">Данные и реквизиты</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Заполните один раз — сохраните всё кнопкой внизу</p>
+        <div className="flex items-center justify-between">
+          <h1 className="font-oswald text-xl font-semibold text-foreground tracking-wide">Данные и реквизиты</h1>
+          {draftStatus === "saving" && (
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Icon name="Loader" size={12} className="animate-spin" />
+              Сохраняю...
+            </span>
+          )}
+          {draftStatus === "saved" && (
+            <span className="flex items-center gap-1.5 text-xs text-green-600">
+              <Icon name="CheckCircle" size={12} />
+              Черновик сохранён
+            </span>
+          )}
+        </div>
+        <p className="text-sm text-muted-foreground mt-0.5">Данные сохраняются автоматически по мере заполнения</p>
       </div>
 
       <div className="space-y-4">

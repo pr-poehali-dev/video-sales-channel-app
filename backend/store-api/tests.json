@@ -121,6 +121,15 @@
       "expectedStatus": 400,
       "expectedBody": {"error": "id and status (approved|rejected) required"},
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "save_seller_draft without user_id returns 400",
+      "method": "POST",
+      "path": "/?action=save_seller_draft",
+      "body": {},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "user_id required"},
+      "bodyMatcher": "partial"
     }
   ]
 }
