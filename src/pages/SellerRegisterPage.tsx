@@ -654,24 +654,7 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
               const isSavedType = savedLegalType === type;
               return (
                 <button key={type} onClick={() => {
-                  setForm(prev => ({
-                    ...prev,
-                    legalType: type,
-                    // При смене типа сбрасываем реквизиты предыдущего типа
-                    legalName: "",
-                    inn: "",
-                    ogrn: "",
-                    legalAddress: "",
-                    bankAccount: "",
-                    bik: "",
-                    corrAccount: "",
-                    bankName: "",
-                    phoneForTax: "",
-                    cardNumber: "",
-                  }));
-                  setInnResolved(false);
-                  setInnFieldsVisible(false);
-                  setBikResolved(false);
+                  set("legalType", type);
                   if (type !== "individual") setShopName("");
                 }}
                   className={`flex-1 flex flex-col items-center gap-0.5 px-1 py-1.5 rounded-lg border text-center transition-all ${

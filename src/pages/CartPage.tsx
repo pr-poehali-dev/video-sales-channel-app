@@ -169,6 +169,8 @@ export default function CartPage({ cart, removeFromCart, updateQty, onGoToAuth, 
   const [buyerPassword, setBuyerPassword] = useState("");
   const [showBuyerPass, setShowBuyerPass] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  type PaymentMethod = "card" | "sbp" | "invoice";
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
   const [orderDone,  setOrderDone]  = useState(false);
   const [orderId,    setOrderId]    = useState<string | null>(null);
   const [cdekTrack,  setCdekTrack]  = useState<string | null>(null);
@@ -197,7 +199,7 @@ export default function CartPage({ cart, removeFromCart, updateQty, onGoToAuth, 
         cdek_pvz_code:        cdekPvzCode || "",
         cdek_pvz_apiship_id:  cdekPvzApishipId || undefined,
         items: selectedCart.map(c => ({ id: c.id, name: c.name, price: getItemPrice(c, mode), qty: c.qty, image: c.image, videoUrl: c.videoUrl || "", sellerId: c.sellerId || "", is_used: c.isUsed ?? false })),
-        payment_method: "",
+        payment_method: paymentMethod,
         goods_total:    goodsTotal,
         order_total:    orderTotal,
       };
@@ -308,6 +310,13 @@ export default function CartPage({ cart, removeFromCart, updateQty, onGoToAuth, 
     // C2C-признак: все товары б/у (физлицо → физлицо, агентская схема, без чека)
     const isC2C = selectedCart.every(c => c.isUsed === true);
 
+    // Оплата по счёту — заказ создан, перенаправляем на страницу успеха без платёжного шлюза
+    if (paymentMethod === "invoice") {
+      setOrderDone(true);
+      setSubmitting(false);
+      return;
+    }
+
     try {
       const payRes = await fetch(PAYMENT_API, {
         method: "POST",
@@ -323,6 +332,7 @@ export default function CartPage({ cart, removeFromCart, updateQty, onGoToAuth, 
           seller_account: sellerAccount,
           platform_fee_pct: 10,
           payment_type: isC2C ? "c2c_transfer" : "sale",
+          payment_method: paymentMethod,
           items: selectedCart.map(c => ({
             name: c.name,
             price: getItemPrice(c, mode),
@@ -558,6 +568,88 @@ export default function CartPage({ cart, removeFromCart, updateQty, onGoToAuth, 
                     <Icon name={showBuyerPass ? "EyeOff" : "Eye"} size={14} />
                   </button>
                 </div>
+              </div>
+            )}
+          </div>
+
+          {/* Способ оплаты */}
+          <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+            <p className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <Icon name="CreditCard" size={15} className="text-muted-foreground" />
+              Способ оплаты
+            </p>
+            <div className="space-y-2">
+              {/* Карта */}
+              <button
+                type="button"
+                onClick={() => setPaymentMethod("card")}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all text-left ${
+                  paymentMethod === "card"
+                    ? "border-primary bg-primary/8"
+                    : "border-border bg-secondary hover:border-primary/40"
+                }`}
+              >
+                <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
+                  paymentMethod === "card" ? "border-primary" : "border-muted-foreground"
+                }`}>
+                  {paymentMethod === "card" && <div className="w-2 h-2 rounded-full bg-primary" />}
+                </div>
+                <Icon name="CreditCard" size={15} className={paymentMethod === "card" ? "text-primary" : "text-muted-foreground"} />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-foreground">Банковская карта</div>
+                  <div className="text-[11px] text-muted-foreground">Visa, MasterCard, МИР — для физических лиц</div>
+                </div>
+              </button>
+
+              {/* СБП */}
+              <button
+                type="button"
+                onClick={() => setPaymentMethod("sbp")}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all text-left ${
+                  paymentMethod === "sbp"
+                    ? "border-primary bg-primary/8"
+                    : "border-border bg-secondary hover:border-primary/40"
+                }`}
+              >
+                <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
+                  paymentMethod === "sbp" ? "border-primary" : "border-muted-foreground"
+                }`}>
+                  {paymentMethod === "sbp" && <div className="w-2 h-2 rounded-full bg-primary" />}
+                </div>
+                <Icon name="Zap" size={15} className={paymentMethod === "sbp" ? "text-primary" : "text-muted-foreground"} />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-foreground">СБП — Система быстрых платежей</div>
+                  <div className="text-[11px] text-muted-foreground">Оплата через приложение банка по QR — для физических лиц</div>
+                </div>
+              </button>
+
+              {/* По счёту */}
+              <button
+                type="button"
+                onClick={() => setPaymentMethod("invoice")}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all text-left ${
+                  paymentMethod === "invoice"
+                    ? "border-primary bg-primary/8"
+                    : "border-border bg-secondary hover:border-primary/40"
+                }`}
+              >
+                <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
+                  paymentMethod === "invoice" ? "border-primary" : "border-muted-foreground"
+                }`}>
+                  {paymentMethod === "invoice" && <div className="w-2 h-2 rounded-full bg-primary" />}
+                </div>
+                <Icon name="FileText" size={15} className={paymentMethod === "invoice" ? "text-primary" : "text-muted-foreground"} />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-foreground">Оплата по счёту</div>
+                  <div className="text-[11px] text-muted-foreground">Безналичный расчёт для ИП и юридических лиц</div>
+                </div>
+              </button>
+            </div>
+
+            {paymentMethod === "invoice" && (
+              <div className="flex items-start gap-2 bg-amber-500/10 text-amber-700 text-[11px] px-3 py-2 rounded-lg">
+                <Icon name="Info" size={12} className="flex-shrink-0 mt-0.5" />
+                <span>После оформления мы вышлем счёт на ваш Email. Отгрузка — после поступления оплаты.</span>
               </div>
             )}
           </div>
