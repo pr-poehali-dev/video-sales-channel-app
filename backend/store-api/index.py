@@ -462,16 +462,27 @@ def handler(event: dict, context) -> dict:
         # ─────────── PRODUCTS ───────────
         if action == "get_products":
             seller_id = qs.get("seller_id")
+            profile_type = qs.get("profile_type") or body.get("profile_type") or ""
             if seller_id:
-                # Продавец видит все свои товары (включая pending/rejected)
-                cur.execute("""
-                    SELECT p.*, COALESCE(NULLIF(u.shop_name,''), p.seller_name) AS effective_seller_name,
-                           COALESCE(NULLIF(u.shop_city_code,''), p.from_city_code::text) AS effective_from_city_code,
-                           COALESCE(NULLIF(u.shop_city_name,''), p.from_city_name) AS effective_from_city_name,
-                           COALESCE(NULLIF(u.shop_city_guid,''), '') AS effective_from_city_guid
-                    FROM products p LEFT JOIN users u ON u.id = p.seller_id
-                    WHERE p.seller_id=%s ORDER BY p.created_at DESC
-                """, (seller_id,))
+                # Продавец видит только свои товары нужного кабинета
+                if profile_type in ("individual", "legal"):
+                    cur.execute("""
+                        SELECT p.*, COALESCE(NULLIF(u.shop_name,''), p.seller_name) AS effective_seller_name,
+                               COALESCE(NULLIF(u.shop_city_code,''), p.from_city_code::text) AS effective_from_city_code,
+                               COALESCE(NULLIF(u.shop_city_name,''), p.from_city_name) AS effective_from_city_name,
+                               COALESCE(NULLIF(u.shop_city_guid,''), '') AS effective_from_city_guid
+                        FROM products p LEFT JOIN users u ON u.id = p.seller_id
+                        WHERE p.seller_id=%s AND p.seller_profile_type=%s ORDER BY p.created_at DESC
+                    """, (seller_id, profile_type))
+                else:
+                    cur.execute("""
+                        SELECT p.*, COALESCE(NULLIF(u.shop_name,''), p.seller_name) AS effective_seller_name,
+                               COALESCE(NULLIF(u.shop_city_code,''), p.from_city_code::text) AS effective_from_city_code,
+                               COALESCE(NULLIF(u.shop_city_name,''), p.from_city_name) AS effective_from_city_name,
+                               COALESCE(NULLIF(u.shop_city_guid,''), '') AS effective_from_city_guid
+                        FROM products p LEFT JOIN users u ON u.id = p.seller_id
+                        WHERE p.seller_id=%s ORDER BY p.created_at DESC
+                    """, (seller_id,))
             else:
                 # Публичный каталог — только одобренные товары
                 cur.execute("""
@@ -489,11 +500,12 @@ def handler(event: dict, context) -> dict:
         if action == "add_product":
             pid = f"prod_{uuid.uuid4().hex}"
             safe_images = _clean_images(body.get("images", []))
+            seller_profile_type = body.get("seller_profile_type", "individual")
             cur.execute("""
                 INSERT INTO products (id,name,price,category,description,images,seller_id,seller_name,seller_avatar,
                     in_stock,weight_g,length_cm,width_cm,height_cm,cdek_enabled,nalog_enabled,fitting_enabled,
-                    from_city_code,from_city_name,video_url,wholesale_price,retail_markup_pct,moderation_status,is_used)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING *
+                    from_city_code,from_city_name,video_url,wholesale_price,retail_markup_pct,moderation_status,is_used,seller_profile_type)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING *
             """, (pid, body["name"], body["price"], body.get("category",""),
                   body.get("description",""), safe_images,
                   body["seller_id"], body["seller_name"], body.get("seller_avatar",""),
@@ -507,7 +519,8 @@ def handler(event: dict, context) -> dict:
                   body.get("wholesale_price") or None,
                   body.get("retail_markup_pct", 0),
                   "pending",
-                  bool(body.get("isUsed", False))))
+                  bool(body.get("isUsed", False)),
+                  seller_profile_type))
             conn.commit()
             return ok(_fmt_product(cur.fetchone()), 201)
 

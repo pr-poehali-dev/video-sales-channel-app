@@ -31,7 +31,7 @@ export default function DashboardProductsTab({ warehouses, onGoToProfile, autoOp
   const { addProduct, updateProduct, deleteProduct, getSellerProducts, loadSellerProducts } = useStore();
   const { check, checking } = useSellerProfileCheck(user?.id, sellerProfileType);
 
-  const products = user ? getSellerProducts(user.id) : [];
+  const products = user ? getSellerProducts(user.id, sellerProfileType) : [];
 
   const [showForm,       setShowForm]       = useState(false);
   const [editId,         setEditId]         = useState<string | null>(null);
@@ -79,8 +79,8 @@ export default function DashboardProductsTab({ warehouses, onGoToProfile, autoOp
 
   // ── Загрузка товаров продавца (включая pending) ───────────────────────────
   useEffect(() => {
-    if (user?.id) loadSellerProducts(user.id);
-  }, [user?.id, loadSellerProducts]);
+    if (user?.id) loadSellerProducts(user.id, sellerProfileType);
+  }, [user?.id, sellerProfileType, loadSellerProducts]);
 
   // ── Поиск города (для cityQuery, не используется в UI, но useEffect работает) ──
   useEffect(() => {
@@ -322,6 +322,7 @@ export default function DashboardProductsTab({ warehouses, onGoToProfile, autoOp
           name: fName.trim(), price: priceNum, category: fCategory,
           description: fDesc.trim(), images: fImages, videoUrl: fVideoUrl ?? "",
           sellerId: user!.id, sellerName: user!.name, sellerAvatar: user!.avatar,
+          sellerProfileType,
           ...extraFields,
         } as never);
       }

@@ -107,7 +107,7 @@ interface StoreContextType {
   addStream: (data: Omit<StoreStream, "id" | "startedAt">) => Promise<StoreStream>;
   updateStream: (id: string, data: Partial<StoreStream> & { duration_sec?: number }) => Promise<void>;
   deleteStream: (id: string) => Promise<void>;
-  getSellerProducts: (sellerId: string) => StoreProduct[];
+  getSellerProducts: (sellerId: string, profileType?: string) => StoreProduct[];
   getSellerStreams: (sellerId: string) => StoreStream[];
   getStreamMessages: (streamId: string) => Promise<ChatMessage[]>;
   addChatMessage: (msg: Omit<ChatMessage, "id" | "sentAt">) => Promise<ChatMessage>;
@@ -120,7 +120,7 @@ interface StoreContextType {
   addSellerReview: (data: Omit<SellerReview, "id" | "createdAt">) => Promise<SellerReview>;
   moderateProduct: (id: string, status: "approved" | "rejected", comment?: string) => Promise<void>;
   getPendingProducts: () => Promise<StoreProduct[]>;
-  loadSellerProducts: (sellerId: string) => Promise<void>;
+  loadSellerProducts: (sellerId: string, profileType?: string) => Promise<void>;
 }
 
 const StoreContext = createContext<StoreContextType | null>(null);
@@ -170,6 +170,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       wholesale_price: (data as { wholesalePrice?: number | null }).wholesalePrice ?? null,
       retail_markup_pct: (data as { retailMarkupPct?: number }).retailMarkupPct ?? 0,
       isUsed: (data as { isUsed?: boolean }).isUsed ?? false,
+      seller_profile_type: (data as { sellerProfileType?: string }).sellerProfileType ?? "individual",
     });
     setProducts(prev => [p, ...prev]);
     return p;
@@ -216,11 +217,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return api("get_products_pending");
   }, []);
 
-  const loadSellerProducts = useCallback(async (sellerId: string) => {
-    const sellerProds: StoreProduct[] = await api(`get_products&seller_id=${sellerId}`);
+  const loadSellerProducts = useCallback(async (sellerId: string, profileType?: string) => {
+    const profileParam = profileType ? `&profile_type=${profileType}` : "";
+    const sellerProds: StoreProduct[] = await api(`get_products&seller_id=${sellerId}${profileParam}`);
     setProducts(prev => {
-      // мержим: убираем старые товары этого продавца, добавляем свежие
-      const others = prev.filter(p => p.sellerId !== sellerId);
+      // мержим: убираем старые товары этого продавца с тем же profileType, добавляем свежие
+      const others = prev.filter(p => !(p.sellerId === sellerId && (!profileType || (p as { sellerProfileType?: string }).sellerProfileType === profileType)));
       return [...sellerProds, ...others];
     });
   }, []);
@@ -249,8 +251,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   /* ── SELECTORS ── */
-  const getSellerProducts = useCallback((sellerId: string) =>
-    products.filter(p => p.sellerId === sellerId), [products]);
+  const getSellerProducts = useCallback((sellerId: string, profileType?: string) =>
+    products.filter(p => p.sellerId === sellerId && (!profileType || (p as { sellerProfileType?: string }).sellerProfileType === profileType)), [products]);
 
   const getSellerStreams = useCallback((sellerId: string) =>
     streams.filter(s => s.sellerId === sellerId), [streams]);
