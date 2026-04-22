@@ -203,11 +203,19 @@ export default function DashboardProductsTab({ warehouses, onGoToProfile, autoOp
     if (fVideoBlobUrl) { URL.revokeObjectURL(fVideoBlobUrl); setFVideoBlobUrl(null); }
   };
 
+  const [individualLimitToast, setIndividualLimitToast] = useState(false);
+  const INDIVIDUAL_LIMIT = 5;
+
   const openAddForm = async () => {
     const result = await check();
     if (!result.ok) {
       setProfileExists(result.profileExists);
       setProfileIssues(result.issues);
+      return;
+    }
+    if (result.legalType === "individual" && products.length >= INDIVIDUAL_LIMIT) {
+      setIndividualLimitToast(true);
+      setTimeout(() => setIndividualLimitToast(false), 6000);
       return;
     }
     setEditId(null);
@@ -351,6 +359,14 @@ export default function DashboardProductsTab({ warehouses, onGoToProfile, autoOp
   // ── Рендер ────────────────────────────────────────────────────────────────
   return (
     <div className="animate-fade-in">
+      {individualLimitToast && (
+        <div className="mb-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800 animate-fade-in flex items-start gap-2">
+          <span className="text-lg leading-none">⚠️</span>
+          <div>
+            <span className="font-semibold">Лимит объявлений исчерпан.</span> Как физлицо вы можете размещать не более {INDIVIDUAL_LIMIT} объявлений. Чтобы продавать больше — измените статус на ИП или самозанятого в разделе «Данные и реквизиты».
+          </div>
+        </div>
+      )}
       <ProductList
         products={products}
         confirmDelete={confirmDelete}
