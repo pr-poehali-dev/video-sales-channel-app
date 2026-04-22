@@ -402,11 +402,6 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
                     <p className="text-[11px] text-muted-foreground mb-2 font-medium uppercase tracking-wide">Магазин</p>
                   </div>
                   <div>
-                    <label className="text-[11px] text-muted-foreground mb-0.5 block">Название магазина</label>
-                    <input value={indShopName} onChange={e => setIndShopName(e.target.value)}
-                      placeholder="Например: Мои вещи" className={inputCls} />
-                  </div>
-                  <div>
                     <label className="text-[11px] text-muted-foreground mb-0.5 block">Категория товаров *</label>
                     <select value={indCategory} onChange={e => setIndCategory(e.target.value)}
                       className={inputCls + " cursor-pointer"}>
