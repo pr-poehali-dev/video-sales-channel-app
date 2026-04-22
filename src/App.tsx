@@ -118,6 +118,9 @@ function AppInner() {
 
   return (
     <div className="min-h-screen bg-background font-golos">
+      <div className="w-full bg-yellow-400 text-yellow-900 text-center text-sm font-medium py-2 px-4">
+        🔧 Сайт временно не работает — ведётся разработка
+      </div>
       {page !== "product" && <NavBar page={page} setPage={navSetPage} cartCount={cart.reduce((s, c) => s + c.qty, 0)} />}
       <LiveBroadcastBar page={page} setPage={navSetPage} />
       <main className={page === "product" ? "" : "pb-16 md:pb-0"}>
