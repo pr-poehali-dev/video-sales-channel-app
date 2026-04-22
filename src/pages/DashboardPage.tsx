@@ -16,6 +16,7 @@ import DashboardProductsTab from "./dashboard/DashboardProductsTab";
 import DashboardStreamsTab from "./dashboard/DashboardStreamsTab";
 import DashboardWarehousesTab, { type Warehouse } from "./dashboard/DashboardWarehousesTab";
 import DashboardOrdersTab from "./dashboard/DashboardOrdersTab";
+import DashboardStatsTab from "./dashboard/DashboardStatsTab";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 
 interface DashboardPageProps {
@@ -148,7 +149,7 @@ export default function DashboardPage({ setPage, openAddProduct, onAutoOpenDone 
         <button onClick={() => setTab(tab === "Статистика" ? null : "Статистика")}
           className={`bg-card border rounded-xl p-2.5 text-left hover:border-primary/40 transition-colors ${tab === "Статистика" ? "border-primary/50 ring-1 ring-primary/20" : "border-border"}`}>
           <Icon name="BarChart2" size={13} className="text-muted-foreground mb-1.5" />
-          <div className="font-oswald text-sm font-semibold text-foreground">0 ₽</div>
+          <div className="font-oswald text-sm font-semibold text-foreground">{products.length + myStreams.length}</div>
           <div className="text-[10px] text-muted-foreground mt-0.5">Статистика</div>
         </button>
       </div>
@@ -246,13 +247,7 @@ export default function DashboardPage({ setPage, openAddProduct, onAutoOpenDone 
       {tab === "Товары" && <DashboardProductsTab warehouses={warehouses} onGoToProfile={() => setPage("seller-register")} autoOpenForm={openAddProduct} onAutoOpenDone={onAutoOpenDone} />}
       {tab === "Мои эфиры" && <DashboardStreamsTab setPage={setPage} />}
       {tab === "Статистика" && (
-        <div className="animate-fade-in text-center py-16">
-          <div className="w-14 h-14 rounded-2xl bg-secondary flex items-center justify-center mx-auto mb-4">
-            <Icon name="BarChart2" size={24} className="text-muted-foreground opacity-40" />
-          </div>
-          <h3 className="font-semibold text-foreground mb-1">Статистика появится после первых продаж</h3>
-          <p className="text-sm text-muted-foreground">Добавь товары и запусти эфир</p>
-        </div>
+        <DashboardStatsTab products={products} streams={myStreams} sellerId={user.id} />
       )}
     </div>
   );

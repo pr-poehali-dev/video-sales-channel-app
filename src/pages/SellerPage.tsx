@@ -1,9 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import Icon from "@/components/ui/icon";
 import { useAuth } from "@/context/AuthContext";
-import { useStore, type SellerReview } from "@/context/StoreContext";
+import { useStore, type SellerReview, type StoreStream } from "@/context/StoreContext";
 import ProductCard from "@/components/ProductCard";
-import type { CartItem } from "@/App";
+import type { CartItem, Page } from "@/App";
+
+const StreamWatchPage = lazy(() => import("@/pages/StreamWatchPage"));
 
 interface SellerPageProps {
   sellerId: string;
@@ -12,6 +14,7 @@ interface SellerPageProps {
   cart?: CartItem[];
   onBack: () => void;
   onProductClick: (productId: string) => void;
+  setPage?: (p: Page) => void;
 }
 
 function Stars({ value, max = 5, size = 14, interactive = false, onChange }: {
@@ -38,10 +41,10 @@ function Stars({ value, max = 5, size = 14, interactive = false, onChange }: {
   );
 }
 
-export default function SellerPage({ sellerId, addToCart, updateQty, cart = [], onBack, onProductClick }: SellerPageProps) {
+export default function SellerPage({ sellerId, addToCart, updateQty, cart = [], onBack, onProductClick, setPage }: SellerPageProps) {
   const { user } = useAuth();
   const { getSellerProducts, getSellerStreams, getSellerReviews, addSellerReview } = useStore();
-  const products = getSellerProducts(sellerId);
+  const products = getSellerProducts(sellerId).filter(p => !p.moderationStatus || p.moderationStatus === "approved");
   const streams = getSellerStreams(sellerId);
 
   const [reviews, setReviews] = useState<SellerReview[]>([]);
@@ -52,6 +55,7 @@ export default function SellerPage({ sellerId, addToCart, updateQty, cart = [], 
   const [submitting, setSubmitting] = useState(false);
   const [alreadyReviewed, setAlreadyReviewed] = useState(false);
   const [showReviewForm, setShowReviewForm] = useState(false);
+  const [watchingStream, setWatchingStream] = useState<StoreStream | null>(null);
 
   useEffect(() => {
     getSellerReviews(sellerId).then(d => {
@@ -90,6 +94,19 @@ export default function SellerPage({ sellerId, addToCart, updateQty, cart = [], 
   const sellerName = seller.sellerName;
   const sellerAvatar = seller.sellerAvatar;
   const pastStreams = streams.filter(s => !s.isLive);
+
+  if (watchingStream) {
+    return (
+      <Suspense fallback={null}>
+        <StreamWatchPage
+          stream={watchingStream}
+          setPage={(p) => { setWatchingStream(null); setPage?.(p); }}
+          addToCart={addToCart}
+          onProductClick={onProductClick}
+        />
+      </Suspense>
+    );
+  }
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-6 animate-fade-in">
@@ -189,15 +206,32 @@ export default function SellerPage({ sellerId, addToCart, updateQty, cart = [], 
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {pastStreams.map(s => (
-              <div key={s.id} className="bg-card border border-border rounded-xl p-4 flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center flex-shrink-0">
-                  <Icon name="PlayCircle" size={20} className="text-muted-foreground" />
+              <button
+                key={s.id}
+                onClick={() => setWatchingStream(s)}
+                className="bg-card border border-border rounded-xl overflow-hidden flex items-center gap-3 hover:border-primary/40 transition-all text-left group w-full"
+              >
+                <div className="w-20 h-14 flex-shrink-0 bg-secondary relative overflow-hidden">
+                  {s.thumbnail ? (
+                    <img src={s.thumbnail} alt={s.title} className="w-full h-full object-cover" />
+                  ) : s.videoUrl ? (
+                    <video src={s.videoUrl} className="w-full h-full object-cover" muted playsInline preload="metadata" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Icon name="PlayCircle" size={22} className="text-muted-foreground opacity-50" />
+                    </div>
+                  )}
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/40 transition-colors">
+                    <div className="w-7 h-7 rounded-full bg-white/90 flex items-center justify-center">
+                      <Icon name="Play" size={13} className="text-foreground ml-0.5" />
+                    </div>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 py-3 pr-3">
                   <p className="text-sm font-semibold text-foreground truncate">{s.title}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">{s.startedAt}</p>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         </div>

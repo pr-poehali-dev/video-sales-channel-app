@@ -201,6 +201,15 @@ export default function ProductPage({ productId, addToCart, updateQty, cart, onB
             </div>
           </div>
 
+          {hasWholesale && (
+            <div className="flex items-center gap-2 bg-primary/8 border border-primary/20 rounded-xl px-3 py-2 mb-3">
+              <Icon name="Tag" size={13} className="text-primary flex-shrink-0" />
+              <p className="text-xs text-primary">
+                Оптовая цена <span className="font-semibold">{product.wholesalePrice!.toLocaleString("ru")} ₽</span> — при заказе от <span className="font-semibold">5 000 ₽</span> у этого продавца
+              </p>
+            </div>
+          )}
+
           {product.description && (
             <p className="text-sm text-muted-foreground leading-relaxed mb-4">{product.description}</p>
           )}

@@ -21,6 +21,7 @@ export default function CatalogPage({ addToCart, updateQty, cart = [], onProduct
 
   const filtered = products
     .filter(p => {
+      if (p.moderationStatus && p.moderationStatus !== "approved") return false;
       const matchCat = category === "Все" || p.category === category;
       const matchSearch = p.name.toLowerCase().includes(search.toLowerCase());
       return matchCat && matchSearch;

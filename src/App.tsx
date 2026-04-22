@@ -164,6 +164,7 @@ function AppInner() {
             cart={cart}
             onBack={goBack}
             onProductClick={openProduct}
+            setPage={navSetPage}
           />
         )}
       </main>
