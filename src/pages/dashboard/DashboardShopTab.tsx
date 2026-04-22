@@ -4,6 +4,19 @@ import { useAuth } from "@/context/AuthContext";
 
 const CDEK_API = "https://functions.poehali.dev/a73e197d-7da4-4945-bd28-4d0de6b02bb7";
 
+const PRODUCT_CATEGORIES = [
+  "Одежда и аксессуары", "Электроника", "Красота и здоровье", "Дом и интерьер",
+  "Детские товары", "Спорт и отдых", "Еда и напитки", "Украшения и бижутерия",
+  "Рукоделие и хобби", "Другое",
+];
+
+const ALL_CARRIERS = [
+  { id: "СДЭК", label: "СДЭК", icon: "Truck" },
+  { id: "ПЭК", label: "ПЭК", icon: "Package" },
+  { id: "Почта России", label: "Почта России", icon: "Mail" },
+  { id: "Деловые линии", label: "Деловые линии", icon: "Package2" },
+];
+
 interface CdekCity { code: string; city: string; region: string; guid?: string; }
 
 export default function DashboardShopTab() {
@@ -16,9 +29,17 @@ export default function DashboardShopTab() {
   const [cityName, setCityName] = useState(user?.shopCityName || "");
   const [suggestions, setSuggestions] = useState<CdekCity[]>([]);
   const [cityLoading, setCityLoading] = useState(false);
+  const [shopCategory, setShopCategory] = useState(user?.shopCategory || "");
+  const [carriers, setCarriers] = useState<string[]>(user?.shopCarriers || ["СДЭК"]);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const toggleCarrier = (id: string) => {
+    setCarriers(prev =>
+      prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]
+    );
+  };
 
   useEffect(() => {
     if (cityQuery.length < 2 || cityQuery === cityName) { setSuggestions([]); return; }
@@ -52,13 +73,19 @@ export default function DashboardShopTab() {
         shopCityCode: cityCode,
         shopCityName: cityName,
         shopCityGuid: cityGuid,
+        shopCarriers: carriers,
+        shopCategory,
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch { setError("Ошибка сохранения"); } finally { setSaving(false); }
   };
 
-  const hasChanges = shopName !== (user?.shopName || "") || cityCode !== (user?.shopCityCode || "");
+  const hasChanges =
+    shopName !== (user?.shopName || "") ||
+    cityCode !== (user?.shopCityCode || "") ||
+    shopCategory !== (user?.shopCategory || "") ||
+    JSON.stringify(carriers) !== JSON.stringify(user?.shopCarriers || ["СДЭК"]);
 
   return (
     <div className="animate-fade-in max-w-lg">
@@ -129,7 +156,51 @@ export default function DashboardShopTab() {
               ))}
             </div>
           )}
-          <p className="text-[11px] text-muted-foreground mt-1">Используется для расчёта стоимости доставки СДЭК</p>
+          <p className="text-[11px] text-muted-foreground mt-1">Будет подставляться в каждый товар · используется для расчёта стоимости</p>
+        </div>
+
+        {/* Категория товаров */}
+        <div>
+          <label className="text-xs text-muted-foreground mb-1.5 block">
+            Категория товаров *
+          </label>
+          <select
+            value={shopCategory}
+            onChange={e => setShopCategory(e.target.value)}
+            className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground outline-none focus:border-primary/50 transition-colors appearance-none cursor-pointer"
+          >
+            <option value="">— Выберите категорию —</option>
+            {PRODUCT_CATEGORIES.map(c => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+          <p className="text-[11px] text-muted-foreground mt-1">Используется для настройки ставок и комиссий</p>
+        </div>
+
+        {/* Транспортные компании */}
+        <div>
+          <label className="text-xs text-muted-foreground mb-1.5 block">Транспортные компании</label>
+          <div className="flex flex-wrap gap-2">
+            {ALL_CARRIERS.map(c => {
+              const active = carriers.includes(c.id);
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => toggleCarrier(c.id)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                    active
+                      ? "bg-primary/10 border-primary text-primary"
+                      : "bg-secondary border-border text-muted-foreground"
+                  }`}
+                >
+                  <Icon name={c.icon as "Truck"} size={12} />
+                  {c.label}
+                  {active && <Icon name="Check" size={11} />}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {error && (

@@ -25,6 +25,7 @@ export interface User {
   shopCityName?: string;
   shopCityGuid?: string;
   shopCarriers?: string[];
+  shopCategory?: string;
   joinedAt: string;
   isBlocked?: boolean;
 }
@@ -129,6 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         shop_city_name: updateData.shopCityName ?? user.shopCityName ?? "",
         shop_city_guid: updateData.shopCityGuid ?? user.shopCityGuid ?? "",
         shop_carriers: updateData.shopCarriers ?? user.shopCarriers ?? ["СДЭК"],
+        shop_category: updateData.shopCategory ?? user.shopCategory ?? "",
       });
       if (!data.error) {
         saveSession({ ...data.user, savedPvz: updateData.savedPvz !== undefined ? updateData.savedPvz : user.savedPvz });

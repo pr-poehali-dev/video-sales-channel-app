@@ -71,8 +71,6 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
   // Данные физлица-продавца (для отображения/редактирования в блоке личных данных)
   const [indLegalName, setIndLegalName] = useState("");
   const [indCardNumber, setIndCardNumber] = useState("");
-  const [indCityName, setIndCityName] = useState("");
-  const [indCityCode, setIndCityCode] = useState("");
   const [indSaving, setIndSaving] = useState(false);
   const [stoppingStream, setStoppingStream] = useState<string | null>(null);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
@@ -105,8 +103,6 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
       if (indData?.legalType) {
         setIndLegalName(indData.legalName || "");
         setIndCardNumber(indData.cardNumber || "");
-        setIndCityName(indData.shopCityName || user?.shopCityName || "");
-        setIndCityCode(indData.shopCityCode || user?.shopCityCode || "");
       }
     }).finally(() => setSellerLegalTypeLoaded(true));
   }, [user?.id, user?.shopName]);
@@ -119,9 +115,7 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
 
   // ── Данные аккаунта ──
   const [editing, setEditing] = useState(false);
-  const [name,  setName]  = useState(user?.name  ?? "");
   const [phone, setPhone] = useState(user?.phone ?? "");
-  const [city,  setCity]  = useState(user?.city  ?? "");
   const [saved, setSaved] = useState(false);
 
   // Смена пароля
@@ -166,7 +160,7 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
   }
 
   const handleSave = async () => {
-    await updateUser({ name: name.trim(), phone: phone.trim(), city: city.trim() });
+    await updateUser({ phone: phone.trim() });
     setEditing(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
@@ -191,9 +185,6 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
           contactEmail: user.email,
         }),
       });
-      if (indCityCode) {
-        await updateUser({ shopCityCode: indCityCode, shopCityName: indCityName, shopName: indLegalName.trim() || user.shopName });
-      }
     } finally {
       setIndSaving(false);
     }
@@ -299,7 +290,7 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
               <button onClick={() => {
                 const next = !editing;
                 setEditing(next);
-                if (next) { setName(user.name); setPhone(user.phone); setCity(user.city); }
+                if (next) { setPhone(user.phone); }
               }} className="text-xs text-primary font-medium hover:opacity-80 transition-opacity">
                 {editing ? "Отмена" : "Редактировать"}
               </button>
@@ -308,16 +299,8 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
             {editing ? (
               <div className="space-y-2">
                 <div>
-                  <label className="text-[11px] text-muted-foreground mb-0.5 block">Имя</label>
-                  <input value={name} onChange={e => setName(e.target.value)} placeholder="Ваше имя" className={inputCls} />
-                </div>
-                <div>
                   <label className="text-[11px] text-muted-foreground mb-0.5 block">Телефон</label>
                   <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+7 (900) 000-00-00" className={inputCls} />
-                </div>
-                <div>
-                  <label className="text-[11px] text-muted-foreground mb-0.5 block">Город</label>
-                  <input value={city} onChange={e => setCity(e.target.value)} placeholder="Москва" className={inputCls} />
                 </div>
                 {hasIndividualProfile && <>
                   <div className="border-t border-border/50 pt-2 mt-1">
@@ -334,10 +317,6 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
                       onChange={e => setIndCardNumber(e.target.value.replace(/\D/g, "").slice(0, 16))}
                       placeholder="0000 0000 0000 0000" inputMode="numeric" maxLength={19} className={inputCls} />
                   </div>
-                  <div>
-                    <label className="text-[11px] text-muted-foreground mb-0.5 block">Город отправки</label>
-                    <input value={indCityName} onChange={e => setIndCityName(e.target.value)} placeholder="Москва" className={inputCls} />
-                  </div>
                 </>}
                 <button onClick={async () => { await handleSave(); if (hasIndividualProfile) await handleSaveIndividual(); }}
                   disabled={indSaving}
@@ -351,13 +330,10 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
               <div className="space-y-2">
                 {[
                   { label: "Email",   value: user.email },
-                  { label: "Имя",     value: user.name  || "—" },
                   { label: "Телефон", value: user.phone || "—" },
-                  { label: "Город",   value: user.city  || "—" },
                   ...(hasIndividualProfile ? [
                     { label: "ФИО",              value: indLegalName || "—" },
                     { label: "Карта для выплат", value: indCardNumber ? `•••• •••• •••• ${indCardNumber.slice(-4)}` : "—" },
-                    { label: "Город отправки",   value: indCityName || user.shopCityName || "—" },
                   ] : []),
                 ].map(({ label, value }) => (
                   <div key={label} className="flex justify-between items-center py-1 border-b border-border/50 last:border-0">
