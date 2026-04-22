@@ -63,6 +63,7 @@ export default function ProfilePage({ setPage, onAddProduct }: ProfilePageProps)
   });
   const [autoOpenProductForm, setAutoOpenProductForm] = useState(false);
   const [sellerLegalType, setSellerLegalType] = useState<string>("");
+  const [sellerLegalTypeLoaded, setSellerLegalTypeLoaded] = useState(false);
   const [limitToast, setLimitToast] = useState(false);
   const [stoppingStream, setStoppingStream] = useState<string | null>(null);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
@@ -81,11 +82,12 @@ export default function ProfilePage({ setPage, onAddProduct }: ProfilePageProps)
   }, [user?.id, mode]);
 
   useEffect(() => {
-    if (!user?.shopName) return;
+    if (!user?.shopName) { setSellerLegalTypeLoaded(true); return; }
     fetch(`${STORE_API}?action=get_seller_profile&user_id=${user.id}`)
       .then(r => r.json())
-      .then(d => { if (d?.legalType) setSellerLegalType(d.legalType); })
-      .catch(() => {});
+      .then(d => { setSellerLegalType(d?.legalType ?? ""); })
+      .catch(() => {})
+      .finally(() => setSellerLegalTypeLoaded(true));
   }, [user?.id, user?.shopName]);
 
   const handleStopStream = async (id: string) => {
@@ -428,11 +430,28 @@ export default function ProfilePage({ setPage, onAddProduct }: ProfilePageProps)
           )}
           <div className="flex gap-2 mt-2">
             {(() => {
-              const isIndividual = isSeller && sellerLegalType === "individual";
               const LIMIT = 5;
-              const used = isIndividual ? products.length : 0;
-              const remaining = Math.max(0, LIMIT - used);
-              const limitReached = isIndividual && used >= LIMIT;
+              const isIndividual = isSeller && sellerLegalTypeLoaded && sellerLegalType === "individual";
+              const limitReached = isIndividual && products.length >= LIMIT;
+              const remaining = Math.max(0, LIMIT - products.length);
+
+              const typeLabel: Record<string, string> = {
+                individual: "физ. лицо",
+                self_employed: "самозанятый",
+                ip: "ИП",
+                ooo: "ООО/ЗАО",
+              };
+
+              let subLabel: string | null = null;
+              if (isSeller && sellerLegalTypeLoaded && sellerLegalType) {
+                if (sellerLegalType === "individual") {
+                  subLabel = limitReached
+                    ? `Лимит ${LIMIT}/${LIMIT} исчерпан`
+                    : `Осталось ${remaining} из ${LIMIT} · ${typeLabel[sellerLegalType] ?? sellerLegalType}`;
+                } else {
+                  subLabel = `${products.length} объявл. · ${typeLabel[sellerLegalType] ?? sellerLegalType}`;
+                }
+              }
 
               return (
                 <button
@@ -453,10 +472,8 @@ export default function ProfilePage({ setPage, onAddProduct }: ProfilePageProps)
                     <Icon name="Plus" size={15} />
                     Подать объявление
                   </span>
-                  {isIndividual && (
-                    <span className="text-[10px] opacity-80">
-                      {limitReached ? "Лимит 5/5 исчерпан" : `Осталось ${remaining} из ${LIMIT} (физ. лицо)`}
-                    </span>
+                  {subLabel && (
+                    <span className="text-[10px] opacity-80">{subLabel}</span>
                   )}
                 </button>
               );
