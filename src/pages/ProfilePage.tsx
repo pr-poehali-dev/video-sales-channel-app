@@ -398,17 +398,16 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
                       placeholder="0000 0000 0000 0000" inputMode="numeric" maxLength={19} className={inputCls} />
                   </div>
                   {/* Блок магазина */}
-                  <div className="border-t border-border/50 pt-2 mt-1">
-                    <p className="text-[11px] text-muted-foreground mb-2 font-medium uppercase tracking-wide">Магазин</p>
-                  </div>
+                  <div className="border-t border-border/50 pt-2 mt-1" />
                   <div>
                     <label className="text-[11px] text-muted-foreground mb-0.5 block">Категория товаров *</label>
                     <select value={indCategory} onChange={e => setIndCategory(e.target.value)}
-                      className={inputCls + " cursor-pointer"}>
+                      className={inputCls + " cursor-pointer" + (!indCategory ? " border-amber-400/60" : " border-green-400/60")}>
                       <option value="">— Выберите категорию —</option>
                       {PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">Используется для настройки ставок и комиссий</p>
+                    {!indCategory && <p className="text-[10px] text-amber-600 mt-0.5 flex items-center gap-1"><Icon name="AlertCircle" size={10} />Обязательно для заполнения</p>}
+                    {indCategory && <p className="text-[10px] text-muted-foreground mt-0.5">Используется для настройки ставок и комиссий</p>}
                   </div>
                   <div className="relative">
                     <label className="text-[11px] text-muted-foreground mb-0.5 block">
@@ -429,7 +428,7 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
                         <input value={indCityQuery}
                           onChange={e => { setIndCityQuery(e.target.value); setIndCityCode(""); setIndCityName(""); }}
                           placeholder="Начните вводить город..."
-                          className={inputCls + " pl-8 pr-8"} />
+                          className={inputCls + " pl-8 pr-8" + (!indCityCode && !indCityQuery ? " border-amber-400/60" : "")} />
                         {indCityLoading && <Icon name="Loader" size={13} className="absolute right-3 top-2.5 text-muted-foreground animate-spin" />}
                       </div>
                     )}
@@ -466,7 +465,15 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
                     </div>
                   </div>
                 </>}
-                <button onClick={async () => { await handleSave(); if (hasIndividualProfile) await handleSaveIndividual(); }}
+                <button onClick={async () => {
+                  setSaveError(null);
+                  if (hasIndividualProfile) {
+                    if (!indCategory) { setSaveError("Выберите категорию товаров"); return; }
+                    if (!indCityCode) { setSaveError("Укажите город отправки"); return; }
+                  }
+                  await handleSave();
+                  if (hasIndividualProfile) await handleSaveIndividual();
+                }}
                   disabled={indSaving}
                   className="w-full bg-primary text-primary-foreground font-semibold py-2.5 rounded-xl hover:opacity-90 transition-opacity text-sm mt-1 disabled:opacity-50 flex items-center justify-center gap-2">
                   {indSaving && <Icon name="Loader" size={14} className="animate-spin" />}
