@@ -62,6 +62,7 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
     return null;
   });
   const [autoOpenProductForm, setAutoOpenProductForm] = useState(false);
+  const [showIndividualProducts, setShowIndividualProducts] = useState(false);
   const [sellerLegalType, setSellerLegalType] = useState<string>("");
   const [sellerLegalTypeLoaded, setSellerLegalTypeLoaded] = useState(false);
   const [hasIndividualProfile, setHasIndividualProfile] = useState(false);
@@ -80,8 +81,8 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
   };
 
   useEffect(() => {
-    if (user && mode === "legal") loadWarehouses(user.id);
-  }, [user?.id, mode]);
+    if (user) loadWarehouses(user.id);
+  }, [user?.id]);
 
   useEffect(() => {
     if (!user?.shopName) { setSellerLegalTypeLoaded(true); return; }
@@ -491,8 +492,7 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
                       return;
                     }
                     setAutoOpenProductForm(true);
-                    handleSetMode("legal");
-                    setTab("Товары");
+                    setShowIndividualProducts(true);
                   }}
                   className={`flex-1 flex flex-col items-center justify-center gap-0.5 rounded-xl px-3 py-2 hover:opacity-90 transition-opacity ${limitReached ? "bg-primary/40 text-primary-foreground cursor-default" : "bg-primary text-primary-foreground"}`}
                 >
@@ -523,6 +523,26 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
             </button>
           </div>
         </>
+      )}
+
+      {/* Форма товаров физлица — открывается прямо в режиме физлица */}
+      {mode === "personal" && showIndividualProducts && (
+        <div className="mt-3 animate-fade-in">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-oswald text-base font-semibold text-foreground tracking-wide">Мои объявления</h3>
+            <button onClick={() => setShowIndividualProducts(false)}
+              className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
+              <Icon name="X" size={14} /> Скрыть
+            </button>
+          </div>
+          <DashboardProductsTab
+            warehouses={warehouses}
+            onGoToProfile={() => {}}
+            autoOpenForm={autoOpenProductForm}
+            onAutoOpenDone={() => setAutoOpenProductForm(false)}
+            sellerProfileType="individual"
+          />
+        </div>
       )}
 
       {/* ══════════════════════════════════════════
@@ -640,7 +660,7 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
 
           {/* ── Контент таба ── */}
           {tab === "Заказы от покупателей" && <DashboardOrdersTab />}
-          {tab === "Товары" && <DashboardProductsTab warehouses={warehouses} onGoToProfile={() => setTab("Реквизиты")} autoOpenForm={autoOpenProductForm} onAutoOpenDone={() => setAutoOpenProductForm(false)} />}
+          {tab === "Товары" && <DashboardProductsTab warehouses={warehouses} onGoToProfile={() => setTab("Реквизиты")} autoOpenForm={autoOpenProductForm} onAutoOpenDone={() => setAutoOpenProductForm(false)} sellerProfileType="individual" />}
           {tab === "Мои эфиры" && <DashboardStreamsTab setPage={setPage} />}
           {tab === "Статистика" && (
             <div className="animate-fade-in text-center py-12">

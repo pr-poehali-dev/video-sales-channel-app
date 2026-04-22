@@ -23,12 +23,13 @@ interface Props {
   onGoToProfile?: () => void;
   autoOpenForm?: boolean;
   onAutoOpenDone?: () => void;
+  sellerProfileType?: "individual" | "legal";
 }
 
-export default function DashboardProductsTab({ warehouses, onGoToProfile, autoOpenForm, onAutoOpenDone }: Props) {
+export default function DashboardProductsTab({ warehouses, onGoToProfile, autoOpenForm, onAutoOpenDone, sellerProfileType = "individual" }: Props) {
   const { user } = useAuth();
   const { addProduct, updateProduct, deleteProduct, getSellerProducts, loadSellerProducts } = useStore();
-  const { check, checking } = useSellerProfileCheck(user?.id);
+  const { check, checking } = useSellerProfileCheck(user?.id, sellerProfileType);
 
   const products = user ? getSellerProducts(user.id) : [];
 

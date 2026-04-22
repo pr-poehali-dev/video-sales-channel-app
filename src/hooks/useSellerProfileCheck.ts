@@ -14,7 +14,7 @@ export interface SellerProfileCheckResult {
   legalType?: string;
 }
 
-export function useSellerProfileCheck(userId: string | undefined) {
+export function useSellerProfileCheck(userId: string | undefined, profileType: "individual" | "legal" = "individual") {
   const [checking, setChecking] = useState(false);
 
   const check = useCallback(async (): Promise<SellerProfileCheckResult> => {
@@ -22,7 +22,7 @@ export function useSellerProfileCheck(userId: string | undefined) {
 
     setChecking(true);
     try {
-      const r = await fetch(`${STORE_API}?action=get_seller_profile&user_id=${userId}`);
+      const r = await fetch(`${STORE_API}?action=get_seller_profile&user_id=${userId}&profile_type=${profileType}`);
       const data = await r.json();
 
       if (!data || !data.legalType) {
@@ -59,7 +59,7 @@ export function useSellerProfileCheck(userId: string | undefined) {
     } finally {
       setChecking(false);
     }
-  }, [userId]);
+  }, [userId, profileType]);
 
   return { check, checking };
 }
