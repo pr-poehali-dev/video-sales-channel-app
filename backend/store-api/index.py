@@ -383,21 +383,43 @@ def handler(event: dict, context) -> dict:
             return ok([_fmt_order(r) for r in rows])
 
         if action == "get_seller_orders":
-            """Получить все заказы продавца по его seller_id"""
+            """Получить все заказы продавца по его seller_id и profile_type"""
             seller_id = qs.get("seller_id") or body.get("seller_id")
+            profile_type = qs.get("profile_type") or body.get("profile_type") or ""
             if not seller_id:
                 return err("seller_id required", 400)
+            # Маппинг profile_type → seller_legal_type
+            legal_type_filter = None
+            if profile_type == "individual":
+                legal_type_filter = "individual"
+            elif profile_type == "legal":
+                legal_type_filter = ("self_employed", "ip", "ooo")
             # Ищем заказы где хотя бы один товар принадлежит продавцу
-            cur.execute("""
-                SELECT * FROM orders
-                WHERE seller_id = %s
-                   OR EXISTS (
-                       SELECT 1 FROM jsonb_array_elements(items) AS item
-                       WHERE item->>'sellerId' = %s
-                   )
-                ORDER BY created_at DESC
-                LIMIT 200
-            """, (seller_id, seller_id))
+            if legal_type_filter is None:
+                cur.execute("""
+                    SELECT * FROM orders
+                    WHERE seller_id = %s
+                       OR EXISTS (
+                           SELECT 1 FROM jsonb_array_elements(items) AS item
+                           WHERE item->>'sellerId' = %s
+                       )
+                    ORDER BY created_at DESC
+                    LIMIT 200
+                """, (seller_id, seller_id))
+            elif isinstance(legal_type_filter, str):
+                cur.execute("""
+                    SELECT * FROM orders
+                    WHERE seller_id = %s AND seller_legal_type = %s
+                    ORDER BY created_at DESC
+                    LIMIT 200
+                """, (seller_id, legal_type_filter))
+            else:
+                cur.execute("""
+                    SELECT * FROM orders
+                    WHERE seller_id = %s AND seller_legal_type = ANY(%s)
+                    ORDER BY created_at DESC
+                    LIMIT 200
+                """, (seller_id, list(legal_type_filter)))
             rows = cur.fetchall()
             # Фильтруем items — оставляем только товары этого продавца
             result = []

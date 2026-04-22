@@ -71,7 +71,11 @@ const FILTER_TABS: { key: SellerStatus | "all"; label: string }[] = [
   { key: "completed",    label: "Выполнены" },
 ];
 
-export default function DashboardOrdersTab() {
+interface Props {
+  profileType?: "individual" | "legal";
+}
+
+export default function DashboardOrdersTab({ profileType }: Props) {
   const { user } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -84,9 +88,10 @@ export default function DashboardOrdersTab() {
     if (!user) return;
     setLoading(true);
     try {
+      const profileParam = profileType ? `&profile_type=${profileType}` : "";
       const [ordersRes, productsRes] = await Promise.all([
-        fetch(`${STORE_API}?action=get_seller_orders&seller_id=${user.id}`),
-        fetch(`${STORE_API}?action=get_products&seller_id=${user.id}`),
+        fetch(`${STORE_API}?action=get_seller_orders&seller_id=${user.id}${profileParam}`),
+        fetch(`${STORE_API}?action=get_products&seller_id=${user.id}&profile_type=${profileType || ""}`),
       ]);
       const data = await ordersRes.json();
       setOrders(Array.isArray(data) ? data : []);
@@ -101,7 +106,7 @@ export default function DashboardOrdersTab() {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, profileType]);
 
   useEffect(() => { load(); }, [load]);
 
