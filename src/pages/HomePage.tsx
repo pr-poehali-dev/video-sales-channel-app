@@ -68,7 +68,7 @@ function HScroll({ children }: { children: React.ReactNode }) {
 const BANNERS = [
   {
     id: 1,
-    img: "https://cdn.poehali.dev/projects/a4bacfcf-1dfc-4307-b19f-4266aaeae1d7/files/f62cf43d-c033-483b-9cc6-d0ce22f7ac99.jpg",
+    img: "https://cdn.poehali.dev/projects/a4bacfcf-1dfc-4307-b19f-4266aaeae1d7/files/c61d0408-abb0-4444-b44d-9593a0754067.jpg",
     badge: "🔥 Скоро жара",
     title: "Лето 2026",
     sub: "Товары для отдыха и пляжа",
@@ -78,7 +78,7 @@ const BANNERS = [
   },
   {
     id: 2,
-    img: "https://cdn.poehali.dev/projects/a4bacfcf-1dfc-4307-b19f-4266aaeae1d7/files/aa54ac47-2f76-4eca-a718-da68e00ddb22.jpg",
+    img: "https://cdn.poehali.dev/projects/a4bacfcf-1dfc-4307-b19f-4266aaeae1d7/files/e6ba48ee-6837-4504-a386-f309efaab31f.jpg",
     badge: "📦 Оптовым покупателям",
     title: "Покупай\nоптом",
     sub: "Цены ниже при заказе от партии",
@@ -88,7 +88,7 @@ const BANNERS = [
   },
   {
     id: 3,
-    img: "https://cdn.poehali.dev/projects/a4bacfcf-1dfc-4307-b19f-4266aaeae1d7/files/66766dee-567b-4d98-ae52-8a65c5eb82d2.jpg",
+    img: "https://cdn.poehali.dev/projects/a4bacfcf-1dfc-4307-b19f-4266aaeae1d7/files/51fde6a3-c803-413d-9cf1-f88856da8400.jpg",
     badge: "📡 Прямо в эфире",
     title: "Живые\nэфиры",
     sub: "Смотри и покупай не выходя из дома",
