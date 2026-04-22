@@ -79,6 +79,9 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
   });
   const [autoOpenProductForm, setAutoOpenProductForm] = useState(false);
   const [showIndividualProducts, setShowIndividualProducts] = useState(false);
+  const [showPersonalData, setShowPersonalData] = useState(false);
+  const [showMyPurchases, setShowMyPurchases] = useState(false);
+  const [showMyOrders, setShowMyOrders] = useState(false);
   const [sellerLegalType, setSellerLegalType] = useState<string>("");
   const [sellerLegalTypeLoaded, setSellerLegalTypeLoaded] = useState(false);
   const [hasIndividualProfile, setHasIndividualProfile] = useState(false);
@@ -362,29 +365,30 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
                 <Icon name="UserCog" size={15} className="text-muted-foreground" />
                 Личные данные
               </p>
-              <Icon name={showPersonalData ? "ChevronUp" : "ChevronDown"} size={16} className="text-muted-foreground" />
+              <div className="flex items-center gap-2">
+                <button onClick={e => {
+                  e.stopPropagation();
+                  setShowPersonalData(true);
+                  const next = !editing;
+                  setEditing(next);
+                  if (next) {
+                    setPhone(user.phone);
+                    setIndShopName(user.shopName || "");
+                    setIndCategory(user.shopCategory || "");
+                    setIndCarriers(user.shopCarriers?.length ? user.shopCarriers : ["СДЭК"]);
+                    setIndCityCode(user.shopCityCode || "");
+                    setIndCityName(user.shopCityName || "");
+                    setIndCityQuery(user.shopCityName || "");
+                    setIndCityGuid(user.shopCityGuid || "");
+                  }
+                }} className="text-xs text-primary font-medium hover:opacity-80 transition-opacity">
+                  {editing ? "Отмена" : "Редактировать"}
+                </button>
+                <Icon name={showPersonalData ? "ChevronUp" : "ChevronDown"} size={16} className="text-muted-foreground" />
+              </div>
             </button>
             {showPersonalData && (
-            <div className="px-4 pb-4 space-y-3 border-t border-border/50">
-            <div className="flex items-center justify-between pt-3">
-              <span className="text-xs text-muted-foreground">Редактировать данные</span>
-              <button onClick={() => {
-                const next = !editing;
-                setEditing(next);
-                if (next) {
-                  setPhone(user.phone);
-                  setIndShopName(user.shopName || "");
-                  setIndCategory(user.shopCategory || "");
-                  setIndCarriers(user.shopCarriers?.length ? user.shopCarriers : ["СДЭК"]);
-                  setIndCityCode(user.shopCityCode || "");
-                  setIndCityName(user.shopCityName || "");
-                  setIndCityQuery(user.shopCityName || "");
-                  setIndCityGuid(user.shopCityGuid || "");
-                }
-              }} className="text-xs text-primary font-medium hover:opacity-80 transition-opacity">
-                {editing ? "Отмена" : "Редактировать"}
-              </button>
-            </div>
+            <div className="px-4 pb-4 space-y-3 border-t border-border/50 pt-3">
 
             {editing ? (
               <div className="space-y-2">
@@ -547,22 +551,28 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
                 ))}
               </div>
             )}
+            </div>
+            )}
           </div>
 
           {/* Смена пароля */}
-          <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
-            <div className="flex items-center justify-between">
+          <div className="bg-card border border-border rounded-2xl overflow-hidden">
+            <button
+              onClick={() => setChangingPass(v => !v)}
+              className="w-full flex items-center justify-between p-4 text-left"
+            >
               <p className="text-sm font-semibold text-foreground flex items-center gap-2">
                 <Icon name="Lock" size={15} className="text-muted-foreground" />
                 Пароль
               </p>
-              <button onClick={() => setChangingPass(!changingPass)}
-                className="text-xs text-primary font-medium hover:opacity-80 transition-opacity">
-                {changingPass ? "Отмена" : "Изменить"}
-              </button>
-            </div>
-            {passSaved && <p className="text-xs text-green-600 flex items-center gap-1"><Icon name="CheckCircle" size={12} />Пароль изменён</p>}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-primary font-medium">{changingPass ? "Отмена" : "Изменить"}</span>
+                <Icon name={changingPass ? "ChevronUp" : "ChevronDown"} size={16} className="text-muted-foreground" />
+              </div>
+            </button>
+            {passSaved && <p className="text-xs text-green-600 flex items-center gap-1 px-4 pb-3"><Icon name="CheckCircle" size={12} />Пароль изменён</p>}
             {changingPass && (
+            <div className="px-4 pb-4 border-t border-border/50 pt-3">
               <div className="space-y-2">
                 <div>
                   <label className="text-[11px] text-muted-foreground mb-0.5 block">Текущий пароль</label>
@@ -592,15 +602,25 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
                   Сохранить пароль
                 </button>
               </div>
+            </div>
             )}
           </div>
 
           {/* Мои покупки */}
-          <div className="space-y-3">
-            <p className="text-sm font-semibold text-foreground px-1 flex items-center gap-2">
-              <Icon name="ShoppingBag" size={15} className="text-muted-foreground" />
-              Мои покупки
-            </p>
+          <div className="bg-card border border-border rounded-2xl overflow-hidden">
+            <button
+              onClick={() => setShowMyPurchases(v => !v)}
+              className="w-full flex items-center justify-between p-4 text-left"
+            >
+              <p className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <Icon name="ShoppingBag" size={15} className="text-muted-foreground" />
+                Мои покупки
+                {orders.length > 0 && <span className="bg-primary text-primary-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full">{orders.length}</span>}
+              </p>
+              <Icon name={showMyPurchases ? "ChevronUp" : "ChevronDown"} size={16} className="text-muted-foreground" />
+            </button>
+            {showMyPurchases && (
+            <div className="border-t border-border/50 px-4 pb-4 pt-3 space-y-3">
             {ordersLoading ? (
               <div className="flex items-center justify-center py-12 text-muted-foreground text-sm gap-2">
                 <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
@@ -688,25 +708,25 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
                 })}
               </div>
             )}
+            </div>
+            )}
           </div>
 
-          {/* Мои объявления (всегда видны если есть профиль продавца-физлица) */}
+          {/* Мои объявления */}
           {hasIndividualProfile && (
-            <div className="space-y-3 mt-3">
-              <div className="flex items-center justify-between px-1">
+            <div className="bg-card border border-border rounded-2xl overflow-hidden">
+              <button
+                onClick={() => setShowIndividualProducts(v => !v)}
+                className="w-full flex items-center justify-between p-4 text-left"
+              >
                 <p className="text-sm font-semibold text-foreground flex items-center gap-2">
                   <Icon name="Tag" size={15} className="text-muted-foreground" />
                   Мои объявления
                 </p>
-                <button
-                  onClick={() => setShowIndividualProducts(v => !v)}
-                  className="text-xs text-primary font-medium"
-                >
-                  {showIndividualProducts ? "Скрыть" : "Открыть"}
-                </button>
-              </div>
-              {showIndividualProducts ? (
-                <div className="animate-fade-in">
+                <Icon name={showIndividualProducts ? "ChevronUp" : "ChevronDown"} size={16} className="text-muted-foreground" />
+              </button>
+              {showIndividualProducts && (
+                <div className="border-t border-border/50 p-4 animate-fade-in">
                   <DashboardProductsTab
                     warehouses={warehouses}
                     onGoToProfile={() => {}}
@@ -715,26 +735,28 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
                     sellerProfileType="individual"
                   />
                 </div>
-              ) : (
-                <button
-                  onClick={() => setShowIndividualProducts(true)}
-                  className="w-full flex items-center justify-center gap-2 py-3 border border-dashed border-border rounded-2xl text-sm text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors"
-                >
-                  <Icon name="Tag" size={15} />
-                  Посмотреть объявления
-                </button>
               )}
             </div>
           )}
 
-          {/* Заказы от покупателей (если есть профиль продавца-физлица) */}
+          {/* Заказы от покупателей */}
           {hasIndividualProfile && (
-            <div className="space-y-3 mt-3">
-              <p className="text-sm font-semibold text-foreground px-1 flex items-center gap-2">
-                <Icon name="ClipboardList" size={15} className="text-muted-foreground" />
-                Заказы от покупателей
-              </p>
-              <DashboardOrdersTab />
+            <div className="bg-card border border-border rounded-2xl overflow-hidden">
+              <button
+                onClick={() => setShowMyOrders(v => !v)}
+                className="w-full flex items-center justify-between p-4 text-left"
+              >
+                <p className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Icon name="ClipboardList" size={15} className="text-muted-foreground" />
+                  Заказы от покупателей
+                </p>
+                <Icon name={showMyOrders ? "ChevronUp" : "ChevronDown"} size={16} className="text-muted-foreground" />
+              </button>
+              {showMyOrders && (
+                <div className="border-t border-border/50 p-4 animate-fade-in">
+                  <DashboardOrdersTab />
+                </div>
+              )}
             </div>
           )}
 
