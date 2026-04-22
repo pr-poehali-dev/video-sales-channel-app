@@ -29,7 +29,7 @@ interface Order {
   deliveryType: string; cdekTrackNumber?: string; createdAt: string;
 }
 
-interface ProfilePageProps { setPage: (p: Page) => void; onAddProduct?: () => void; }
+interface ProfilePageProps { setPage: (p: Page) => void; onAddProduct?: () => void; onSetSellerRegisterType?: (t: "individual" | "legal") => void; }
 
 // ============================================================================
 // !! ВНИМАНИЕ: ProfilePage — это кабинет ПОКУПАТЕЛЯ (заказы + аккаунт) !!
@@ -37,7 +37,7 @@ interface ProfilePageProps { setPage: (p: Page) => void; onAddProduct?: () => vo
 // Роутинг: admin → "dashboard", продавец → "dashboard", покупатель → "profile"
 // Не добавляй сюда admin-блоки — они сломаются при редактировании этого файла.
 // ============================================================================
-export default function ProfilePage({ setPage, onAddProduct }: ProfilePageProps) {
+export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegisterType }: ProfilePageProps) {
   const { user, logout, updateUser } = useAuth();
   const { getSellerProducts, getSellerStreams, updateStream, reload } = useStore();
   const products = user ? getSellerProducts(user.id) : [];
@@ -64,6 +64,8 @@ export default function ProfilePage({ setPage, onAddProduct }: ProfilePageProps)
   const [autoOpenProductForm, setAutoOpenProductForm] = useState(false);
   const [sellerLegalType, setSellerLegalType] = useState<string>("");
   const [sellerLegalTypeLoaded, setSellerLegalTypeLoaded] = useState(false);
+  const [hasIndividualProfile, setHasIndividualProfile] = useState(false);
+  const [hasLegalProfile, setHasLegalProfile] = useState(false);
   const [limitToast, setLimitToast] = useState(false);
   const [stoppingStream, setStoppingStream] = useState<string | null>(null);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
@@ -83,11 +85,17 @@ export default function ProfilePage({ setPage, onAddProduct }: ProfilePageProps)
 
   useEffect(() => {
     if (!user?.shopName) { setSellerLegalTypeLoaded(true); return; }
-    fetch(`${STORE_API}?action=get_seller_profile&user_id=${user.id}`)
-      .then(r => r.json())
-      .then(d => { setSellerLegalType(d?.legalType ?? ""); })
-      .catch(() => {})
-      .finally(() => setSellerLegalTypeLoaded(true));
+    // Грузим оба профиля: individual и legal
+    Promise.all([
+      fetch(`${STORE_API}?action=get_seller_profile&user_id=${user.id}&profile_type=individual`).then(r => r.json()).catch(() => null),
+      fetch(`${STORE_API}?action=get_seller_profile&user_id=${user.id}&profile_type=legal`).then(r => r.json()).catch(() => null),
+    ]).then(([indData, legalData]) => {
+      setHasIndividualProfile(!!(indData?.legalType));
+      setHasLegalProfile(!!(legalData?.legalType));
+      // sellerLegalType — для кнопки "Подать объявление" используем тип текущего режима
+      if (mode === "personal" && indData?.legalType) setSellerLegalType(indData.legalType);
+      else if (legalData?.legalType) setSellerLegalType(legalData.legalType);
+    }).finally(() => setSellerLegalTypeLoaded(true));
   }, [user?.id, user?.shopName]);
 
   const handleStopStream = async (id: string) => {
@@ -181,25 +189,41 @@ export default function ProfilePage({ setPage, onAddProduct }: ProfilePageProps)
         <div className="flex gap-2">
           <button
             onClick={() => handleSetMode("personal")}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-sm transition-all ${
+            className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2 rounded-xl font-semibold text-sm transition-all ${
               mode === "personal"
                 ? "bg-primary text-primary-foreground shadow-sm"
                 : "bg-secondary text-muted-foreground hover:text-foreground"
             }`}
           >
-            {mode === "personal" ? <Icon name="Check" size={15} /> : <Icon name="User" size={15} />}
-            Физ. лицо
+            <span className="flex items-center gap-1.5">
+              {mode === "personal" ? <Icon name="Check" size={14} /> : <Icon name="User" size={14} />}
+              Физ. лицо
+            </span>
+            {hasIndividualProfile && <span className="text-[10px] opacity-70 font-normal">до 5 объявлений · б/у</span>}
           </button>
           <button
-            onClick={() => handleSetMode("legal")}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-sm transition-all ${
+            onClick={() => {
+              if (!isSeller || !hasLegalProfile) {
+                onSetSellerRegisterType?.("legal");
+                setPage("seller-register");
+              } else {
+                handleSetMode("legal");
+              }
+            }}
+            className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2 rounded-xl font-semibold text-sm transition-all ${
               mode === "legal"
                 ? "bg-primary text-primary-foreground shadow-sm"
                 : "bg-secondary text-muted-foreground hover:text-foreground"
             }`}
           >
-            {mode === "legal" ? <Icon name="Check" size={15} /> : <Icon name="Building2" size={15} />}
-            Юр. лицо
+            <span className="flex items-center gap-1.5">
+              {mode === "legal" ? <Icon name="Check" size={14} /> : <Icon name="Building2" size={14} />}
+              Юр. лицо
+            </span>
+            {!hasLegalProfile
+              ? <span className="text-[10px] opacity-70 font-normal">зарегистрироваться</span>
+              : <span className="text-[10px] opacity-70 font-normal">опт · без лимита</span>
+            }
           </button>
         </div>
       </div>
@@ -456,7 +480,11 @@ export default function ProfilePage({ setPage, onAddProduct }: ProfilePageProps)
               return (
                 <button
                   onClick={() => {
-                    if (!isSeller) { setPage("seller-register"); return; }
+                    if (!hasIndividualProfile) {
+                      onSetSellerRegisterType?.("individual");
+                      setPage("seller-register");
+                      return;
+                    }
                     if (limitReached) {
                       setLimitToast(true);
                       setTimeout(() => setLimitToast(false), 5000);
@@ -472,18 +500,26 @@ export default function ProfilePage({ setPage, onAddProduct }: ProfilePageProps)
                     <Icon name="Plus" size={15} />
                     Подать объявление
                   </span>
-                  {subLabel && (
-                    <span className="text-[10px] opacity-80">{subLabel}</span>
-                  )}
+                  {!hasIndividualProfile
+                    ? <span className="text-[10px] opacity-80">зарегистрироваться как физлицо</span>
+                    : subLabel && <span className="text-[10px] opacity-80">{subLabel}</span>
+                  }
                 </button>
               );
             })()}
             <button
-              onClick={() => isSeller ? handleSetMode("legal") : setPage("seller-register")}
+              onClick={() => {
+                if (!hasLegalProfile) {
+                  onSetSellerRegisterType?.("legal");
+                  setPage("seller-register");
+                } else {
+                  handleSetMode("legal");
+                }
+              }}
               className="flex items-center gap-1.5 bg-card border border-border rounded-xl px-3 py-2.5 hover:border-primary/40 transition-all text-sm font-semibold text-foreground whitespace-nowrap"
             >
               <Icon name="Store" size={15} className="text-primary" />
-              {isSeller ? "Кабинет" : "Стать продавцом"}
+              {hasLegalProfile ? "Кабинет" : "Стать продавцом"}
             </button>
           </div>
         </>
@@ -492,7 +528,26 @@ export default function ProfilePage({ setPage, onAddProduct }: ProfilePageProps)
       {/* ══════════════════════════════════════════
           РЕЖИМ: ЮР. ЛИЦО / ПРОДАВЕЦ
       ══════════════════════════════════════════ */}
-      {mode === "legal" && (
+      {mode === "legal" && !hasLegalProfile && sellerLegalTypeLoaded && (
+        <div className="animate-fade-in text-center py-12 space-y-4">
+          <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
+            <Icon name="Building2" size={28} className="text-primary opacity-60" />
+          </div>
+          <div>
+            <h2 className="font-oswald text-xl font-semibold text-foreground tracking-wide mb-1">Кабинет юридического лица</h2>
+            <p className="text-sm text-muted-foreground">Для самозанятых, ИП и ООО — без лимита объявлений, оптовые цены, выставление счётов</p>
+          </div>
+          <button
+            onClick={() => { onSetSellerRegisterType?.("legal"); setPage("seller-register"); }}
+            className="inline-flex items-center gap-2 bg-primary text-primary-foreground font-semibold px-6 py-3 rounded-xl hover:opacity-90 transition-opacity text-sm"
+          >
+            <Icon name="Plus" size={15} />
+            Зарегистрироваться как юрлицо
+          </button>
+        </div>
+      )}
+
+      {mode === "legal" && hasLegalProfile && (
         <div className="animate-fade-in space-y-3">
 
           {/* Шапка продавца */}
@@ -604,7 +659,7 @@ export default function ProfilePage({ setPage, onAddProduct }: ProfilePageProps)
               <div className="border-t border-border pt-1">
                 <p className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wide">Данные и реквизиты</p>
               </div>
-              <SellerRegisterPage setPage={setPage} embedded />
+              <SellerRegisterPage setPage={setPage} embedded initialProfileType="legal" />
             </>
           )}
 

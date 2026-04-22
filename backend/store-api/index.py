@@ -218,18 +218,35 @@ def handler(event: dict, context) -> dict:
         # ─────────── SELLERS ───────────
         if action == "get_seller_profile":
             user_id = qs.get("user_id") or body.get("user_id")
+            profile_type = qs.get("profile_type") or body.get("profile_type")
             if not user_id:
                 return err("user_id required")
-            cur.execute("SELECT * FROM sellers WHERE user_id=%s", (user_id,))
-            row = cur.fetchone()
-            return ok(_fmt_seller(row) if row else None)
+            if profile_type:
+                cur.execute("SELECT * FROM sellers WHERE user_id=%s AND profile_type=%s", (user_id, profile_type))
+                row = cur.fetchone()
+                return ok(_fmt_seller(row) if row else None)
+            # Без profile_type — возвращаем оба профиля
+            cur.execute("SELECT * FROM sellers WHERE user_id=%s ORDER BY profile_type", (user_id,))
+            rows = cur.fetchall()
+            if not rows:
+                return ok(None)
+            result = {r["profile_type"]: _fmt_seller(r) for r in rows}
+            # Обратная совместимость: если один профиль — возвращаем его как раньше
+            if len(rows) == 1:
+                return ok(rows[0] and _fmt_seller(rows[0]))
+            return ok(result)
 
         if action in ("save_seller_profile", "save_seller_draft"):
             user_id = body.get("user_id")
             if not user_id:
                 return err("user_id required")
             is_draft = (action == "save_seller_draft")
-            cur.execute("SELECT user_id FROM sellers WHERE user_id=%s", (user_id,))
+            # profile_type: 'individual' для физлица, 'legal' для юрлица (самозанятый/ИП/ООО)
+            raw_lt = body.get("legalType") or body.get("legal_type", "individual")
+            profile_type = "individual" if raw_lt == "individual" else "legal"
+            profile_type = body.get("profileType") or body.get("profile_type") or profile_type
+
+            cur.execute("SELECT user_id FROM sellers WHERE user_id=%s AND profile_type=%s", (user_id, profile_type))
             exists = cur.fetchone()
             fields = ["legal_type","user_type","legal_name","inn","bank_account","bank_name","bik",
                       "contact_phone","contact_email","agreed_offer","agreed_pd",
@@ -249,7 +266,6 @@ def handler(event: dict, context) -> dict:
             ]:
                 if camel in body_mapped:
                     body_mapped[snake] = body_mapped.pop(camel)
-            # Синхронизируем user_type из legal_type если не передан явно
             if "legal_type" in body_mapped and "user_type" not in body_mapped:
                 body_mapped["user_type"] = body_mapped["legal_type"]
             if exists:
@@ -262,18 +278,18 @@ def handler(event: dict, context) -> dict:
                     set_parts += ["is_draft=%s"]
                     vals += [False]
                 if set_parts:
-                    vals.append(user_id)
-                    cur.execute(f"UPDATE sellers SET {', '.join(set_parts)} WHERE user_id=%s", vals)
+                    vals += [user_id, profile_type]
+                    cur.execute(f"UPDATE sellers SET {', '.join(set_parts)} WHERE user_id=%s AND profile_type=%s", vals)
             else:
-                lt = body_mapped.get("legal_type", "self_employed")
+                lt = body_mapped.get("legal_type", "individual")
                 cur.execute("""
-                    INSERT INTO sellers (user_id,legal_type,user_type,legal_name,inn,bank_account,bank_name,bik,
+                    INSERT INTO sellers (user_id,profile_type,legal_type,user_type,legal_name,inn,bank_account,bank_name,bik,
                                         contact_phone,contact_email,agreed_offer,agreed_pd,
                                         ogrn,legal_address,corr_account,phone_for_tax,payout_method,
                                         card_number,passport_series,passport_number,product_category,
                                         is_draft,draft_saved_at)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                """, (user_id,
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                """, (user_id, profile_type,
                       lt, body_mapped.get("user_type", lt),
                       body_mapped.get("legal_name",""),
                       body_mapped.get("inn",""), body_mapped.get("bank_account",""), body_mapped.get("bank_name",""),
@@ -286,14 +302,13 @@ def handler(event: dict, context) -> dict:
                       body_mapped.get("product_category",""),
                       is_draft, datetime.now(timezone.utc) if is_draft else None))
             conn.commit()
-            # Синхронизируем seller_name во всех товарах продавца если изменилось имя
             if "legal_name" in body_mapped and body_mapped["legal_name"]:
                 cur.execute(
                     "UPDATE products SET seller_name=%s WHERE seller_id=%s",
                     (body_mapped["legal_name"], user_id)
                 )
                 conn.commit()
-            cur.execute("SELECT * FROM sellers WHERE user_id=%s", (user_id,))
+            cur.execute("SELECT * FROM sellers WHERE user_id=%s AND profile_type=%s", (user_id, profile_type))
             return ok(_fmt_seller(cur.fetchone()))
 
         # ─────────── ORDERS ───────────
@@ -990,6 +1005,7 @@ def _fmt_seller(r):
         return None
     return {
         "userId":          r["user_id"],
+        "profileType":     r.get("profile_type", "individual"),
         "legalType":       r["legal_type"],
         "userType":        r.get("user_type") or r["legal_type"],
         "legalName":       r["legal_name"],

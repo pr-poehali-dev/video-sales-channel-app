@@ -64,6 +64,7 @@ function AppInner() {
   const [page, setPage] = useState<Page>(initialPage);
   const [authInitialEmail, setAuthInitialEmail] = useState("");
   const [openAddProduct, setOpenAddProduct] = useState(false);
+  const [sellerRegisterProfileType, setSellerRegisterProfileType] = useState<"individual" | "legal">("legal");
 
   useEffect(() => {
     if ("serviceWorker" in navigator) {
@@ -123,7 +124,7 @@ function AppInner() {
         {page === "home" && <HomePage setPage={navSetPage} addToCart={addToCart} updateQty={updateQty} cart={cart} onProductClick={openProduct} />}
         {page === "streams" && <StreamsPage setPage={navSetPage} addToCart={addToCart} onProductClick={openProduct} />}
         {page === "catalog" && <CatalogPage addToCart={addToCart} updateQty={updateQty} cart={cart} onProductClick={openProduct} />}
-        {page === "profile" && <ProfilePage setPage={navSetPage} />}
+        {page === "profile" && <ProfilePage setPage={navSetPage} onSetSellerRegisterType={setSellerRegisterProfileType} />}
         {page === "cart" && <CartPage cart={cart} removeFromCart={removeFromCart} updateQty={updateQty} onGoToAuth={(email) => { setAuthInitialEmail(email || ""); navSetPage("auth"); }} setPage={navSetPage} />}
         {page === "dashboard" && <DashboardPage setPage={navSetPage} openAddProduct={openAddProduct} onAutoOpenDone={() => setOpenAddProduct(false)} />}
         {page === "auth" && <AuthPage onSuccess={(isNew) => navSetPage(isNew ? "welcome" : "home")} initialEmail={authInitialEmail} />}
@@ -139,7 +140,7 @@ function AppInner() {
         {page === "admin-products" && <AdminProductsPage setPage={navSetPage} />}
         {page === "admin-streams" && <AdminStreamsPage setPage={navSetPage} />}
         {page === "admin-users" && <AdminUsersPage setPage={navSetPage} />}
-        {page === "seller-register" && <SellerRegisterPage setPage={navSetPage} onGoAddProduct={() => { setOpenAddProduct(true); navSetPage("dashboard"); }} />}
+        {page === "seller-register" && <SellerRegisterPage setPage={navSetPage} initialProfileType={sellerRegisterProfileType} onGoAddProduct={() => { setOpenAddProduct(true); navSetPage("dashboard"); }} />}
         {page === "support" && <SupportPage setPage={navSetPage} />}
         {page === "support-admin" && <SupportAdminPage setPage={navSetPage} />}
         {page === "order-success" && <OrderSuccessPage setPage={navSetPage} clearCart={clearCart} />}

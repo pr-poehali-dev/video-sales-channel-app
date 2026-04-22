@@ -50,6 +50,7 @@ interface Props {
   setPage: (p: Page) => void;
   embedded?: boolean;
   onGoAddProduct?: () => void;
+  initialProfileType?: "individual" | "legal"; // физлицо или юрлицо
 }
 
 const inputCls = "w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors";
@@ -218,7 +219,8 @@ const PRODUCT_CATEGORIES = [
   "Рукоделие и хобби", "Другое",
 ];
 
-export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }: Props) {
+export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct, initialProfileType }: Props) {
+  const profileType = initialProfileType ?? "legal"; // "individual" = физлицо, "legal" = юрлицо
   const { user, updateUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -257,7 +259,7 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
 
   // Реквизиты
   const [form, setForm] = useState<SellerProfile>({
-    legalType: "self_employed",
+    legalType: profileType === "individual" ? "individual" : "self_employed",
     legalName: "",
     inn: "",
     ogrn: "",
@@ -358,13 +360,13 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
 
   useEffect(() => {
     if (!user) return;
-    fetch(`${STORE_API}?action=get_seller_profile&user_id=${user.id}`)
+    fetch(`${STORE_API}?action=get_seller_profile&user_id=${user.id}&profile_type=${profileType}`)
       .then(r => r.json())
       .then(data => {
         if (data) {
           setForm(prev => ({
             ...prev,
-            legalType: (data.legalType && data.legalType !== "individual") ? data.legalType : "self_employed",
+            legalType: data.legalType || (profileType === "individual" ? "individual" : "self_employed"),
             legalName: data.legalName || "",
             inn: data.inn || "",
             ogrn: data.ogrn || "",
@@ -381,7 +383,7 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
             agreedPd: data.agreedPd || false,
           }));
           if (data.inn) setInnFieldsVisible(true);
-          if (data.legalType && data.legalType !== "individual") setSavedLegalType(data.legalType);
+          if (data.legalType) setSavedLegalType(data.legalType);
         }
       })
       .catch(() => {})
@@ -435,6 +437,7 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           user_id: userId,
+          profileType,
           ...formData,
           userType: formData.legalType,
         }),
@@ -534,6 +537,7 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           user_id: user!.id,
+          profileType,
           ...form,
           userType: form.legalType,
           contactPhone: contactPhone.trim(),
@@ -669,12 +673,22 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
 
         {/* ── Налоговый статус ── */}
         <div className="bg-card border border-border rounded-xl p-3 space-y-2">
-          <div>
-            <h2 className="text-xs font-semibold text-foreground">Кто вы?</h2>
-            <p className="text-[11px] text-muted-foreground">Выберите статус — от него зависят поля</p>
-          </div>
+          {profileType === "individual" ? (
+            <div className="flex items-center gap-2 py-1">
+              <Icon name="User" size={16} className="text-primary" />
+              <div>
+                <h2 className="text-xs font-semibold text-foreground">Физическое лицо</h2>
+                <p className="text-[11px] text-muted-foreground">Продажа б/у товаров, до 5 объявлений, выплаты на карту</p>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <h2 className="text-xs font-semibold text-foreground">Кто вы?</h2>
+              <p className="text-[11px] text-muted-foreground">Выберите статус — от него зависят поля</p>
+            </div>
+          )}
 
-          <div className="flex gap-1.5">
+          {profileType !== "individual" && (<div className="flex gap-1.5">
             {(Object.keys(LEGAL_LABELS) as LegalType[]).filter(t => t !== "individual").map(type => {
               const info = LEGAL_LABELS[type];
               const isActive = form.legalType === type;
@@ -697,7 +711,7 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
                 </button>
               );
             })}
-          </div>
+          </div>)}
 
           {/* ── Блок: Самозанятый ── */}
           {isSelf && (
@@ -938,15 +952,42 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
           )}
         </div>
 
+        {/* ── Блок: Физическое лицо ── */}
+        {profileType === "individual" && (
+          <div className="bg-card border border-border rounded-xl p-3 space-y-3">
+            <h2 className="text-xs font-semibold text-foreground">Ваши данные</h2>
+            <Field label="ФИО полностью" required>
+              <input value={form.legalName} onChange={e => set("legalName", e.target.value)}
+                placeholder="Иванов Иван Иванович" className={inputCls} />
+            </Field>
+            <Field label="Номер карты для выплат" hint="На эту карту будут поступать деньги за продажи" required>
+              <input value={form.cardNumber} onChange={e => set("cardNumber", e.target.value.replace(/\D/g, "").slice(0, 16))}
+                placeholder="0000 0000 0000 0000" maxLength={16} className={inputCls} />
+            </Field>
+            <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-xs text-amber-800">
+              <Icon name="Info" size={13} className="flex-shrink-0 mt-0.5" />
+              <span>Физлица могут продавать только б/у товары в количестве до 5 объявлений. Без чека и ИНН.</span>
+            </div>
+          </div>
+        )}
+
         {/* ── Магазин ── */}
         <div className="bg-card border border-border rounded-xl p-3 space-y-2">
           <h2 className="text-xs font-semibold text-foreground">Магазин</h2>
+          {profileType === "individual" && (
+            <Field label="Название магазина" hint="Отображается покупателям" required>
+              <input value={shopName} onChange={e => setShopName(e.target.value)}
+                placeholder={form.legalName || "Например: Антиквариат Ивана"} className={inputCls} />
+            </Field>
+          )}
+          {profileType !== "individual" && (
           <Field label="Название магазина" hint="Отображается покупателям в корзине" required>
             <input value={shopName} onChange={e => setShopName(e.target.value)}
               placeholder="Например: Украшения Марины" className={inputCls} />
-          </Field>
+          </Field>)}
 
-          {/* Категория товаров */}
+          {/* Категория товаров — только для юрлиц */}
+          {profileType !== "individual" && (
           <Field label="Категория товаров" hint="Используется для настройки ставок и комиссий" required>
             <select
               value={form.productCategory}
@@ -955,7 +996,7 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct }
               <option value="">— Выберите категорию —</option>
               {PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
-          </Field>
+          </Field>)}
 
           {/* Город отправки */}
           <div className="relative">
