@@ -144,7 +144,7 @@ export default function BroadcastScreens({
           {stoppingActive ? <Icon name="Loader" size={16} className="animate-spin" /> : <Icon name="Square" size={16} />}
           Завершить эфир
         </button>
-        <button onClick={() => setPage("dashboard")}
+        <button onClick={() => setPage("profile")}
           className="border border-border font-semibold px-6 py-3 rounded-xl hover:bg-accent">Назад в кабинет</button>
       </div>
     </div>
@@ -161,7 +161,7 @@ export default function BroadcastScreens({
       <div className="flex flex-col gap-3 max-w-xs mx-auto">
         <button onClick={onNewBroadcast}
           className="bg-primary text-primary-foreground font-semibold px-6 py-3 rounded-xl hover:opacity-90">Новый эфир</button>
-        <button onClick={() => setPage("dashboard")}
+        <button onClick={() => setPage("profile")}
           className="border border-border font-semibold px-6 py-3 rounded-xl hover:bg-accent">Кабинет</button>
       </div>
     </div>

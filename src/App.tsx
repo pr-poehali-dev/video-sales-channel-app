@@ -140,7 +140,7 @@ function AppInner() {
         {page === "admin-products" && <AdminProductsPage setPage={navSetPage} />}
         {page === "admin-streams" && <AdminStreamsPage setPage={navSetPage} />}
         {page === "admin-users" && <AdminUsersPage setPage={navSetPage} />}
-        {page === "seller-register" && <SellerRegisterPage setPage={navSetPage} initialProfileType={sellerRegisterProfileType} onGoAddProduct={() => { setOpenAddProduct(true); navSetPage("dashboard"); }} />}
+        {page === "seller-register" && <SellerRegisterPage setPage={navSetPage} initialProfileType={sellerRegisterProfileType} onGoAddProduct={() => { setOpenAddProduct(true); navSetPage("profile"); }} />}
         {page === "support" && <SupportPage setPage={navSetPage} />}
         {page === "support-admin" && <SupportAdminPage setPage={navSetPage} />}
         {page === "order-success" && <OrderSuccessPage setPage={navSetPage} clearCart={clearCart} />}
