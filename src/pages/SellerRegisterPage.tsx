@@ -953,21 +953,61 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct, 
         </div>
 
         {/* ── Блок: Физическое лицо — все данные в одном блоке ── */}
-        {profileType === "individual" && (
+        {profileType === "individual" && (() => {
+          const fioOk = form.legalName.trim().split(/\s+/).length >= 2;
+          const fioErr = form.legalName.trim().length > 0 && !fioOk;
+          const phoneDigits = pPhone.replace(/\D/g, "");
+          const phoneOk = phoneDigits.length >= 10;
+          const phoneErr = pPhone.length > 0 && !phoneOk;
+          const cardDigits = form.cardNumber.replace(/\D/g, "");
+          const cardOk = cardDigits.length === 16;
+          const cardErr = form.cardNumber.length > 0 && !cardOk;
+          const fmtCard = (v: string) => v.replace(/\D/g, "").slice(0,16).replace(/(.{4})/g,"$1 ").trim();
+          return (
           <div className="bg-card border border-border rounded-xl p-3 space-y-3">
             <h2 className="text-xs font-semibold text-foreground">Личные данные</h2>
-            <Field label="ФИО полностью" required>
-              <input value={form.legalName} onChange={e => set("legalName", e.target.value)}
-                placeholder="Иванов Иван Иванович" className={inputCls} />
-            </Field>
-            <Field label="Телефон" required>
-              <input value={pPhone} onChange={handlePhoneChange}
-                placeholder="+7 (999) 000-00-00" className={inputCls} />
-            </Field>
-            <Field label="Номер карты для выплат" hint="На эту карту будут поступать деньги за продажи" required>
-              <input value={form.cardNumber} onChange={e => set("cardNumber", e.target.value.replace(/\D/g, "").slice(0, 16))}
-                placeholder="0000 0000 0000 0000" maxLength={16} className={inputCls} />
-            </Field>
+
+            {/* ФИО */}
+            <div>
+              <label className={labelCls}>ФИО полностью *</label>
+              <div className="relative">
+                <input value={form.legalName} onChange={e => set("legalName", e.target.value)}
+                  placeholder="Иванов Иван Иванович"
+                  className={inputCls + (fioErr ? " border-red-400" : fioOk ? " border-green-400" : "")} />
+                {fioOk && <Icon name="CheckCircle" size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500" />}
+              </div>
+              {fioErr && <p className="text-[11px] text-red-500 mt-1">Введите фамилию и имя (минимум два слова)</p>}
+              {!form.legalName && <p className="text-[11px] text-muted-foreground mt-1">Фамилия Имя Отчество — как в паспорте</p>}
+            </div>
+
+            {/* Телефон */}
+            <div>
+              <label className={labelCls}>Телефон *</label>
+              <div className="relative">
+                <input value={pPhone} onChange={handlePhoneChange}
+                  placeholder="+7 (999) 000-00-00" inputMode="tel"
+                  className={inputCls + (phoneErr ? " border-red-400" : phoneOk ? " border-green-400" : "")} />
+                {phoneOk && <Icon name="CheckCircle" size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500" />}
+              </div>
+              {phoneErr && <p className="text-[11px] text-red-500 mt-1">Введите не менее 10 цифр</p>}
+              {!pPhone && <p className="text-[11px] text-muted-foreground mt-1">Для связи по вопросам заказов</p>}
+            </div>
+
+            {/* Карта */}
+            <div>
+              <label className={labelCls}>Номер карты для выплат *</label>
+              <div className="relative">
+                <input
+                  value={fmtCard(form.cardNumber)}
+                  onChange={e => set("cardNumber", e.target.value.replace(/\D/g, "").slice(0, 16))}
+                  placeholder="0000 0000 0000 0000"
+                  inputMode="numeric" maxLength={19}
+                  className={inputCls + (cardErr ? " border-red-400" : cardOk ? " border-green-400" : "")} />
+                {cardOk && <Icon name="CheckCircle" size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500" />}
+              </div>
+              {cardErr && <p className="text-[11px] text-red-500 mt-1">Номер карты — 16 цифр</p>}
+              {!form.cardNumber && <p className="text-[11px] text-muted-foreground mt-1">На эту карту поступят деньги за продажи</p>}
+            </div>
             <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-xs text-amber-800">
               <Icon name="Info" size={13} className="flex-shrink-0 mt-0.5" />
               <span>Физлица продают только б/у товары, до 5 объявлений. Без чека и ИНН.</span>
@@ -1016,7 +1056,8 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct, 
               )}
             </div>
           </div>
-        )}
+          );
+        })()}
 
         {/* ── Магазин — только для юрлиц ── */}
         {profileType !== "individual" && (
