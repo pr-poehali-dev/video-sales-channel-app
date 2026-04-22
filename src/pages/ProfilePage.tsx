@@ -681,6 +681,54 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
             )}
           </div>
 
+          {/* Мои объявления (всегда видны если есть профиль продавца-физлица) */}
+          {hasIndividualProfile && (
+            <div className="space-y-3 mt-3">
+              <div className="flex items-center justify-between px-1">
+                <p className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Icon name="Tag" size={15} className="text-muted-foreground" />
+                  Мои объявления
+                </p>
+                <button
+                  onClick={() => setShowIndividualProducts(v => !v)}
+                  className="text-xs text-primary font-medium"
+                >
+                  {showIndividualProducts ? "Скрыть" : "Открыть"}
+                </button>
+              </div>
+              {showIndividualProducts ? (
+                <div className="animate-fade-in">
+                  <DashboardProductsTab
+                    warehouses={warehouses}
+                    onGoToProfile={() => {}}
+                    autoOpenForm={autoOpenProductForm}
+                    onAutoOpenDone={() => setAutoOpenProductForm(false)}
+                    sellerProfileType="individual"
+                  />
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowIndividualProducts(true)}
+                  className="w-full flex items-center justify-center gap-2 py-3 border border-dashed border-border rounded-2xl text-sm text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors"
+                >
+                  <Icon name="Tag" size={15} />
+                  Посмотреть объявления
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Заказы от покупателей (если есть профиль продавца-физлица) */}
+          {hasIndividualProfile && (
+            <div className="space-y-3 mt-3">
+              <p className="text-sm font-semibold text-foreground px-1 flex items-center gap-2">
+                <Icon name="ClipboardList" size={15} className="text-muted-foreground" />
+                Заказы от покупателей
+              </p>
+              <DashboardOrdersTab />
+            </div>
+          )}
+
         </div>
       )}
 
@@ -789,26 +837,6 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
             </button>
           </div>
         </>
-      )}
-
-      {/* Форма товаров физлица — открывается прямо в режиме физлица */}
-      {mode === "personal" && showIndividualProducts && (
-        <div className="mt-3 animate-fade-in">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="font-oswald text-base font-semibold text-foreground tracking-wide">Мои объявления</h3>
-            <button onClick={() => setShowIndividualProducts(false)}
-              className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
-              <Icon name="X" size={14} /> Скрыть
-            </button>
-          </div>
-          <DashboardProductsTab
-            warehouses={warehouses}
-            onGoToProfile={() => {}}
-            autoOpenForm={autoOpenProductForm}
-            onAutoOpenDone={() => setAutoOpenProductForm(false)}
-            sellerProfileType="individual"
-          />
-        </div>
       )}
 
       {/* ══════════════════════════════════════════
