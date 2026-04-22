@@ -952,13 +952,17 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct, 
           )}
         </div>
 
-        {/* ── Блок: Физическое лицо ── */}
+        {/* ── Блок: Физическое лицо — все данные в одном блоке ── */}
         {profileType === "individual" && (
           <div className="bg-card border border-border rounded-xl p-3 space-y-3">
-            <h2 className="text-xs font-semibold text-foreground">Ваши данные</h2>
+            <h2 className="text-xs font-semibold text-foreground">Личные данные</h2>
             <Field label="ФИО полностью" required>
               <input value={form.legalName} onChange={e => set("legalName", e.target.value)}
                 placeholder="Иванов Иван Иванович" className={inputCls} />
+            </Field>
+            <Field label="Телефон" required>
+              <input value={pPhone} onChange={handlePhoneChange}
+                placeholder="+7 (999) 000-00-00" className={inputCls} />
             </Field>
             <Field label="Номер карты для выплат" hint="На эту карту будут поступать деньги за продажи" required>
               <input value={form.cardNumber} onChange={e => set("cardNumber", e.target.value.replace(/\D/g, "").slice(0, 16))}
@@ -966,28 +970,64 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct, 
             </Field>
             <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-xs text-amber-800">
               <Icon name="Info" size={13} className="flex-shrink-0 mt-0.5" />
-              <span>Физлица могут продавать только б/у товары в количестве до 5 объявлений. Без чека и ИНН.</span>
+              <span>Физлица продают только б/у товары, до 5 объявлений. Без чека и ИНН.</span>
+            </div>
+
+            {/* Город отправки — прямо в этом блоке для физлица */}
+            <div className="relative">
+              <label className={labelCls}>
+                Город отправки *
+                {cityCode && <span className="ml-1.5 text-green-600 font-normal">· будет подставляться в каждый товар</span>}
+              </label>
+              {!cityCode && (
+                <p className="text-[11px] text-amber-600 mb-1.5 flex items-center gap-1">
+                  <Icon name="AlertCircle" size={11} />
+                  Укажите город — он автоматически заполнится в карточке каждого товара
+                </p>
+              )}
+              {cityCode && cityQuery === cityName ? (
+                <div className="flex items-center gap-3 bg-secondary border border-border rounded-xl px-4 py-2.5">
+                  <Icon name="MapPin" size={14} className="text-primary flex-shrink-0" />
+                  <span className="text-sm text-foreground flex-1">{cityName}</span>
+                  <button onClick={() => { setCityCode(""); setCityQuery(""); setCityName(""); setCityGuid(""); }}>
+                    <Icon name="X" size={14} className="text-muted-foreground" />
+                  </button>
+                </div>
+              ) : (
+                <div className="relative">
+                  <Icon name="MapPin" size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <input value={cityQuery}
+                    onChange={e => { setCityQuery(e.target.value); setCityCode(""); setCityName(""); }}
+                    placeholder="Начните вводить город..."
+                    className={inputCls + " pl-9 pr-9"} />
+                  {cityLoading && <Icon name="Loader" size={14} className="absolute right-3 top-3 text-muted-foreground animate-spin" />}
+                </div>
+              )}
+              {suggestions.length > 0 && (
+                <div className="absolute z-20 top-full left-0 right-0 bg-card border border-border rounded-xl shadow-xl mt-1 overflow-hidden">
+                  {suggestions.map(c => (
+                    <button key={c.code} type="button" onMouseDown={() => selectCity(c)}
+                      className="w-full text-left px-4 py-2.5 text-sm hover:bg-secondary transition-colors border-b border-border/50 last:border-0">
+                      <span className="font-medium text-foreground">{c.city}</span>
+                      {c.region && <span className="text-muted-foreground text-xs ml-1.5">{c.region}</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
 
-        {/* ── Магазин ── */}
+        {/* ── Магазин — только для юрлиц ── */}
+        {profileType !== "individual" && (
         <div className="bg-card border border-border rounded-xl p-3 space-y-2">
           <h2 className="text-xs font-semibold text-foreground">Магазин</h2>
-          {profileType === "individual" && (
-            <Field label="Название магазина" hint="Отображается покупателям" required>
-              <input value={shopName} onChange={e => setShopName(e.target.value)}
-                placeholder={form.legalName || "Например: Антиквариат Ивана"} className={inputCls} />
-            </Field>
-          )}
-          {profileType !== "individual" && (
           <Field label="Название магазина" hint="Отображается покупателям в корзине" required>
             <input value={shopName} onChange={e => setShopName(e.target.value)}
               placeholder="Например: Украшения Марины" className={inputCls} />
-          </Field>)}
+          </Field>
 
-          {/* Категория товаров — только для юрлиц */}
-          {profileType !== "individual" && (
+          {/* Категория товаров */}
           <Field label="Категория товаров" hint="Используется для настройки ставок и комиссий" required>
             <select
               value={form.productCategory}
@@ -996,7 +1036,7 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct, 
               <option value="">— Выберите категорию —</option>
               {PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
-          </Field>)}
+          </Field>
 
           {/* Город отправки */}
           <div className="relative">
@@ -1074,7 +1114,7 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct, 
               })}
             </div>
           </div>
-        </div>
+        </div>)}
 
         {/* ── Документы ── */}
         <div className="bg-card border border-border rounded-xl p-3 space-y-2">
