@@ -73,9 +73,7 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
   const [indCardNumber, setIndCardNumber] = useState("");
   const [indCityName, setIndCityName] = useState("");
   const [indCityCode, setIndCityCode] = useState("");
-  const [editingInd, setEditingInd] = useState(false);
   const [indSaving, setIndSaving] = useState(false);
-  const [indSaved, setIndSaved] = useState(false);
   const [stoppingStream, setStoppingStream] = useState<string | null>(null);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const { subscribed, isSupported, subscribe, unsubscribe, status: pushStatus } = usePushNotifications(user?.id ?? null);
@@ -196,9 +194,6 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
       if (indCityCode) {
         await updateUser({ shopCityCode: indCityCode, shopCityName: indCityName, shopName: indLegalName.trim() || user.shopName });
       }
-      setEditingInd(false);
-      setIndSaved(true);
-      setTimeout(() => setIndSaved(false), 2500);
     } finally {
       setIndSaving(false);
     }
@@ -305,7 +300,6 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
                 const next = !editing;
                 setEditing(next);
                 if (next) { setName(user.name); setPhone(user.phone); setCity(user.city); }
-                setEditingInd(false);
               }} className="text-xs text-primary font-medium hover:opacity-80 transition-opacity">
                 {editing ? "Отмена" : "Редактировать"}
               </button>
@@ -351,7 +345,7 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
                   {indSaving && <Icon name="Loader" size={14} className="animate-spin" />}
                   Сохранить
                 </button>
-                {(saved || indSaved) && <p className="text-xs text-green-600 text-center flex items-center justify-center gap-1"><Icon name="CheckCircle" size={12} />Сохранено</p>}
+                {saved && <p className="text-xs text-green-600 text-center flex items-center justify-center gap-1"><Icon name="CheckCircle" size={12} />Сохранено</p>}
               </div>
             ) : (
               <div className="space-y-2">
