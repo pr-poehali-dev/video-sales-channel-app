@@ -12,6 +12,22 @@ import DashboardOrdersTab from "./dashboard/DashboardOrdersTab";
 
 const STORE_API = "https://functions.poehali.dev/3e3f9722-84e4-4350-ae87-8b70b639746c";
 const AUTH_API  = "https://functions.poehali.dev/f78c2cf9-b718-4a63-9473-a8f6bcff11f4";
+const CDEK_API  = "https://functions.poehali.dev/a73e197d-7da4-4945-bd28-4d0de6b02bb7";
+
+const PRODUCT_CATEGORIES = [
+  "Одежда и аксессуары", "Электроника", "Красота и здоровье", "Дом и интерьер",
+  "Детские товары", "Спорт и отдых", "Еда и напитки", "Украшения и бижутерия",
+  "Рукоделие и хобби", "Другое",
+];
+
+const ALL_CARRIERS = [
+  { id: "СДЭК", icon: "Truck" },
+  { id: "ПЭК", icon: "Package" },
+  { id: "Почта России", icon: "Mail" },
+  { id: "Деловые линии", icon: "Package2" },
+] as const;
+
+interface CdekCityProfile { code: string; city: string; region: string; guid?: string; }
 
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
   new:       { label: "Ожидает оплаты", color: "text-yellow-500" },
@@ -72,6 +88,16 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
   const [indLegalName, setIndLegalName] = useState("");
   const [indCardNumber, setIndCardNumber] = useState("");
   const [indSaving, setIndSaving] = useState(false);
+  // Данные магазина физлица
+  const [indShopName, setIndShopName] = useState("");
+  const [indCategory, setIndCategory] = useState("");
+  const [indCarriers, setIndCarriers] = useState<string[]>(["СДЭК"]);
+  const [indCityCode, setIndCityCode] = useState("");
+  const [indCityName, setIndCityName] = useState("");
+  const [indCityGuid, setIndCityGuid] = useState("");
+  const [indCityQuery, setIndCityQuery] = useState("");
+  const [indCitySuggestions, setIndCitySuggestions] = useState<CdekCityProfile[]>([]);
+  const [indCityLoading, setIndCityLoading] = useState(false);
   const [stoppingStream, setStoppingStream] = useState<string | null>(null);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const { subscribed, isSupported, subscribe, unsubscribe, status: pushStatus } = usePushNotifications(user?.id ?? null);
@@ -104,6 +130,15 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
         setIndLegalName(indData.legalName || "");
         setIndCardNumber(indData.cardNumber || "");
       }
+      // Данные магазина из user
+      if (user) {
+        setIndShopName(user.shopName || "");
+        setIndCategory(user.shopCategory || "");
+        setIndCarriers(user.shopCarriers?.length ? user.shopCarriers : ["СДЭК"]);
+        setIndCityCode(user.shopCityCode || "");
+        setIndCityName(user.shopCityName || "");
+        setIndCityQuery(user.shopCityName || "");
+      }
     }).catch(() => {}).finally(() => setSellerLegalTypeLoaded(true));
   }, [user?.id, user?.shopName, mode]);
 
@@ -123,6 +158,20 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
   useEffect(() => {
     if (!editing) setPhone(user?.phone ?? "");
   }, [user?.phone, editing]);
+
+  // Поиск города СДЭК для физлица
+  useEffect(() => {
+    if (indCityQuery.length < 2 || indCityQuery === indCityName) { setIndCitySuggestions([]); return; }
+    const t = setTimeout(async () => {
+      setIndCityLoading(true);
+      try {
+        const r = await fetch(`${CDEK_API}?action=cities&q=${encodeURIComponent(indCityQuery)}`);
+        const data = await r.json();
+        setIndCitySuggestions(Array.isArray(data) ? data : []);
+      } catch { setIndCitySuggestions([]); } finally { setIndCityLoading(false); }
+    }, 400);
+    return () => clearTimeout(t);
+  }, [indCityQuery, indCityName]);
 
   // Смена пароля
   const [changingPass, setChangingPass] = useState(false);
@@ -194,9 +243,17 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
           agreedPd: true,
           contactPhone: user.phone,
           contactEmail: user.email,
+          productCategory: indCategory,
         }),
       });
       if (!res.ok) throw new Error("Ошибка сохранения данных продавца");
+      // Сохраняем данные магазина
+      await updateUser({
+        shopName: indShopName.trim() || indLegalName.trim() || user.shopName || "",
+        shopCategory: indCategory,
+        shopCarriers: indCarriers,
+        ...(indCityCode ? { shopCityCode: indCityCode, shopCityName: indCityName, shopCityGuid: indCityGuid } : {}),
+      });
     } catch {
       setSaveError("Не удалось сохранить данные продавца. Попробуйте ещё раз.");
     } finally {
@@ -304,7 +361,16 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
               <button onClick={() => {
                 const next = !editing;
                 setEditing(next);
-                if (next) { setPhone(user.phone); }
+                if (next) {
+                  setPhone(user.phone);
+                  setIndShopName(user.shopName || "");
+                  setIndCategory(user.shopCategory || "");
+                  setIndCarriers(user.shopCarriers?.length ? user.shopCarriers : ["СДЭК"]);
+                  setIndCityCode(user.shopCityCode || "");
+                  setIndCityName(user.shopCityName || "");
+                  setIndCityQuery(user.shopCityName || "");
+                  setIndCityGuid(user.shopCityGuid || "");
+                }
               }} className="text-xs text-primary font-medium hover:opacity-80 transition-opacity">
                 {editing ? "Отмена" : "Редактировать"}
               </button>
@@ -331,6 +397,79 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
                       onChange={e => setIndCardNumber(e.target.value.replace(/\D/g, "").slice(0, 16))}
                       placeholder="0000 0000 0000 0000" inputMode="numeric" maxLength={19} className={inputCls} />
                   </div>
+                  {/* Блок магазина */}
+                  <div className="border-t border-border/50 pt-2 mt-1">
+                    <p className="text-[11px] text-muted-foreground mb-2 font-medium uppercase tracking-wide">Магазин</p>
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-muted-foreground mb-0.5 block">Название магазина</label>
+                    <input value={indShopName} onChange={e => setIndShopName(e.target.value)}
+                      placeholder="Например: Мои вещи" className={inputCls} />
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-muted-foreground mb-0.5 block">Категория товаров *</label>
+                    <select value={indCategory} onChange={e => setIndCategory(e.target.value)}
+                      className={inputCls + " cursor-pointer"}>
+                      <option value="">— Выберите категорию —</option>
+                      {PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">Используется для настройки ставок и комиссий</p>
+                  </div>
+                  <div className="relative">
+                    <label className="text-[11px] text-muted-foreground mb-0.5 block">
+                      Город отправки *
+                      {indCityCode && <span className="ml-1 text-green-600 font-normal">· будет подставляться в каждый товар</span>}
+                    </label>
+                    {indCityCode && indCityQuery === indCityName ? (
+                      <div className="flex items-center gap-2 bg-secondary border border-border rounded-xl px-3 py-2">
+                        <Icon name="MapPin" size={13} className="text-primary flex-shrink-0" />
+                        <span className="text-sm text-foreground flex-1">{indCityName}</span>
+                        <button onClick={() => { setIndCityCode(""); setIndCityQuery(""); setIndCityName(""); setIndCityGuid(""); }}>
+                          <Icon name="X" size={13} className="text-muted-foreground" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="relative">
+                        <Icon name="MapPin" size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                        <input value={indCityQuery}
+                          onChange={e => { setIndCityQuery(e.target.value); setIndCityCode(""); setIndCityName(""); }}
+                          placeholder="Начните вводить город..."
+                          className={inputCls + " pl-8 pr-8"} />
+                        {indCityLoading && <Icon name="Loader" size={13} className="absolute right-3 top-2.5 text-muted-foreground animate-spin" />}
+                      </div>
+                    )}
+                    {indCitySuggestions.length > 0 && (
+                      <div className="absolute z-20 top-full left-0 right-0 bg-card border border-border rounded-xl shadow-xl mt-1 overflow-hidden">
+                        {indCitySuggestions.map(c => (
+                          <button key={c.code} type="button"
+                            onMouseDown={() => { setIndCityCode(c.code); setIndCityName(c.city); setIndCityGuid(c.guid || ""); setIndCityQuery(c.city); setIndCitySuggestions([]); }}
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-secondary transition-colors border-b border-border/50 last:border-0">
+                            <span className="font-medium text-foreground">{c.city}</span>
+                            {c.region && <span className="text-muted-foreground text-xs ml-1.5">{c.region}</span>}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-muted-foreground mb-1 block">Транспортные компании</label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {ALL_CARRIERS.map(c => {
+                        const active = indCarriers.includes(c.id);
+                        return (
+                          <button key={c.id} type="button"
+                            onClick={() => setIndCarriers(prev => active ? prev.filter(x => x !== c.id) : [...prev, c.id])}
+                            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                              active ? "bg-primary/10 border-primary text-primary" : "bg-secondary border-border text-muted-foreground"
+                            }`}>
+                            <Icon name={c.icon as "Truck"} size={11} />
+                            {c.id}
+                            {active && <Icon name="Check" size={10} />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </>}
                 <button onClick={async () => { await handleSave(); if (hasIndividualProfile) await handleSaveIndividual(); }}
                   disabled={indSaving}
@@ -349,6 +488,8 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
                   ...(hasIndividualProfile ? [
                     { label: "ФИО",              value: indLegalName || "—" },
                     { label: "Карта для выплат", value: indCardNumber ? `•••• •••• •••• ${indCardNumber.slice(-4)}` : "—" },
+                    { label: "Категория",        value: indCategory || user.shopCategory || "—" },
+                    { label: "Город отправки",   value: indCityName || user.shopCityName || "—" },
                   ] : []),
                 ].map(({ label, value }) => (
                   <div key={label} className="flex justify-between items-center py-1 border-b border-border/50 last:border-0">
