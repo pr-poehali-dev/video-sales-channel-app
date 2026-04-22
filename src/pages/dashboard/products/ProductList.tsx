@@ -82,6 +82,21 @@ export default function ProductList({
                     </span>
                   )}
                 </div>
+                {p.moderationStatus === "pending" && (
+                  <span className="inline-flex items-center gap-1 text-[11px] text-yellow-600 bg-yellow-50 border border-yellow-200 px-2 py-0.5 rounded-full mt-1">
+                    <Icon name="Clock" size={10} />На проверке
+                  </span>
+                )}
+                {p.moderationStatus === "rejected" && (
+                  <span className="inline-flex items-center gap-1 text-[11px] text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full mt-1" title={p.moderationComment ?? ""}>
+                    <Icon name="XCircle" size={10} />Отклонён{p.moderationComment ? `: ${p.moderationComment}` : ""}
+                  </span>
+                )}
+                {p.moderationStatus === "approved" && (
+                  <span className="inline-flex items-center gap-1 text-[11px] text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full mt-1">
+                    <Icon name="CheckCircle" size={10} />Одобрен
+                  </span>
+                )}
               </div>
               <button
                 onClick={() => onOpenEditForm(p.id)}
