@@ -247,29 +247,7 @@ export default function HomePage({ setPage, addToCart, updateQty, cart = [], onP
         </div>
       </section>
 
-      {/* CTA */}
-      <section>
-        <div className="bg-card border border-border rounded-2xl p-8 flex flex-col md:flex-row items-center justify-between gap-6">
-          <div>
-            <h3 className="font-oswald text-2xl font-semibold text-foreground mb-2 tracking-wide">
-              {user ? "Готов начать эфир?" : "Хочешь продавать в эфире?"}
-            </h3>
-            <p className="text-muted-foreground text-sm max-w-md">
-              {user
-                ? "Перейди в кабинет, добавь товары и запусти прямую трансляцию прямо с телефона."
-                : "Зарегистрируйся и начни вести собственные прямые трансляции с продажами уже сегодня."
-              }
-            </p>
-          </div>
-          <button
-            onClick={() => setPage(user ? "dashboard" : "auth")}
-            className="bg-primary text-primary-foreground font-semibold px-6 py-3 rounded-xl hover:opacity-90 transition-opacity whitespace-nowrap flex items-center gap-2"
-          >
-            <Icon name="Zap" size={16} />
-            {user ? "В кабинет" : "Начать продавать"}
-          </button>
-        </div>
-      </section>
+
 
       {/* Скоро открытие */}
       <section>
