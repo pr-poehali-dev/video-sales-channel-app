@@ -50,13 +50,76 @@ function fmtDuration(sec?: number) {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
+// Горизонтальный скролл-слайдер
+function HScroll({ children }: { children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  return (
+    <div
+      ref={ref}
+      className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory"
+      style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+    >
+      {children}
+    </div>
+  );
+}
+
+// Баннер-слайдер
+const BANNERS = [
+  {
+    id: 1,
+    img: "https://cdn.poehali.dev/projects/a4bacfcf-1dfc-4307-b19f-4266aaeae1d7/files/f62cf43d-c033-483b-9cc6-d0ce22f7ac99.jpg",
+    badge: "🔥 Скоро жара",
+    title: "Лето 2025",
+    sub: "Товары для отдыха и пляжа",
+    btn: "Смотреть",
+    page: "catalog" as Page,
+    gradient: "from-orange-600/80 via-orange-500/60",
+  },
+  {
+    id: 2,
+    img: "https://cdn.poehali.dev/projects/a4bacfcf-1dfc-4307-b19f-4266aaeae1d7/files/aa54ac47-2f76-4eca-a718-da68e00ddb22.jpg",
+    badge: "📦 Оптовым покупателям",
+    title: "Покупай\nоптом",
+    sub: "Цены ниже при заказе от партии",
+    btn: "В каталог",
+    page: "catalog" as Page,
+    gradient: "from-blue-900/85 via-blue-800/60",
+  },
+  {
+    id: 3,
+    img: "https://cdn.poehali.dev/projects/a4bacfcf-1dfc-4307-b19f-4266aaeae1d7/files/66766dee-567b-4d98-ae52-8a65c5eb82d2.jpg",
+    badge: "📡 Прямо в эфире",
+    title: "Живые\nэфиры",
+    sub: "Смотри и покупай не выходя из дома",
+    btn: "Эфиры",
+    page: "streams" as Page,
+    gradient: "from-red-700/85 via-red-600/60",
+  },
+];
+
 export default function HomePage({ setPage, addToCart, updateQty, cart = [], onProductClick }: HomePageProps) {
   const { user } = useAuth();
   const { products, streams } = useStore();
   const [watchingId, setWatchingId] = useState<string | null>(null);
+  const [activeBanner, setActiveBanner] = useState(0);
+  const bannerRef = useRef<HTMLDivElement>(null);
+
+  // Автопролистывание баннеров
+  useEffect(() => {
+    const t = setInterval(() => {
+      setActiveBanner(prev => (prev + 1) % BANNERS.length);
+    }, 4000);
+    return () => clearInterval(t);
+  }, []);
+
+  useEffect(() => {
+    if (bannerRef.current) {
+      bannerRef.current.scrollTo({ left: activeBanner * bannerRef.current.offsetWidth, behavior: "smooth" });
+    }
+  }, [activeBanner]);
 
   const watching = watchingId ? (streams.find(s => s.id === watchingId) ?? null) : null;
-
   if (watching) {
     return (
       <Suspense fallback={null}>
@@ -70,151 +133,191 @@ export default function HomePage({ setPage, addToCart, updateQty, cart = [], onP
     );
   }
 
-  const liveStreams = streams.filter(s => s.isLive).slice(0, 3);
-  const recordedStreams = streams.filter(s => !s.isLive && s.videoUrl).slice(0, 3);
-  const latestProducts = products.slice(0, 8);
+  const liveStreams = streams.filter(s => s.isLive).slice(0, 6);
+  const recordedStreams = streams.filter(s => !s.isLive && s.videoUrl).slice(0, 6);
+  const latestProducts = products.slice(0, 12);
 
   const StreamCard = ({ s, onWatch }: { s: StoreStream; onWatch: (id: string) => void }) => (
-    <div onClick={() => onWatch(s.id)} className="bg-card border border-border rounded-2xl overflow-hidden hover:border-primary/30 transition-all cursor-pointer group">
-      <div className="relative aspect-video bg-secondary flex items-center justify-center overflow-hidden">
+    <div
+      onClick={() => onWatch(s.id)}
+      className="flex-shrink-0 w-52 snap-start bg-card border border-border rounded-2xl overflow-hidden hover:border-primary/30 transition-all cursor-pointer group"
+    >
+      <div className="relative aspect-video bg-secondary overflow-hidden">
         {s.thumbnail ? (
           <img src={s.thumbnail} alt={s.title} className="absolute inset-0 w-full h-full object-cover" />
         ) : s.videoUrl ? (
           <VideoPreview src={s.videoUrl} />
         ) : (
-          <div className="text-center">
-            <div className="w-14 h-14 rounded-full bg-primary/20 text-primary text-xl font-bold flex items-center justify-center font-oswald mx-auto mb-2">{s.sellerAvatar}</div>
-            <p className="text-xs text-muted-foreground">{s.sellerName}</p>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-full bg-primary/20 text-primary text-lg font-bold flex items-center justify-center font-oswald">{s.sellerAvatar}</div>
           </div>
         )}
         {s.isLive ? (
-          <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded">
+          <div className="absolute top-2 left-2 flex items-center gap-1 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded">
             <span className="w-1.5 h-1.5 rounded-full bg-white animate-live-pulse inline-block" />LIVE
           </div>
         ) : (
           <>
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-10 h-10 rounded-full bg-black/40 group-hover:bg-black/60 flex items-center justify-center transition-colors">
-                <Icon name="Play" size={18} className="text-white ml-0.5" />
+              <div className="w-9 h-9 rounded-full bg-black/50 group-hover:bg-black/70 flex items-center justify-center transition-colors">
+                <Icon name="Play" size={16} className="text-white ml-0.5" />
               </div>
             </div>
             {s.duration && (
-              <div className="absolute bottom-2 right-2 bg-black/70 text-white text-[10px] font-mono px-1.5 py-0.5 rounded">
+              <div className="absolute bottom-1.5 right-1.5 bg-black/70 text-white text-[10px] font-mono px-1.5 py-0.5 rounded">
                 {fmtDuration(s.duration)}
               </div>
             )}
           </>
         )}
       </div>
-      <div className="p-4">
-        <p className="font-semibold text-foreground text-sm line-clamp-1">{s.title}</p>
-        <p className="text-xs text-muted-foreground mt-1">{s.sellerName}</p>
+      <div className="p-3">
+        <p className="font-semibold text-foreground text-xs line-clamp-2 leading-snug">{s.title}</p>
+        <p className="text-[10px] text-muted-foreground mt-1">{s.sellerName}</p>
       </div>
     </div>
   );
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-10 space-y-14 animate-fade-in">
+    <div className="max-w-2xl mx-auto pb-28 animate-fade-in">
 
-      {/* Hero */}
-      <section className="rounded-3xl overflow-hidden relative">
-        <div className="relative min-h-[420px] md:min-h-[480px] flex items-center">
-          {/* Фоновая картинка */}
-          <img
-            src="https://cdn.poehali.dev/projects/a4bacfcf-1dfc-4307-b19f-4266aaeae1d7/files/5b3374fe-6838-4c67-b550-089de67a7b0b.jpg"
-            alt="БАЗАР.РФ — разнообразие товаров"
-            className="absolute inset-0 w-full h-full object-cover"
-          />
-          {/* Затемнение */}
-          <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-black/20" />
-
-          {/* Баннер: сайт в разработке */}
-          <div className="absolute top-4 right-4 z-20 flex items-center gap-2 bg-yellow-500/90 backdrop-blur-sm text-yellow-950 text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
-            <Icon name="Construction" size={13} />
-            Сайт в разработке
-          </div>
-
-          {/* Контент */}
-          <div className="relative z-10 px-8 py-12 md:px-14 max-w-2xl">
-            <div className="inline-flex items-center gap-2 bg-primary/90 text-white text-xs font-semibold px-3 py-1.5 rounded-full mb-5">
-              <span className="w-1.5 h-1.5 rounded-full bg-white animate-live-pulse inline-block" />
-              Живые покупки онлайн
+      {/* ── БАННЕР-СЛАЙДЕР ─────────────────────────────────── */}
+      <div className="relative overflow-hidden">
+        <div
+          ref={bannerRef}
+          className="flex overflow-x-hidden"
+          style={{ scrollSnapType: "x mandatory" }}
+        >
+          {BANNERS.map((b) => (
+            <div
+              key={b.id}
+              className="flex-shrink-0 w-full relative"
+              style={{ scrollSnapAlign: "start" }}
+            >
+              <div className="relative h-52 overflow-hidden">
+                <img src={b.img} alt={b.title} className="absolute inset-0 w-full h-full object-cover" />
+                <div className={`absolute inset-0 bg-gradient-to-r ${b.gradient} to-transparent`} />
+                <div className="absolute inset-0 px-5 py-5 flex flex-col justify-between">
+                  <span className="text-white/90 text-[11px] font-semibold bg-black/30 backdrop-blur-sm px-2.5 py-1 rounded-full w-fit">
+                    {b.badge}
+                  </span>
+                  <div>
+                    <h2 className="font-oswald text-2xl font-bold text-white leading-tight whitespace-pre-line mb-1">
+                      {b.title}
+                    </h2>
+                    <p className="text-white/75 text-xs mb-3">{b.sub}</p>
+                    <button
+                      onClick={() => setPage(b.page)}
+                      className="bg-white text-gray-900 font-semibold text-xs px-4 py-2 rounded-xl hover:opacity-90 transition-opacity"
+                    >
+                      {b.btn} →
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
-            <h1 className="font-oswald text-4xl md:text-6xl font-semibold text-white tracking-wide mb-3 leading-tight">
-              <span className="font-light">стрим</span>БАЗАР.РФ
-            </h1>
-            <p className="font-oswald text-xl md:text-2xl text-white/80 tracking-wide mb-2">
-              Живой торг — без посредников
-            </p>
-            <p className="text-white/60 text-sm md:text-base mb-8 max-w-md leading-relaxed">
-              Смотри прямые трансляции, торгуйся с продавцами и покупай уникальные товары прямо из эфира.
-            </p>
-            <div className="flex flex-col sm:flex-row items-start gap-3">
-              <button
-                onClick={() => setPage("streams")}
-                className="flex items-center gap-2 bg-primary text-white font-semibold px-6 py-3 rounded-xl hover:opacity-90 transition-opacity"
-              >
-                <Icon name="Radio" size={16} />
-                Смотреть эфиры
-              </button>
-              <button
-                onClick={() => setPage("catalog")}
-                className="flex items-center gap-2 bg-white/15 backdrop-blur text-white font-semibold px-6 py-3 rounded-xl hover:bg-white/25 transition-colors border border-white/20"
-              >
-                <Icon name="ShoppingBag" size={16} />
-                Каталог товаров
-              </button>
-            </div>
-          </div>
+          ))}
         </div>
-      </section>
+        {/* Точки */}
+        <div className="absolute bottom-3 right-4 flex gap-1.5">
+          {BANNERS.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setActiveBanner(i)}
+              className={`w-1.5 h-1.5 rounded-full transition-all ${i === activeBanner ? "bg-white w-4" : "bg-white/50"}`}
+            />
+          ))}
+        </div>
+      </div>
 
-      {/* Активные эфиры */}
-      {liveStreams.length > 0 && (
-        <section>
-          <div className="flex items-center justify-between mb-5">
-            <div className="flex items-center gap-2">
-              <span className="flex items-center gap-1.5 bg-red-500/15 text-red-500 text-xs font-semibold px-2.5 py-1 rounded-full">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-live-pulse inline-block" />
-                В ЭФИРЕ
-              </span>
-              <h2 className="font-oswald text-xl font-semibold text-foreground tracking-wide">Сейчас идут трансляции</h2>
+      {/* ── БЫСТРЫЕ КАТЕГОРИИ ─────────────────────────────── */}
+      <div className="px-4 pt-4">
+        <HScroll>
+          {[
+            { icon: "Shirt", label: "Одежда", color: "bg-purple-100 text-purple-700" },
+            { icon: "Smartphone", label: "Электроника", color: "bg-blue-100 text-blue-700" },
+            { icon: "Sparkles", label: "Красота", color: "bg-pink-100 text-pink-700" },
+            { icon: "Gem", label: "Украшения", color: "bg-amber-100 text-amber-700" },
+            { icon: "Home", label: "Дом", color: "bg-green-100 text-green-700" },
+            { icon: "Dumbbell", label: "Спорт", color: "bg-orange-100 text-orange-700" },
+            { icon: "Baby", label: "Детям", color: "bg-rose-100 text-rose-700" },
+          ].map(cat => (
+            <button
+              key={cat.label}
+              onClick={() => setPage("catalog")}
+              className="flex-shrink-0 flex flex-col items-center gap-1.5 snap-start"
+            >
+              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${cat.color}`}>
+                <Icon name={cat.icon as "Shirt"} size={24} />
+              </div>
+              <span className="text-[11px] text-foreground font-medium whitespace-nowrap">{cat.label}</span>
+            </button>
+          ))}
+        </HScroll>
+      </div>
+
+      {/* ── ПРОМО-ПОЛОСКА: ЛЕТО / ЖАРА ────────────────────── */}
+      <div className="mx-4 mt-4 rounded-2xl overflow-hidden bg-gradient-to-r from-orange-500 to-yellow-400 p-4 flex items-center justify-between">
+        <div>
+          <p className="text-white font-oswald text-lg font-bold leading-tight">🔥 Скоро жара!</p>
+          <p className="text-white/85 text-xs mt-0.5">Товары для лета и активного отдыха</p>
+        </div>
+        <button
+          onClick={() => setPage("catalog")}
+          className="flex-shrink-0 bg-white text-orange-600 font-bold text-xs px-4 py-2 rounded-xl hover:opacity-90 transition-opacity"
+        >
+          Смотреть
+        </button>
+      </div>
+
+      {/* ── ПРЕИМУЩЕСТВА (горизонтальный скролл) ─────────── */}
+      <div className="px-4 mt-4">
+        <HScroll>
+          {[
+            { icon: "ShieldCheck", title: "Безопасная сделка", desc: "Деньги хранятся у нас до получения товара", color: "bg-green-50 border-green-200 text-green-700" },
+            { icon: "Zap", title: "Оплата СБП", desc: "Быстро и без комиссии через Систему Быстрых Платежей", color: "bg-blue-50 border-blue-200 text-blue-700" },
+            { icon: "Truck", title: "Доставка СДЭК, ПЭК", desc: "Несколько транспортных компаний на выбор", color: "bg-purple-50 border-purple-200 text-purple-700" },
+            { icon: "TrendingDown", title: "Покупай оптом", desc: "Специальные оптовые цены при заказе от партии", color: "bg-amber-50 border-amber-200 text-amber-700" },
+            { icon: "Video", title: "Живые эфиры", desc: "Смотри товар вживую до покупки — без сюрпризов", color: "bg-red-50 border-red-200 text-red-700" },
+          ].map(f => (
+            <div key={f.title} className={`flex-shrink-0 w-44 snap-start border rounded-2xl p-3.5 ${f.color}`}>
+              <Icon name={f.icon as "ShieldCheck"} size={22} className="mb-2" />
+              <p className="font-semibold text-sm leading-tight mb-1">{f.title}</p>
+              <p className="text-[11px] opacity-80 leading-snug">{f.desc}</p>
             </div>
-            <button onClick={() => setPage("streams")} className="text-sm text-primary hover:underline">Все эфиры</button>
+          ))}
+        </HScroll>
+      </div>
+
+      {/* ── АКТИВНЫЕ ЭФИРЫ ────────────────────────────────── */}
+      {liveStreams.length > 0 && (
+        <section className="px-4 mt-6">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <span className="flex items-center gap-1.5 bg-red-500/15 text-red-500 text-xs font-bold px-2.5 py-1 rounded-full">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-live-pulse inline-block" />
+                LIVE
+              </span>
+              <h2 className="font-oswald text-base font-semibold text-foreground tracking-wide">Сейчас в эфире</h2>
+            </div>
+            <button onClick={() => setPage("streams")} className="text-xs text-primary font-medium">Все →</button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {liveStreams.map(s => (
-              <StreamCard key={s.id} s={s} onWatch={setWatchingId} />
-            ))}
-          </div>
+          <HScroll>
+            {liveStreams.map(s => <StreamCard key={s.id} s={s} onWatch={setWatchingId} />)}
+          </HScroll>
         </section>
       )}
 
-      {/* Записи эфиров */}
-      {recordedStreams.length > 0 && (
-        <section>
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="font-oswald text-xl font-semibold text-foreground tracking-wide">Записи эфиров</h2>
-            <button onClick={() => setPage("streams")} className="text-sm text-primary hover:underline">Все записи</button>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {recordedStreams.map(s => (
-              <StreamCard key={s.id} s={s} onWatch={setWatchingId} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Новые товары */}
+      {/* ── НОВЫЕ ТОВАРЫ ──────────────────────────────────── */}
       {latestProducts.length > 0 && (
-        <section>
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="font-oswald text-xl font-semibold text-foreground tracking-wide">Новые товары</h2>
-            <button onClick={() => setPage("catalog")} className="text-sm text-primary hover:underline">Все товары</button>
+        <section className="px-4 mt-6">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-oswald text-base font-semibold text-foreground tracking-wide">Новые товары</h2>
+            <button onClick={() => setPage("catalog")} className="text-xs text-primary font-medium">Все →</button>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             {latestProducts.map((p, i) => (
-              <div key={p.id} className="animate-fade-in" style={{ animationDelay: `${i * 40}ms` }}>
+              <div key={p.id} className="animate-fade-in" style={{ animationDelay: `${i * 30}ms` }}>
                 <ProductCard
                   product={p}
                   addToCart={addToCart}
@@ -225,90 +328,101 @@ export default function HomePage({ setPage, addToCart, updateQty, cart = [], onP
               </div>
             ))}
           </div>
+          <button
+            onClick={() => setPage("catalog")}
+            className="w-full mt-4 border border-border text-foreground font-semibold text-sm py-3 rounded-2xl hover:bg-secondary transition-colors"
+          >
+            Смотреть все товары
+          </button>
         </section>
       )}
 
-      {/* Фичи */}
-      <section>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+      {/* ── БАННЕР: КАК ЭТО РАБОТАЕТ ─────────────────────── */}
+      <section className="mx-4 mt-6 bg-card border border-border rounded-2xl p-5">
+        <h2 className="font-oswald text-lg font-semibold text-foreground mb-4 tracking-wide">Как это работает?</h2>
+        <div className="space-y-4">
           {[
-            { icon: "Video", title: "Живые эфиры", desc: "Продавцы показывают товар вживую — вы видите всё честно, без фотошопа" },
-            { icon: "ShoppingCart", title: "Удобная корзина", desc: "Добавляйте товары прямо из эфира и оплачивайте в один клик" },
-            { icon: "ShieldCheck", title: "Безопасные покупки", desc: "Каждый пользователь верифицирован. Возврат гарантирован." },
-          ].map((f, i) => (
-            <div key={i} className="bg-card border border-border rounded-2xl p-6 text-center hover:border-primary/30 transition-colors">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                <Icon name={f.icon} size={22} className="text-primary" />
+            { num: "1", icon: "Search", title: "Найди товар", desc: "В каталоге или прямо в эфире продавца" },
+            { num: "2", icon: "ShoppingCart", title: "Добавь в корзину", desc: "Выбери количество и оформи заказ" },
+            { num: "3", icon: "CreditCard", title: "Оплати через СБП", desc: "Быстро и безопасно — без комиссии" },
+            { num: "4", icon: "Package", title: "Получи доставку", desc: "СДЭК, ПЭК или Почта России — на выбор" },
+          ].map(step => (
+            <div key={step.num} className="flex items-start gap-4">
+              <div className="w-9 h-9 rounded-xl bg-primary text-primary-foreground font-oswald font-bold text-sm flex items-center justify-center flex-shrink-0">
+                {step.num}
               </div>
-              <h3 className="font-oswald text-lg font-semibold text-foreground tracking-wide mb-2">{f.title}</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">{f.desc}</p>
+              <div>
+                <p className="font-semibold text-sm text-foreground">{step.title}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{step.desc}</p>
+              </div>
             </div>
           ))}
         </div>
       </section>
 
-      {/* CTA */}
-      <section>
-        <div className="bg-card border border-border rounded-2xl p-8 flex flex-col md:flex-row items-center justify-between gap-6">
-          <div>
-            <h3 className="font-oswald text-2xl font-semibold text-foreground mb-2 tracking-wide">
-              {user ? "Готов начать эфир?" : "Хочешь продавать в эфире?"}
-            </h3>
-            <p className="text-muted-foreground text-sm max-w-md">
-              {user
-                ? "Перейди в кабинет, добавь товары и запусти прямую трансляцию прямо с телефона."
-                : "Зарегистрируйся и начни вести собственные прямые трансляции с продажами уже сегодня."
-              }
-            </p>
+      {/* ── БАННЕР: СТАТЬ ПРОДАВЦОМ ───────────────────────── */}
+      {!user?.shopName && (
+        <section className="mx-4 mt-4 rounded-2xl overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800 p-5">
+          <p className="text-white/60 text-xs font-semibold uppercase tracking-widest mb-1">Для продавцов</p>
+          <h2 className="font-oswald text-xl font-bold text-white mb-2 leading-tight">Начни продавать\nсегодня</h2>
+          <p className="text-white/70 text-xs mb-4 leading-relaxed">
+            Физлицо, самозанятый, ИП или ООО — регистрируйся и выходи в эфир. Без абонентской платы.
+          </p>
+          <div className="flex gap-2 flex-wrap mb-4">
+            {["Без абонплаты", "Живые эфиры", "Оптовые цены", "СДЭК доставка"].map(t => (
+              <span key={t} className="bg-white/10 text-white/80 text-[10px] px-2.5 py-1 rounded-full">{t}</span>
+            ))}
           </div>
           <button
-            onClick={() => setPage(user ? "profile" : "auth")}
-            className="bg-primary text-primary-foreground font-semibold px-6 py-3 rounded-xl hover:opacity-90 transition-opacity whitespace-nowrap flex items-center gap-2"
+            onClick={() => setPage("profile")}
+            className="w-full bg-primary text-white font-bold text-sm py-3 rounded-xl hover:opacity-90 transition-opacity"
           >
-            <Icon name="Zap" size={16} />
-            {user ? "В кабинет" : "Начать продавать"}
+            Стать продавцом →
           </button>
-        </div>
+        </section>
+      )}
+
+      {/* ── ЗАПИСИ ЭФИРОВ ─────────────────────────────────── */}
+      {recordedStreams.length > 0 && (
+        <section className="px-4 mt-6">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-oswald text-base font-semibold text-foreground tracking-wide">Записи эфиров</h2>
+            <button onClick={() => setPage("streams")} className="text-xs text-primary font-medium">Все →</button>
+          </div>
+          <HScroll>
+            {recordedStreams.map(s => <StreamCard key={s.id} s={s} onWatch={setWatchingId} />)}
+          </HScroll>
+        </section>
+      )}
+
+      {/* ── ГАРАНТИИ ──────────────────────────────────────── */}
+      <section className="mx-4 mt-6 grid grid-cols-2 gap-3">
+        {[
+          { icon: "ShieldCheck", title: "Безопасная сделка", desc: "Эскроу — деньги у нас до получения", bg: "bg-green-500" },
+          { icon: "Zap", title: "СБП без комиссии", desc: "Оплата за секунды", bg: "bg-blue-500" },
+          { icon: "RotateCcw", title: "Возврат", desc: "Если товар не соответствует", bg: "bg-amber-500" },
+          { icon: "Headphones", title: "Поддержка 24/7", desc: "Всегда на связи", bg: "bg-purple-500" },
+        ].map(g => (
+          <div key={g.title} className="bg-card border border-border rounded-2xl p-4">
+            <div className={`w-9 h-9 ${g.bg} rounded-xl flex items-center justify-center mb-3`}>
+              <Icon name={g.icon as "ShieldCheck"} size={18} className="text-white" />
+            </div>
+            <p className="font-semibold text-sm text-foreground">{g.title}</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">{g.desc}</p>
+          </div>
+        ))}
       </section>
 
-      {/* Скоро открытие */}
-      <section>
-        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-8 text-center space-y-3">
-          <div className="inline-flex items-center gap-2 bg-yellow-500/20 text-yellow-600 text-xs font-semibold px-3 py-1.5 rounded-full">
-            <Icon name="Clock" size={13} />
-            Скоро открытие
-          </div>
-          <h3 className="font-oswald text-2xl font-semibold text-foreground tracking-wide">
-            Сайт находится в стадии разработки
-          </h3>
-          <p className="text-muted-foreground text-sm max-w-md mx-auto leading-relaxed">
-            Мы активно работаем над запуском. Уже скоро здесь заработает полноценный маркетплейс прямых трансляций. Следите за обновлениями!
-          </p>
+      {/* ── FOOTER ────────────────────────────────────────── */}
+      <footer className="px-4 mt-8 pb-4 text-center">
+        <p className="font-oswald text-lg font-semibold text-foreground mb-1">стримБАЗАР.РФ</p>
+        <p className="text-xs text-muted-foreground mb-3">Живой торг без посредников</p>
+        <div className="flex justify-center gap-4 text-xs text-muted-foreground">
+          <button onClick={() => setPage("offer" as Page)} className="hover:text-foreground transition-colors">Оферта продавца</button>
+          <button onClick={() => setPage("terms" as Page)} className="hover:text-foreground transition-colors">Условия использования</button>
         </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="pt-6 pb-2 border-t border-border mt-4">
-        <div className="flex flex-col items-center gap-2 text-center">
-          <p className="text-xs text-muted-foreground">© 2024 ИП Буцкий Денис Алексеевич · ИНН 260803860085</p>
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => setPage("oferta-seller")}
-              className="text-xs text-muted-foreground hover:text-primary transition-colors underline underline-offset-2"
-            >
-              Оферта для продавцов
-            </button>
-            <span className="text-muted-foreground/40 text-xs">·</span>
-            <button
-              onClick={() => setPage("oferta-buyer")}
-              className="text-xs text-muted-foreground hover:text-primary transition-colors underline underline-offset-2"
-            >
-              Пользовательское соглашение
-            </button>
-          </div>
-        </div>
+        <p className="text-[10px] text-muted-foreground/50 mt-4">© 2024–2025 стримБАЗАР.РФ · Все права защищены</p>
       </footer>
-
     </div>
   );
 }
