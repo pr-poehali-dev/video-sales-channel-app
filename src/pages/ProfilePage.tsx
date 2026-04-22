@@ -62,6 +62,8 @@ export default function ProfilePage({ setPage, onAddProduct }: ProfilePageProps)
     return null;
   });
   const [autoOpenProductForm, setAutoOpenProductForm] = useState(false);
+  const [sellerLegalType, setSellerLegalType] = useState<string>("");
+  const [limitToast, setLimitToast] = useState(false);
   const [stoppingStream, setStoppingStream] = useState<string | null>(null);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const { subscribed, isSupported, subscribe, unsubscribe, status: pushStatus } = usePushNotifications(user?.id ?? null);
@@ -77,6 +79,14 @@ export default function ProfilePage({ setPage, onAddProduct }: ProfilePageProps)
   useEffect(() => {
     if (user && mode === "legal") loadWarehouses(user.id);
   }, [user?.id, mode]);
+
+  useEffect(() => {
+    if (!user?.shopName) return;
+    fetch(`${STORE_API}?action=get_seller_profile&user_id=${user.id}`)
+      .then(r => r.json())
+      .then(d => { if (d?.legalType) setSellerLegalType(d.legalType); })
+      .catch(() => {});
+  }, [user?.id, user?.shopName]);
 
   const handleStopStream = async (id: string) => {
     setStoppingStream(id);
@@ -409,27 +419,57 @@ export default function ProfilePage({ setPage, onAddProduct }: ProfilePageProps)
 
       {/* ── Кнопки действий (только физ. лицо) ── */}
       {mode === "personal" && (
-        <div className="flex gap-2 mt-2">
-          <button
-            onClick={() => {
-              if (!isSeller) { setPage("seller-register"); return; }
-              setAutoOpenProductForm(true);
-              handleSetMode("legal");
-              setTab("Товары");
-            }}
-            className="flex-1 flex items-center justify-center gap-2 bg-primary text-primary-foreground rounded-xl px-3 py-2.5 hover:opacity-90 transition-opacity text-sm font-semibold"
-          >
-            <Icon name="Plus" size={15} />
-            Подать объявление
-          </button>
-          <button
-            onClick={() => isSeller ? handleSetMode("legal") : setPage("seller-register")}
-            className="flex items-center gap-1.5 bg-card border border-border rounded-xl px-3 py-2.5 hover:border-primary/40 transition-all text-sm font-semibold text-foreground whitespace-nowrap"
-          >
-            <Icon name="Store" size={15} className="text-primary" />
-            {isSeller ? "Кабинет" : "Стать продавцом"}
-          </button>
-        </div>
+        <>
+          {/* Тост о лимите */}
+          {limitToast && (
+            <div className="mt-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 text-xs text-amber-800 animate-fade-in">
+              <span className="font-semibold">Лимит исчерпан.</span> Как физлицо вы можете разместить не более 5 объявлений. Хотите больше — станьте ИП или самозанятым (кнопка «Кабинет»).
+            </div>
+          )}
+          <div className="flex gap-2 mt-2">
+            {(() => {
+              const isIndividual = isSeller && sellerLegalType === "individual";
+              const LIMIT = 5;
+              const used = isIndividual ? products.length : 0;
+              const remaining = Math.max(0, LIMIT - used);
+              const limitReached = isIndividual && used >= LIMIT;
+
+              return (
+                <button
+                  onClick={() => {
+                    if (!isSeller) { setPage("seller-register"); return; }
+                    if (limitReached) {
+                      setLimitToast(true);
+                      setTimeout(() => setLimitToast(false), 5000);
+                      return;
+                    }
+                    setAutoOpenProductForm(true);
+                    handleSetMode("legal");
+                    setTab("Товары");
+                  }}
+                  className={`flex-1 flex flex-col items-center justify-center gap-0.5 rounded-xl px-3 py-2 hover:opacity-90 transition-opacity ${limitReached ? "bg-primary/40 text-primary-foreground cursor-default" : "bg-primary text-primary-foreground"}`}
+                >
+                  <span className="flex items-center gap-1.5 text-sm font-semibold">
+                    <Icon name="Plus" size={15} />
+                    Подать объявление
+                  </span>
+                  {isIndividual && (
+                    <span className="text-[10px] opacity-80">
+                      {limitReached ? "Лимит 5/5 исчерпан" : `Осталось ${remaining} из ${LIMIT} (физ. лицо)`}
+                    </span>
+                  )}
+                </button>
+              );
+            })()}
+            <button
+              onClick={() => isSeller ? handleSetMode("legal") : setPage("seller-register")}
+              className="flex items-center gap-1.5 bg-card border border-border rounded-xl px-3 py-2.5 hover:border-primary/40 transition-all text-sm font-semibold text-foreground whitespace-nowrap"
+            >
+              <Icon name="Store" size={15} className="text-primary" />
+              {isSeller ? "Кабинет" : "Стать продавцом"}
+            </button>
+          </div>
+        </>
       )}
 
       {/* ══════════════════════════════════════════
