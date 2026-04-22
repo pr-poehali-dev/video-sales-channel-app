@@ -815,8 +815,8 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct, 
               ) : (
                 <div className="space-y-3">
                   <Field label="Расчётный счёт *" hint="20 цифр">
-                    <input value={form.bankAccount} onChange={e => set("bankAccount", e.target.value.replace(/\D/g, ""))}
-                      placeholder="40802810000000000000" maxLength={20} className={inputCls} />
+                    <input value={form.bankAccount} onChange={e => set("bankAccount", e.target.value.replace(/\D/g, "").slice(0, 20))}
+                      placeholder="40802810000000000000" className={inputCls} />
                   </Field>
                   <BikBlock
                     bik={form.bik}
@@ -938,8 +938,8 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct, 
                   <div>
                     <label className={labelCls}>Расчётный счёт * (20 цифр)</label>
                     <div className="relative">
-                      <input value={form.bankAccount} onChange={e => set("bankAccount", e.target.value.replace(/\D/g, ""))}
-                        placeholder="40702810000000000000" maxLength={20}
+                      <input value={form.bankAccount} onChange={e => set("bankAccount", e.target.value.replace(/\D/g, "").slice(0, 20))}
+                        placeholder="40702810000000000000"
                         className={inputCls + " pr-8 " + (form.bankAccount.length === 20 ? " border-green-500/60" : form.bankAccount.length > 0 ? " border-destructive/60" : "")} />
                       <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
                         {form.bankAccount.length === 20 && <Icon name="CheckCircle" size={14} className="text-green-500" />}
