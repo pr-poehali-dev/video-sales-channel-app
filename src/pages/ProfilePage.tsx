@@ -84,6 +84,7 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
   const [hasIndividualProfile, setHasIndividualProfile] = useState(false);
   const [hasLegalProfile, setHasLegalProfile] = useState(false);
   const [limitToast, setLimitToast] = useState(false);
+  const [profileIncompleteToast, setProfileIncompleteToast] = useState(false);
   // Данные физлица-продавца (для отображения/редактирования в блоке личных данных)
   const [indLegalName, setIndLegalName] = useState("");
   const [indCardNumber, setIndCardNumber] = useState("");
@@ -692,6 +693,21 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
               <span className="font-semibold">Лимит исчерпан.</span> Как физлицо вы можете разместить не более 5 объявлений. Хотите больше — станьте ИП или самозанятым (кнопка «Кабинет»).
             </div>
           )}
+          {/* Тост о незаполненном профиле */}
+          {profileIncompleteToast && (
+            <div className="mt-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 text-xs text-red-800 animate-fade-in">
+              <p className="font-semibold mb-1">Заполните данные перед подачей объявления:</p>
+              <ul className="space-y-0.5 list-disc list-inside">
+                {!indLegalName.trim() && <li>ФИО</li>}
+                {(!indCardNumber || indCardNumber.replace(/\D/g, "").length < 16) && <li>Номер карты для выплат (16 цифр)</li>}
+                {!user?.shopCategory && !indCategory && <li>Категория товаров</li>}
+                {!user?.shopCityCode && !indCityCode && <li>Город отправки</li>}
+              </ul>
+              <button onClick={() => setEditing(true)} className="mt-1.5 text-red-700 font-semibold underline">
+                Заполнить сейчас →
+              </button>
+            </div>
+          )}
           <div className="flex gap-2 mt-2">
             {(() => {
               const LIMIT = 5;
@@ -728,6 +744,17 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
                     if (limitReached) {
                       setLimitToast(true);
                       setTimeout(() => setLimitToast(false), 5000);
+                      return;
+                    }
+                    // Проверяем заполненность профиля
+                    const profileOk =
+                      indLegalName.trim() &&
+                      indCardNumber.replace(/\D/g, "").length === 16 &&
+                      (user?.shopCategory || indCategory) &&
+                      (user?.shopCityCode || indCityCode);
+                    if (!profileOk) {
+                      setProfileIncompleteToast(true);
+                      setTimeout(() => setProfileIncompleteToast(false), 8000);
                       return;
                     }
                     setAutoOpenProductForm(true);
