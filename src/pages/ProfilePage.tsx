@@ -965,7 +965,7 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
 
           {/* ── Контент таба ── */}
           {tab === "Заказы от покупателей" && <DashboardOrdersTab />}
-          {tab === "Товары" && <DashboardProductsTab warehouses={warehouses} onGoToProfile={() => setTab("Реквизиты")} autoOpenForm={autoOpenProductForm} onAutoOpenDone={() => setAutoOpenProductForm(false)} sellerProfileType="individual" />}
+          {tab === "Товары" && <DashboardProductsTab warehouses={warehouses} onGoToProfile={() => setTab("Реквизиты")} autoOpenForm={autoOpenProductForm} onAutoOpenDone={() => setAutoOpenProductForm(false)} sellerProfileType="legal" />}
           {tab === "Мои эфиры" && <DashboardStreamsTab setPage={setPage} />}
           {tab === "Статистика" && (
             <div className="animate-fade-in text-center py-12">
