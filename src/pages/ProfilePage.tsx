@@ -92,8 +92,8 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
     if (!user?.shopName) { setSellerLegalTypeLoaded(true); return; }
     // Грузим оба профиля: individual и legal
     Promise.all([
-      fetch(`${STORE_API}?action=get_seller_profile&user_id=${user.id}&profile_type=individual`).then(r => r.json()).catch(() => null),
-      fetch(`${STORE_API}?action=get_seller_profile&user_id=${user.id}&profile_type=legal`).then(r => r.json()).catch(() => null),
+      fetch(`${STORE_API}?action=get_seller_profile&user_id=${user.id}&profile_type=individual`).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch(`${STORE_API}?action=get_seller_profile&user_id=${user.id}&profile_type=legal`).then(r => r.ok ? r.json() : null).catch(() => null),
     ]).then(([indData, legalData]) => {
       setHasIndividualProfile(!!(indData?.legalType));
       setHasLegalProfile(!!(legalData?.legalType));
@@ -104,8 +104,8 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
         setIndLegalName(indData.legalName || "");
         setIndCardNumber(indData.cardNumber || "");
       }
-    }).finally(() => setSellerLegalTypeLoaded(true));
-  }, [user?.id, user?.shopName]);
+    }).catch(() => {}).finally(() => setSellerLegalTypeLoaded(true));
+  }, [user?.id, user?.shopName, mode]);
 
   const handleStopStream = async (id: string) => {
     setStoppingStream(id);
@@ -117,6 +117,12 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
   const [editing, setEditing] = useState(false);
   const [phone, setPhone] = useState(user?.phone ?? "");
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Синхронизируем phone с данными пользователя при выходе из редактирования
+  useEffect(() => {
+    if (!editing) setPhone(user?.phone ?? "");
+  }, [user?.phone, editing]);
 
   // Смена пароля
   const [changingPass, setChangingPass] = useState(false);
@@ -160,17 +166,22 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
   }
 
   const handleSave = async () => {
-    await updateUser({ phone: phone.trim() });
-    setEditing(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+    setSaveError(null);
+    try {
+      await updateUser({ phone: phone.trim() });
+      setEditing(false);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch {
+      setSaveError("Не удалось сохранить данные. Попробуйте ещё раз.");
+    }
   };
 
   const handleSaveIndividual = async () => {
     if (!user) return;
     setIndSaving(true);
     try {
-      await fetch(`${STORE_API}?action=save_seller_profile`, {
+      const res = await fetch(`${STORE_API}?action=save_seller_profile`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -185,6 +196,9 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
           contactEmail: user.email,
         }),
       });
+      if (!res.ok) throw new Error("Ошибка сохранения данных продавца");
+    } catch {
+      setSaveError("Не удалось сохранить данные продавца. Попробуйте ещё раз.");
     } finally {
       setIndSaving(false);
     }
@@ -325,6 +339,7 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
                   Сохранить
                 </button>
                 {saved && <p className="text-xs text-green-600 text-center flex items-center justify-center gap-1"><Icon name="CheckCircle" size={12} />Сохранено</p>}
+                {saveError && <p className="text-xs text-destructive text-center flex items-center justify-center gap-1"><Icon name="AlertCircle" size={12} />{saveError}</p>}
               </div>
             ) : (
               <div className="space-y-2">

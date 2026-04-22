@@ -80,6 +80,7 @@ export default function CartPage({ cart, removeFromCart, updateQty, onGoToAuth, 
         const fromParam   = fromCityCode  ? `&from_city_code=${encodeURIComponent(fromCityCode)}` : "";
         const sellerParam = sellerId      ? `&seller_id=${sellerId}` : "";
         const res  = await fetch(`${CDEK_API}?action=calc&city_code=${encodeURIComponent(toCityCode)}&weight=${weightG}${guidParam}${fromParam}${sellerParam}`);
+        if (!res.ok) throw new Error(`CDEK calc error: ${res.status}`);
         const data = await res.json();
         const tariffs: { price: number }[] = Array.isArray(data) ? data : (data.tariffs ?? []);
         const minPrice = tariffs.length > 0 ? Math.min(...tariffs.map(t => t.price)) : null;
@@ -144,7 +145,7 @@ export default function CartPage({ cart, removeFromCart, updateQty, onGoToAuth, 
   const orderTotal   = goodsTotal + (deliveryCost ?? 0);
   const totalWeight  = selectedCart.reduce((s, c) => s + c.qty * (c.weightG ?? 300), 0);
   const fromCityCode = (selectedCart[0] ?? cart[0])?.fromCityCode ?? "";
-  const sellerIdForDelivery = cart[0]?.sellerId ?? "";
+  const sellerIdForDelivery = selectedCart[0]?.sellerId ?? cart[0]?.sellerId ?? "";
 
   // ── Контакты и оплата ─────────────────────────────────────────────────────
   const savedParts = (user?.name || "").trim().split(/\s+/);
@@ -308,6 +309,10 @@ export default function CartPage({ cart, removeFromCart, updateQty, onGoToAuth, 
       setValidationError("Введите полный номер телефона (11 цифр)");
       return;
     }
+    if (buyerEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(buyerEmail.trim())) {
+      setValidationError("Введите корректный email");
+      return;
+    }
     if (!agreedToTerms) {
       setValidationError("Необходимо принять условия оферты и согласие на обработку данных");
       return;
@@ -382,6 +387,9 @@ export default function CartPage({ cart, removeFromCart, updateQty, onGoToAuth, 
         }),
       });
       const payData = await payRes.json();
+      if (!payRes.ok) {
+        throw new Error(payData.error || "Ошибка платёжного сервиса");
+      }
       if (payData.payment_url) {
         window.location.href = payData.payment_url;
       } else {

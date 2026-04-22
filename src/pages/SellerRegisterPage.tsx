@@ -299,6 +299,7 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct, 
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ inn }),
         });
+        if (!r.ok) throw new Error(`INN API error: ${r.status}`);
         const data = await r.json();
         if (data.error) {
           setInnError(data.error);
@@ -326,6 +327,7 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct, 
       setCityLoading(true);
       try {
         const r = await fetch(`${CDEK_API}?action=cities&q=${encodeURIComponent(cityQuery)}`);
+        if (!r.ok) throw new Error(`CDEK cities error: ${r.status}`);
         const data = await r.json();
         setSuggestions(Array.isArray(data) ? data : []);
       } catch { setSuggestions([]); } finally { setCityLoading(false); }
@@ -341,6 +343,7 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct, 
       setBikLoading(true);
       try {
         const r = await fetch(`https://www.bik-info.ru/api.html?type=json&bik=${bik}`);
+        if (!r.ok) throw new Error(`BIK API error: ${r.status}`);
         const data = await r.json();
         if (data && data.name) {
           setForm(prev => ({
@@ -361,7 +364,7 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct, 
   useEffect(() => {
     if (!user) return;
     fetch(`${STORE_API}?action=get_seller_profile&user_id=${user.id}&profile_type=${profileType}`)
-      .then(r => r.json())
+      .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (data) {
           setForm(prev => ({
@@ -459,7 +462,8 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct, 
     if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
     draftTimerRef.current = setTimeout(() => saveDraft(form, user.id), 1500);
     return () => { if (draftTimerRef.current) clearTimeout(draftTimerRef.current); };
-  }, [form, loading, user, saveDraft]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form, loading, user]);
 
   const handleSaveAll = async () => {
     setError(null);
@@ -478,6 +482,7 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct, 
       const nameParts = form.legalName.trim().split(/\s+/);
       if (nameParts.length < 2) { setError("Введите фамилию и имя полностью"); return; }
       if (!form.cardNumber.trim()) { setError("Введите номер карты для выплат"); return; }
+      if (form.cardNumber.replace(/\D/g, "").length < 16) { setError("Номер карты должен содержать 16 цифр"); return; }
       if (!cityCode) { setError("Укажите город отправки — он будет подставляться в каждый товар"); return; }
     }
 
@@ -488,7 +493,9 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct, 
       if (!form.phoneForTax.trim()) { setError("Введите телефон, привязанный к «Мой налог»"); return; }
       if (form.payoutMethod === "card" && !form.cardNumber.trim()) { setError("Введите номер карты для выплат"); return; }
       if (form.payoutMethod === "account" && !form.bankAccount.trim()) { setError("Введите расчётный счёт"); return; }
+      if (form.payoutMethod === "account" && form.bankAccount.replace(/\D/g, "").length !== 20) { setError("Расчётный счёт должен содержать 20 цифр"); return; }
       if (form.payoutMethod === "account" && !form.bik.trim()) { setError("Введите БИК банка"); return; }
+      if (form.payoutMethod === "account" && form.bik.replace(/\D/g, "").length !== 9) { setError("БИК должен содержать 9 цифр"); return; }
       if (!cityCode) { setError("Укажите город отправки — он будет подставляться в каждый товар"); return; }
       if (!shopName.trim()) { setError("Введите название магазина"); return; }
       if (!form.productCategory) { setError("Выберите категорию товаров"); return; }
@@ -501,7 +508,9 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct, 
       if (!form.ogrn.trim()) { setError(lt === "ip" ? "Введите ОГРНИП" : "Введите ОГРН"); return; }
       if (!form.legalAddress.trim()) { setError("Введите юридический адрес"); return; }
       if (!form.bankAccount.trim()) { setError("Введите расчётный счёт"); return; }
+      if (form.bankAccount.replace(/\D/g, "").length !== 20) { setError("Расчётный счёт должен содержать 20 цифр"); return; }
       if (!form.bik.trim()) { setError("Введите БИК банка"); return; }
+      if (form.bik.replace(/\D/g, "").length !== 9) { setError("БИК должен содержать 9 цифр"); return; }
       if (!cityCode) { setError("Укажите город отправки — он будет подставляться в каждый товар"); return; }
       if (!shopName.trim()) { setError("Введите название магазина"); return; }
       if (!form.productCategory) { setError("Выберите категорию товаров"); return; }
@@ -544,7 +553,10 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct, 
           contactEmail: user!.email,
         }),
       });
-      if (!res.ok) throw new Error("Ошибка сохранения");
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Ошибка сохранения");
+      }
       setSaved(true);
       setSavedLegalType(form.legalType);
       window.scrollTo({ top: 0, behavior: "smooth" });
