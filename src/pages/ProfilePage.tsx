@@ -68,6 +68,14 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
   const [hasIndividualProfile, setHasIndividualProfile] = useState(false);
   const [hasLegalProfile, setHasLegalProfile] = useState(false);
   const [limitToast, setLimitToast] = useState(false);
+  // Данные физлица-продавца (для отображения/редактирования в блоке личных данных)
+  const [indLegalName, setIndLegalName] = useState("");
+  const [indCardNumber, setIndCardNumber] = useState("");
+  const [indCityName, setIndCityName] = useState("");
+  const [indCityCode, setIndCityCode] = useState("");
+  const [editingInd, setEditingInd] = useState(false);
+  const [indSaving, setIndSaving] = useState(false);
+  const [indSaved, setIndSaved] = useState(false);
   const [stoppingStream, setStoppingStream] = useState<string | null>(null);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const { subscribed, isSupported, subscribe, unsubscribe, status: pushStatus } = usePushNotifications(user?.id ?? null);
@@ -93,9 +101,15 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
     ]).then(([indData, legalData]) => {
       setHasIndividualProfile(!!(indData?.legalType));
       setHasLegalProfile(!!(legalData?.legalType));
-      // sellerLegalType — для кнопки "Подать объявление" используем тип текущего режима
       if (mode === "personal" && indData?.legalType) setSellerLegalType(indData.legalType);
       else if (legalData?.legalType) setSellerLegalType(legalData.legalType);
+      // Сохраняем данные физлица для отображения
+      if (indData?.legalType) {
+        setIndLegalName(indData.legalName || "");
+        setIndCardNumber(indData.cardNumber || "");
+        setIndCityName(indData.shopCityName || user?.shopCityName || "");
+        setIndCityCode(indData.shopCityCode || user?.shopCityCode || "");
+      }
     }).finally(() => setSellerLegalTypeLoaded(true));
   }, [user?.id, user?.shopName]);
 
@@ -158,6 +172,36 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
     setEditing(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
+  };
+
+  const handleSaveIndividual = async () => {
+    if (!user) return;
+    setIndSaving(true);
+    try {
+      await fetch(`${STORE_API}?action=save_seller_profile`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: user.id,
+          profileType: "individual",
+          legalType: "individual",
+          legalName: indLegalName.trim(),
+          cardNumber: indCardNumber.replace(/\D/g, ""),
+          agreedOffer: true,
+          agreedPd: true,
+          contactPhone: user.phone,
+          contactEmail: user.email,
+        }),
+      });
+      if (indCityCode) {
+        await updateUser({ shopCityCode: indCityCode, shopCityName: indCityName, shopName: indLegalName.trim() || user.shopName });
+      }
+      setEditingInd(false);
+      setIndSaved(true);
+      setTimeout(() => setIndSaved(false), 2500);
+    } finally {
+      setIndSaving(false);
+    }
   };
 
   const handleChangePassword = async () => {
@@ -299,6 +343,63 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
               </div>
             )}
           </div>
+
+          {/* Данные физлица-продавца */}
+          {hasIndividualProfile && (
+            <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Icon name="Tag" size={15} className="text-muted-foreground" />
+                  Данные продавца (физлицо)
+                </p>
+                <button onClick={() => { setEditingInd(!editingInd); }}
+                  className="text-xs text-primary font-medium hover:opacity-80 transition-opacity">
+                  {editingInd ? "Отмена" : "Редактировать"}
+                </button>
+              </div>
+
+              {editingInd ? (
+                <div className="space-y-2">
+                  <div>
+                    <label className="text-[11px] text-muted-foreground mb-0.5 block">ФИО</label>
+                    <input value={indLegalName} onChange={e => setIndLegalName(e.target.value)}
+                      placeholder="Иванов Иван Иванович" className={inputCls} />
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-muted-foreground mb-0.5 block">Номер карты для выплат</label>
+                    <input value={indCardNumber.replace(/(\d{4})(?=\d)/g, "$1 ")}
+                      onChange={e => setIndCardNumber(e.target.value.replace(/\D/g, "").slice(0, 16))}
+                      placeholder="0000 0000 0000 0000" inputMode="numeric" maxLength={19} className={inputCls} />
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-muted-foreground mb-0.5 block">Город отправки</label>
+                    <input value={indCityName} onChange={e => setIndCityName(e.target.value)}
+                      placeholder="Москва" className={inputCls} />
+                    <p className="text-[11px] text-muted-foreground mt-1">Для смены города — подай новое объявление</p>
+                  </div>
+                  <button onClick={handleSaveIndividual} disabled={indSaving}
+                    className="w-full bg-primary text-primary-foreground font-semibold py-2.5 rounded-xl hover:opacity-90 transition-opacity text-sm mt-1 disabled:opacity-50 flex items-center justify-center gap-2">
+                    {indSaving && <Icon name="Loader" size={14} className="animate-spin" />}
+                    Сохранить
+                  </button>
+                  {indSaved && <p className="text-xs text-green-600 text-center flex items-center justify-center gap-1"><Icon name="CheckCircle" size={12} />Сохранено</p>}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {[
+                    { label: "ФИО", value: indLegalName || "—" },
+                    { label: "Карта для выплат", value: indCardNumber ? `•••• •••• •••• ${indCardNumber.slice(-4)}` : "—" },
+                    { label: "Город отправки", value: indCityName || user.shopCityName || "—" },
+                  ].map(({ label, value }) => (
+                    <div key={label} className="flex justify-between items-center py-1 border-b border-border/50 last:border-0">
+                      <span className="text-xs text-muted-foreground">{label}</span>
+                      <span className="text-sm text-foreground font-medium">{value}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Смена пароля */}
           <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
