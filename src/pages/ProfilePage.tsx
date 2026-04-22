@@ -353,12 +353,21 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
           </div>
 
           {/* Данные аккаунта (объединённый блок) */}
-          <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
-            <div className="flex items-center justify-between">
+          <div className="bg-card border border-border rounded-2xl overflow-hidden">
+            <button
+              onClick={() => setShowPersonalData(v => !v)}
+              className="w-full flex items-center justify-between p-4 text-left"
+            >
               <p className="text-sm font-semibold text-foreground flex items-center gap-2">
                 <Icon name="UserCog" size={15} className="text-muted-foreground" />
                 Личные данные
               </p>
+              <Icon name={showPersonalData ? "ChevronUp" : "ChevronDown"} size={16} className="text-muted-foreground" />
+            </button>
+            {showPersonalData && (
+            <div className="px-4 pb-4 space-y-3 border-t border-border/50">
+            <div className="flex items-center justify-between pt-3">
+              <span className="text-xs text-muted-foreground">Редактировать данные</span>
               <button onClick={() => {
                 const next = !editing;
                 setEditing(next);
