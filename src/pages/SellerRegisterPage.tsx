@@ -483,6 +483,7 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct, 
       if (nameParts.length < 2) { setError("Введите фамилию и имя полностью"); return; }
       if (!form.cardNumber.trim()) { setError("Введите номер карты для выплат"); return; }
       if (form.cardNumber.replace(/\D/g, "").length < 16) { setError("Номер карты должен содержать 16 цифр"); return; }
+      if (!form.productCategory) { setError("Выберите категорию товаров"); return; }
       if (!cityCode) { setError("Укажите город отправки — он будет подставляться в каждый товар"); return; }
     }
 
@@ -522,22 +523,28 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct, 
     setSaving(true);
     try {
       const isIndividualType = form.legalType === "individual";
+      const resolvedShopName = isIndividualType
+        ? (shopName.trim() || form.legalName.trim() || pName.trim())
+        : shopName.trim();
       await updateUser({
         name: isIndividualType ? (form.legalName.trim() || pName.trim()) : pName.trim(),
         phone: contactPhone.trim(),
         city: pCity.trim(),
-        ...((shopName.trim() || isIndividualType) && cityCode ? {
-          shopName: isIndividualType ? (form.legalName.trim() || pName.trim()) : shopName.trim(),
+        ...((resolvedShopName || isIndividualType) && cityCode ? {
+          shopName: resolvedShopName,
           shopCityCode: cityCode,
           shopCityName: cityName,
           shopCityGuid: cityGuid,
           shopCarriers: carriers,
-        } : (shopName.trim() && !cityCode ? {
-          shopName: shopName.trim(),
+          shopCategory: form.productCategory,
+        } : (resolvedShopName && !cityCode ? {
+          shopName: resolvedShopName,
           shopCarriers: carriers,
+          shopCategory: form.productCategory,
         } : isIndividualType ? {
-          shopName: form.legalName.trim() || pName.trim(),
+          shopName: resolvedShopName,
           shopCarriers: carriers,
+          shopCategory: form.productCategory,
         } : {})),
       });
 
@@ -1025,6 +1032,26 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct, 
               <span>Физлица продают только б/у товары, до 5 объявлений. Без чека и ИНН.</span>
             </div>
 
+            {/* Магазин — для физлица */}
+            <div className="border-t border-border/50 pt-3">
+              <h2 className="text-xs font-semibold text-foreground mb-2">Магазин</h2>
+              <Field label="Название магазина" hint="Отображается покупателям в корзине" required>
+                <input value={shopName} onChange={e => setShopName(e.target.value)}
+                  placeholder="Например: Мои вещи" className={inputCls} />
+              </Field>
+              <div className="mt-2">
+                <Field label="Категория товаров" hint="Используется для настройки ставок и комиссий" required>
+                  <select
+                    value={form.productCategory}
+                    onChange={e => set("productCategory", e.target.value)}
+                    className={inputCls + " cursor-pointer"}>
+                    <option value="">— Выберите категорию —</option>
+                    {PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </Field>
+              </div>
+            </div>
+
             {/* Город отправки — прямо в этом блоке для физлица */}
             <div className="relative">
               <label className={labelCls}>
@@ -1066,6 +1093,38 @@ export default function SellerRegisterPage({ setPage, embedded, onGoAddProduct, 
                   ))}
                 </div>
               )}
+            </div>
+
+            {/* Транспортные компании */}
+            <div>
+              <label className={labelCls}>Транспортные компании</label>
+              <div className="flex flex-wrap gap-1.5 mt-1">
+                {([
+                  ["СДЭК", "Truck", true],
+                  ["ПЭК", "Package", false],
+                  ["Почта России", "Mail", false],
+                  ["Деловые линии", "Container", false],
+                ] as const).map(([name, icon, available]) => {
+                  const active = carriers.includes(name);
+                  if (!available) return (
+                    <div key={name} className="flex items-center gap-1 px-2 py-1 rounded-lg border border-border bg-secondary/40 opacity-40 cursor-not-allowed">
+                      <Icon name={icon} size={11} className="text-muted-foreground" />
+                      <span className="text-[11px] text-muted-foreground">{name}</span>
+                    </div>
+                  );
+                  return (
+                    <button key={name} type="button"
+                      onClick={() => setCarriers(prev => active ? prev.filter(c => c !== name) : [...prev, name])}
+                      className={`flex items-center gap-1 px-2 py-1 rounded-lg border transition-all ${
+                        active ? "border-green-500/50 bg-green-500/10 text-green-700" : "border-border bg-secondary text-muted-foreground hover:border-primary/30"
+                      }`}>
+                      <Icon name={icon} size={11} />
+                      <span className="text-[11px] font-medium">{name}</span>
+                      {active && <Icon name="Check" size={10} className="ml-0.5 text-green-600" />}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
           );
