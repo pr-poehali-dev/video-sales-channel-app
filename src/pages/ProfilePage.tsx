@@ -379,23 +379,53 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
             {editing ? (
               <div className="space-y-2">
                 <div>
-                  <label className="text-[11px] text-muted-foreground mb-0.5 block">Телефон</label>
-                  <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+7 (900) 000-00-00" className={inputCls} />
+                  <label className="text-[11px] text-muted-foreground mb-0.5 block">Телефон *</label>
+                  <input
+                    value={phone}
+                    onChange={e => setPhone(e.target.value)}
+                    placeholder="+7 (900) 000-00-00"
+                    inputMode="tel"
+                    className={inputCls + (
+                      phone && phone.replace(/\D/g, "").length !== 11
+                        ? " border-red-400/60"
+                        : phone && phone.replace(/\D/g, "").length === 11
+                        ? " border-green-400/60"
+                        : " border-amber-400/60"
+                    )}
+                  />
+                  {!phone && <p className="text-[10px] text-amber-600 mt-0.5 flex items-center gap-1"><Icon name="AlertCircle" size={10} />Обязательно для заполнения</p>}
+                  {phone && phone.replace(/\D/g, "").length !== 11 && <p className="text-[10px] text-red-500 mt-0.5 flex items-center gap-1"><Icon name="AlertCircle" size={10} />Введите полный номер (11 цифр)</p>}
+                  {phone && phone.replace(/\D/g, "").length === 11 && <p className="text-[10px] text-green-600 mt-0.5 flex items-center gap-1"><Icon name="CheckCircle" size={10} />Номер корректен</p>}
                 </div>
                 {hasIndividualProfile && <>
                   <div className="border-t border-border/50 pt-2 mt-1">
                     <p className="text-[11px] text-muted-foreground mb-2 font-medium uppercase tracking-wide">Данные продавца</p>
                   </div>
                   <div>
-                    <label className="text-[11px] text-muted-foreground mb-0.5 block">ФИО</label>
+                    <label className="text-[11px] text-muted-foreground mb-0.5 block">ФИО *</label>
                     <input value={indLegalName} onChange={e => setIndLegalName(e.target.value)}
-                      placeholder="Иванов Иван Иванович" className={inputCls} />
+                      placeholder="Иванов Иван Иванович"
+                      className={inputCls + (
+                        !indLegalName ? " border-amber-400/60"
+                        : indLegalName.trim().split(/\s+/).length >= 2 ? " border-green-400/60"
+                        : " border-red-400/60"
+                      )} />
+                    {!indLegalName && <p className="text-[10px] text-amber-600 mt-0.5 flex items-center gap-1"><Icon name="AlertCircle" size={10} />Обязательно для заполнения</p>}
+                    {indLegalName && indLegalName.trim().split(/\s+/).length < 2 && <p className="text-[10px] text-red-500 mt-0.5 flex items-center gap-1"><Icon name="AlertCircle" size={10} />Введите фамилию и имя</p>}
                   </div>
                   <div>
-                    <label className="text-[11px] text-muted-foreground mb-0.5 block">Номер карты для выплат</label>
+                    <label className="text-[11px] text-muted-foreground mb-0.5 block">Номер карты для выплат *</label>
                     <input value={indCardNumber.replace(/(\d{4})(?=\d)/g, "$1 ")}
                       onChange={e => setIndCardNumber(e.target.value.replace(/\D/g, "").slice(0, 16))}
-                      placeholder="0000 0000 0000 0000" inputMode="numeric" maxLength={19} className={inputCls} />
+                      placeholder="0000 0000 0000 0000" inputMode="numeric" maxLength={19}
+                      className={inputCls + (
+                        !indCardNumber ? " border-amber-400/60"
+                        : indCardNumber.replace(/\D/g, "").length === 16 ? " border-green-400/60"
+                        : " border-red-400/60"
+                      )} />
+                    {!indCardNumber && <p className="text-[10px] text-amber-600 mt-0.5 flex items-center gap-1"><Icon name="AlertCircle" size={10} />Обязательно для заполнения</p>}
+                    {indCardNumber && indCardNumber.replace(/\D/g, "").length !== 16 && <p className="text-[10px] text-red-500 mt-0.5 flex items-center gap-1"><Icon name="AlertCircle" size={10} />Номер карты — 16 цифр (введено {indCardNumber.replace(/\D/g, "").length})</p>}
+                    {indCardNumber && indCardNumber.replace(/\D/g, "").length === 16 && <p className="text-[10px] text-green-600 mt-0.5 flex items-center gap-1"><Icon name="CheckCircle" size={10} />Номер карты корректен</p>}
                   </div>
                   {/* Блок магазина */}
                   <div className="border-t border-border/50 pt-2 mt-1" />
@@ -467,7 +497,13 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
                 </>}
                 <button onClick={async () => {
                   setSaveError(null);
+                  if (!phone.trim()) { setSaveError("Введите номер телефона"); return; }
+                  if (phone.replace(/\D/g, "").length !== 11) { setSaveError("Введите полный номер телефона (11 цифр)"); return; }
                   if (hasIndividualProfile) {
+                    if (!indLegalName.trim()) { setSaveError("Введите ФИО полностью"); return; }
+                    if (indLegalName.trim().split(/\s+/).length < 2) { setSaveError("Введите фамилию и имя"); return; }
+                    if (!indCardNumber.trim()) { setSaveError("Введите номер карты для выплат"); return; }
+                    if (indCardNumber.replace(/\D/g, "").length !== 16) { setSaveError("Номер карты должен содержать 16 цифр"); return; }
                     if (!indCategory) { setSaveError("Выберите категорию товаров"); return; }
                     if (!indCityCode) { setSaveError("Укажите город отправки"); return; }
                   }
