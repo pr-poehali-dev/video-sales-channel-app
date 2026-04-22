@@ -294,15 +294,19 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
             </button>
           </div>
 
-          {/* Данные аккаунта */}
+          {/* Данные аккаунта (объединённый блок) */}
           <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold text-foreground flex items-center gap-2">
                 <Icon name="UserCog" size={15} className="text-muted-foreground" />
                 Личные данные
               </p>
-              <button onClick={() => { setEditing(!editing); if (!editing) { setName(user.name); setPhone(user.phone); setCity(user.city); } }}
-                className="text-xs text-primary font-medium hover:opacity-80 transition-opacity">
+              <button onClick={() => {
+                const next = !editing;
+                setEditing(next);
+                if (next) { setName(user.name); setPhone(user.phone); setCity(user.city); }
+                setEditingInd(false);
+              }} className="text-xs text-primary font-medium hover:opacity-80 transition-opacity">
                 {editing ? "Отмена" : "Редактировать"}
               </button>
             </div>
@@ -321,45 +325,10 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
                   <label className="text-[11px] text-muted-foreground mb-0.5 block">Город</label>
                   <input value={city} onChange={e => setCity(e.target.value)} placeholder="Москва" className={inputCls} />
                 </div>
-                <button onClick={handleSave}
-                  className="w-full bg-primary text-primary-foreground font-semibold py-2.5 rounded-xl hover:opacity-90 transition-opacity text-sm mt-1">
-                  Сохранить
-                </button>
-                {saved && <p className="text-xs text-green-600 text-center flex items-center justify-center gap-1"><Icon name="CheckCircle" size={12} />Сохранено</p>}
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {[
-                  { label: "Email",    value: user.email },
-                  { label: "Имя",      value: user.name  || "—" },
-                  { label: "Телефон",  value: user.phone || "—" },
-                  { label: "Город",    value: user.city  || "—" },
-                ].map(({ label, value }) => (
-                  <div key={label} className="flex justify-between items-center py-1 border-b border-border/50 last:border-0">
-                    <span className="text-xs text-muted-foreground">{label}</span>
-                    <span className="text-sm text-foreground font-medium">{value}</span>
+                {hasIndividualProfile && <>
+                  <div className="border-t border-border/50 pt-2 mt-1">
+                    <p className="text-[11px] text-muted-foreground mb-2 font-medium uppercase tracking-wide">Данные продавца</p>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Данные физлица-продавца */}
-          {hasIndividualProfile && (
-            <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-foreground flex items-center gap-2">
-                  <Icon name="Tag" size={15} className="text-muted-foreground" />
-                  Данные продавца (физлицо)
-                </p>
-                <button onClick={() => { setEditingInd(!editingInd); }}
-                  className="text-xs text-primary font-medium hover:opacity-80 transition-opacity">
-                  {editingInd ? "Отмена" : "Редактировать"}
-                </button>
-              </div>
-
-              {editingInd ? (
-                <div className="space-y-2">
                   <div>
                     <label className="text-[11px] text-muted-foreground mb-0.5 block">ФИО</label>
                     <input value={indLegalName} onChange={e => setIndLegalName(e.target.value)}
@@ -373,33 +342,38 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
                   </div>
                   <div>
                     <label className="text-[11px] text-muted-foreground mb-0.5 block">Город отправки</label>
-                    <input value={indCityName} onChange={e => setIndCityName(e.target.value)}
-                      placeholder="Москва" className={inputCls} />
-                    <p className="text-[11px] text-muted-foreground mt-1">Для смены города — подай новое объявление</p>
+                    <input value={indCityName} onChange={e => setIndCityName(e.target.value)} placeholder="Москва" className={inputCls} />
                   </div>
-                  <button onClick={handleSaveIndividual} disabled={indSaving}
-                    className="w-full bg-primary text-primary-foreground font-semibold py-2.5 rounded-xl hover:opacity-90 transition-opacity text-sm mt-1 disabled:opacity-50 flex items-center justify-center gap-2">
-                    {indSaving && <Icon name="Loader" size={14} className="animate-spin" />}
-                    Сохранить
-                  </button>
-                  {indSaved && <p className="text-xs text-green-600 text-center flex items-center justify-center gap-1"><Icon name="CheckCircle" size={12} />Сохранено</p>}
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {[
-                    { label: "ФИО", value: indLegalName || "—" },
+                </>}
+                <button onClick={async () => { await handleSave(); if (hasIndividualProfile) await handleSaveIndividual(); }}
+                  disabled={indSaving}
+                  className="w-full bg-primary text-primary-foreground font-semibold py-2.5 rounded-xl hover:opacity-90 transition-opacity text-sm mt-1 disabled:opacity-50 flex items-center justify-center gap-2">
+                  {indSaving && <Icon name="Loader" size={14} className="animate-spin" />}
+                  Сохранить
+                </button>
+                {(saved || indSaved) && <p className="text-xs text-green-600 text-center flex items-center justify-center gap-1"><Icon name="CheckCircle" size={12} />Сохранено</p>}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {[
+                  { label: "Email",   value: user.email },
+                  { label: "Имя",     value: user.name  || "—" },
+                  { label: "Телефон", value: user.phone || "—" },
+                  { label: "Город",   value: user.city  || "—" },
+                  ...(hasIndividualProfile ? [
+                    { label: "ФИО",              value: indLegalName || "—" },
                     { label: "Карта для выплат", value: indCardNumber ? `•••• •••• •••• ${indCardNumber.slice(-4)}` : "—" },
-                    { label: "Город отправки", value: indCityName || user.shopCityName || "—" },
-                  ].map(({ label, value }) => (
-                    <div key={label} className="flex justify-between items-center py-1 border-b border-border/50 last:border-0">
-                      <span className="text-xs text-muted-foreground">{label}</span>
-                      <span className="text-sm text-foreground font-medium">{value}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+                    { label: "Город отправки",   value: indCityName || user.shopCityName || "—" },
+                  ] : []),
+                ].map(({ label, value }) => (
+                  <div key={label} className="flex justify-between items-center py-1 border-b border-border/50 last:border-0">
+                    <span className="text-xs text-muted-foreground">{label}</span>
+                    <span className="text-sm text-foreground font-medium">{value}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* Смена пароля */}
           <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
