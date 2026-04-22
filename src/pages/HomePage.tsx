@@ -70,7 +70,7 @@ const BANNERS = [
     id: 1,
     img: "https://cdn.poehali.dev/projects/a4bacfcf-1dfc-4307-b19f-4266aaeae1d7/files/f62cf43d-c033-483b-9cc6-d0ce22f7ac99.jpg",
     badge: "🔥 Скоро жара",
-    title: "Лето 2025",
+    title: "Лето 2026",
     sub: "Товары для отдыха и пляжа",
     btn: "Смотреть",
     page: "catalog" as Page,
@@ -421,7 +421,7 @@ export default function HomePage({ setPage, addToCart, updateQty, cart = [], onP
           <button onClick={() => setPage("offer" as Page)} className="hover:text-foreground transition-colors">Оферта продавца</button>
           <button onClick={() => setPage("terms" as Page)} className="hover:text-foreground transition-colors">Условия использования</button>
         </div>
-        <p className="text-[10px] text-muted-foreground/50 mt-4">© 2024–2025 стримБАЗАР.РФ · Все права защищены</p>
+        <p className="text-[10px] text-muted-foreground/50 mt-4">© 2026 стримБАЗАР.РФ · Все права защищены</p>
       </footer>
     </div>
   );
