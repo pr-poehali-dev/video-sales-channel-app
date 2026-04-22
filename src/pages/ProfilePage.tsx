@@ -533,6 +533,7 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
                 {saveError && <p className="text-xs text-destructive text-center flex items-center justify-center gap-1"><Icon name="AlertCircle" size={12} />{saveError}</p>}
               </div>
             ) : (
+              <>
               <div className="space-y-2">
                 {[
                   { label: "Email",   value: user.email },
@@ -550,58 +551,37 @@ export default function ProfilePage({ setPage, onAddProduct, onSetSellerRegister
                   </div>
                 ))}
               </div>
-            )}
-            </div>
-            )}
-          </div>
-
-          {/* Смена пароля */}
-          <div className="bg-card border border-border rounded-2xl overflow-hidden">
-            <button
-              onClick={() => setChangingPass(v => !v)}
-              className="w-full flex items-center justify-between p-4 text-left"
-            >
-              <p className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <Icon name="Lock" size={15} className="text-muted-foreground" />
-                Пароль
-              </p>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-primary font-medium">{changingPass ? "Отмена" : "Изменить"}</span>
-                <Icon name={changingPass ? "ChevronUp" : "ChevronDown"} size={16} className="text-muted-foreground" />
-              </div>
-            </button>
-            {passSaved && <p className="text-xs text-green-600 flex items-center gap-1 px-4 pb-3"><Icon name="CheckCircle" size={12} />Пароль изменён</p>}
-            {changingPass && (
-            <div className="px-4 pb-4 border-t border-border/50 pt-3">
-              <div className="space-y-2">
-                <div>
-                  <label className="text-[11px] text-muted-foreground mb-0.5 block">Текущий пароль</label>
-                  <div className="relative">
-                    <input type={showOld ? "text" : "password"} value={oldPass} onChange={e => setOldPass(e.target.value)} placeholder="••••••" className={inputCls + " pr-9"} />
-                    <button type="button" onClick={() => setShowOld(!showOld)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground">
-                      <Icon name={showOld ? "EyeOff" : "Eye"} size={14} />
+              <div className="pt-2 border-t border-border/50">
+                {!changingPass ? (
+                  <button onClick={() => setChangingPass(true)} className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors">
+                    <Icon name="Lock" size={11} />
+                    Изменить пароль
+                  </button>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground font-medium flex items-center gap-1"><Icon name="Lock" size={11} />Смена пароля</span>
+                      <button onClick={() => setChangingPass(false)} className="text-xs text-muted-foreground hover:text-foreground"><Icon name="X" size={12} /></button>
+                    </div>
+                    <div className="relative">
+                      <input type={showOld ? "text" : "password"} value={oldPass} onChange={e => setOldPass(e.target.value)} placeholder="Текущий пароль" className={inputCls + " pr-9 text-xs py-2"} />
+                      <button type="button" onClick={() => setShowOld(!showOld)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"><Icon name={showOld ? "EyeOff" : "Eye"} size={13} /></button>
+                    </div>
+                    <div className="relative">
+                      <input type={showNew ? "text" : "password"} value={newPass} onChange={e => setNewPass(e.target.value)} placeholder="Новый пароль" className={inputCls + " pr-9 text-xs py-2"} />
+                      <button type="button" onClick={() => setShowNew(!showNew)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"><Icon name={showNew ? "EyeOff" : "Eye"} size={13} /></button>
+                    </div>
+                    <input type="password" value={newPass2} onChange={e => setNewPass2(e.target.value)} placeholder="Повторите пароль" className={inputCls + " text-xs py-2"} />
+                    {passError && <p className="text-xs text-destructive flex items-center gap-1"><Icon name="AlertCircle" size={11} />{passError}</p>}
+                    {passSaved && <p className="text-xs text-green-600 flex items-center gap-1"><Icon name="CheckCircle" size={11} />Пароль изменён</p>}
+                    <button onClick={handleChangePassword} className="w-full bg-primary text-primary-foreground font-semibold py-2 rounded-xl hover:opacity-90 transition-opacity text-xs">
+                      Сохранить пароль
                     </button>
                   </div>
-                </div>
-                <div>
-                  <label className="text-[11px] text-muted-foreground mb-0.5 block">Новый пароль</label>
-                  <div className="relative">
-                    <input type={showNew ? "text" : "password"} value={newPass} onChange={e => setNewPass(e.target.value)} placeholder="Минимум 6 символов" className={inputCls + " pr-9"} />
-                    <button type="button" onClick={() => setShowNew(!showNew)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground">
-                      <Icon name={showNew ? "EyeOff" : "Eye"} size={14} />
-                    </button>
-                  </div>
-                </div>
-                <div>
-                  <label className="text-[11px] text-muted-foreground mb-0.5 block">Повторите новый пароль</label>
-                  <input type="password" value={newPass2} onChange={e => setNewPass2(e.target.value)} placeholder="••••••" className={inputCls} />
-                </div>
-                {passError && <p className="text-xs text-destructive flex items-center gap-1"><Icon name="AlertCircle" size={12} />{passError}</p>}
-                <button onClick={handleChangePassword}
-                  className="w-full bg-primary text-primary-foreground font-semibold py-2.5 rounded-xl hover:opacity-90 transition-opacity text-sm">
-                  Сохранить пароль
-                </button>
+                )}
               </div>
+              </>
+            )}
             </div>
             )}
           </div>
